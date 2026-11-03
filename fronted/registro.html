@@ -1,0 +1,90 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moodsitto | Registro</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+    <header class="encabezado">
+        <a href="index.html" class="marca">Moodsitto</a>
+        <nav>
+            <a href="index.html">Inicio</a>
+            <a href="login.html">Iniciar sesión</a>
+            <a href="registro.html" class="activo">Registrarse</a>
+        </nav>
+    </header>
+    <main class="pagina-formulario">
+        <section class="formulario formulario-amplio">
+            <p class="etiqueta">ÚNETE A MOODSITTO</p>
+            <h1>Crear cuenta</h1>
+            <p class="texto-suave">
+                Completa tus datos para comenzar.
+            </p>
+            <form id="registro-form">
+                <div class="columnas">
+                    <div>
+                        <label for="nombre">Nombre</label>
+                        <input type="text" id="nombre"
+                               name="name" required>
+                    </div>
+                    <div>
+                        <label for="apellido1">
+                            Apellido paterno
+                        </label>
+                        <input type="text" id="apellido1"
+                               name="lastname1" required>
+                    </div>
+                    <div>
+                        <label for="apellido2">
+                            Apellido materno
+                        </label>
+                        <input type="text" id="apellido2"
+                               name="lastname2">
+                    </div>
+                    <div>
+                        <label for="nacimiento">
+                            Fecha de nacimiento
+                        </label>
+                        <input type="date" id="nacimiento"
+                               name="date_b" required>
+                    </div>
+                    <div>
+                        <label for="telefono">Teléfono</label>
+                        <input type="tel" id="telefono"
+                               name="phone" required>
+                    </div>
+                    <div>
+                        <label for="emergencia">
+                            Teléfono de emergencia
+                        </label>
+                        <input type="tel" id="emergencia"
+                               name="emer_phone">
+                    </div>
+                </div>
+                <label for="email">Correo electrónico</label>
+                <input type="email" id="email"
+                       name="mail" required>
+                <label for="password">Contraseña</label>
+                <input type="password" id="password"
+                       name="passw" minlength="8" required>
+                <button type="submit" class="boton ancho">
+                    Crear cuenta
+                </button>
+                <p id="registro-mensaje" class="mensaje"></p>
+            </form>
+            <p class="pie-formulario">
+                ¿Ya tienes una cuenta?
+                <a href="login.html">Inicia sesión</a>
+            </p>
+        </section>
+    </main>
+    <footer>
+        Moodsitto · 2026
+    </footer>
+    <script src="js/main.js"></script>
+</body>
+</html>
