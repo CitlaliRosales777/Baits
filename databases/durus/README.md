@@ -4,5 +4,5 @@
 
 Durus no implementa ODL ni OQL como estándares nativos. El esquema se expresa en clases Python y las consultas se realizan navegando/filtrando objetos; cualquier ejemplo “OQL” en la documentación es solo una equivalencia conceptual.
 
-No se instaló ni ejecutó Durus en este entorno. Antes de la demostración, cree un entorno virtual aislado, instale una versión aprobada por el docente y ejecute el archivo solo con datos sintéticos. El archivo `*.durus` generado no debe confirmarse en Git.
+El prototipo se ejecutó correctamente con Python 3.10 y Durus instalado dentro de un contenedor desechable; confirmó persistencia, `commit()`, lectura del evento y cierre del `FileStorage` sin excepción. Para la demostración formal, cree un entorno virtual aislado, fije una versión aprobada por el docente y use solo datos sintéticos. El archivo `*.durus` generado no debe confirmarse en Git.
 

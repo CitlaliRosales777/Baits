@@ -1,6 +1,6 @@
 # Plan de bases de datos avanzadas
 
-Este plan separa lo preparado de lo comprobado. En el entorno actual solo se validó MariaDB local en Docker. No se dispone de VPS, nodos Spider/FederatedX, APIcore, SQL Server, SSMS ni Durus instalado.
+Este plan separa lo preparado de lo comprobado. Se validó MariaDB local en Docker y el prototipo Durus en un contenedor desechable con Python 3.10. No se dispone de VPS, nodos Spider/FederatedX, APIcore integrado, SQL Server ni SSMS.
 
 ## Unidad 2: objetos persistentes
 
@@ -14,7 +14,7 @@ El prototipo `databases/durus/model.py` representa `UserProfile` y `EmotionEvent
 
 Durus no ofrece ODL/OQL nativos. La clase Python cumple el papel conceptual de definición del objeto; una comprensión o recorrido Python equivale conceptualmente a una consulta OQL, sin ser una implementación del estándar. Debe declararse esta diferencia durante la demostración.
 
-Pruebas pendientes: instalar una versión aprobada en entorno virtual, crear objetos sintéticos, cerrar/reabrir el almacenamiento, provocar un `abort()` y simular dos conexiones según las capacidades reales de Durus.
+Comprobado: creación del almacenamiento, objetos sintéticos, `commit()`, lectura y cierre del `FileStorage` sin excepción. Pendiente: fijar una versión aprobada en entorno virtual, cerrar/reabrir en procesos separados, provocar un `abort()` y simular dos conexiones según las capacidades reales de Durus.
 
 ## Fragmentación
 
