@@ -29,9 +29,18 @@ Variables esperadas (nombres por acordar): host, puerto, base, usuario, secreto 
 Ejemplo, con credenciales entregadas de forma segura por el entorno (no escritas en la línea de comandos compartida):
 
 ```powershell
+$dumpFile = 'moodsitto-dev-YYYYMMDD.sql'
 mariadb-dump --single-transaction --routines --triggers --events `
-  --databases moodsitto | gzip > moodsitto-dev-YYYYMMDD.sql.gz
+  --databases moodsitto --result-file=$dumpFile
+if ($LASTEXITCODE -ne 0) { throw 'Falló mariadb-dump' }
+
+gzip --force --keep $dumpFile
+if ($LASTEXITCODE -ne 0) { throw 'Falló gzip' }
+
+Get-FileHash "$dumpFile.gz" -Algorithm SHA256
 ```
+
+`--result-file` evita que PowerShell transforme la salida y `gzip` lee directamente el archivo. Esto es seguro tanto en Windows PowerShell 5.1 como en PowerShell 7; no use `| gzip > archivo.gz` para datos binarios.
 
 El archivo debe cifrarse, comprobarse con hash, guardarse fuera del repositorio y someterse a retención. Para producción se requiere además respaldo físico/binlogs según RPO/RTO definidos por DevOps.
 
