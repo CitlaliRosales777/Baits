@@ -50,5 +50,5 @@ if __name__ == "__main__":
     db.get_root()["profiles"].append(profile)
     db.commit()
     print(profile.events[0].summary())
-    db.close()
+    db.get_storage().close()
 
