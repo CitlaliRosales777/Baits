@@ -4,7 +4,4 @@ databases/mariadb/.test-state/
 *.bak
 *.sql.gz
 *.durus
-__pycache__/
-*.py[cod]
-.pytest_cache/
 

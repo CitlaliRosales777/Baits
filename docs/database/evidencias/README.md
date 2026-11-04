@@ -1,8 +1,7 @@
 # Evidencias reproducibles
 
-- `mariadb-test-2026-11-03.txt`: salida real de una instalación limpia y pruebas en MariaDB 11.4 mediante Docker. No contiene credenciales ni datos reales.
-- `apicore-audit-2026-11-03.md`: revisión estática del commit exacto proporcionado; los valores de `.env` no se copiaron ni expusieron.
-- `apicore-integration-test-2026-11-04.txt`: construcción y prueba E2E real de APIcore contra MariaDB con secretos efímeros y datos sintéticos.
+- `mariadb-test-2026-11-04.txt`: resultado vigente de V001–V003 y 22 comprobaciones en MariaDB 11.4.
+- `mariadb-test-2026-11-03.txt`: ejecución anterior de V001–V002; se conserva como historial.
+- `apicore-audit-2026-11-03.md`: revisión estática del repositorio externo proporcionado; no contiene credenciales.
 
-No se incluyen capturas de ejecución integrada de APIcore, SQL Server ni nodos distribuidos porque esos entornos no estuvieron disponibles. Durus solo se validó en un contenedor efímero, sin evidencia gráfica. Las capturas futuras deben corresponder a ejecuciones reales y omitir secretos/datos personales.
-
+No hay evidencia de ejecución de APIcore, Durus, SQL Server, Spider/FederatedX ni nodos distribuidos porque el alcance actual no autoriza implementarlos y esos entornos no se verificaron. Las evidencias futuras deben corresponder a ejecuciones reales y omitir secretos y datos personales.
