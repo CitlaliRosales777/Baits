@@ -90,3 +90,9 @@ Para una base heredada: obtener respaldo, restaurarlo en un entorno aislado, eje
 5. Validar restauraciones periódicas y medir RPO/RTO.
 6. Ejecutar la fase multibase solo en infraestructura de desarrollo con datos sintéticos.
 
+## 12. Entrega a DevOps
+
+La rama `feature/db-manager` se publicó y se abrió el PR [#1](https://github.com/CitlaliRosales777/Baits/pull/1) hacia `main` con el título solicitado. GitGuardian reportó éxito al abrirlo.
+
+No se encontró `.github/CODEOWNERS`, protección clásica para `main` ni rulesets accesibles en el repositorio. Hay colaboradores con permisos de escritura/administración, pero ninguno está identificado explícitamente como responsable DevOps; por ello no se solicitó revisión a una persona al azar. El PR permanece abierto, sin aprobación propia y sin fusionar, a la espera de que el equipo identifique/asigne al revisor responsable.
+
