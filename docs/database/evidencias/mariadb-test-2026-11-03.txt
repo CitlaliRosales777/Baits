@@ -1,0 +1,41 @@
+ Network moodsitto-db-tests_moodsitto_test Creating 
+ Network moodsitto-db-tests_moodsitto_test Creating 
+ Volume moodsitto-db-tests_moodsitto_test_data Creating 
+ Volume moodsitto-db-tests_moodsitto_test_data Creating 
+ Volume moodsitto-db-tests_moodsitto_test_data Created 
+ Volume moodsitto-db-tests_moodsitto_test_data Created 
+ Network moodsitto-db-tests_moodsitto_test Created 
+ Network moodsitto-db-tests_moodsitto_test Created 
+ Container moodsitto-db-tests-mariadb-1 Creating 
+ Container moodsitto-db-tests-mariadb-1 Created 
+ Container moodsitto-db-tests-mariadb-1 Starting 
+ Container moodsitto-db-tests-mariadb-1 Started 
+ Container moodsitto-db-tests-mariadb-1 Waiting 
+ Container moodsitto-db-tests-mariadb-1 Healthy 
+result
+PASS schema: 20 tables, 33 FKs, 2 migrations, all InnoDB
+test_name	result
+CREATE appointment	PASS
+CREATE diagnosis	PASS
+CREATE emotion tracking	PASS
+CREATE medication	PASS
+CREATE reminder	PASS
+CREATE user	PASS
+DELETE controlled reminder	PASS
+invalid CHECK rejected	PASS
+invalid FK rejected	PASS
+READ relational JOIN	PASS
+referenced delete rejected	PASS
+unique email rejected	PASS
+UPDATE user	PASS
+result
+PASS CRUD/integrity: transaction will be rolled back
+PASS: migraciones, datos sintéticos y pruebas SQL completados.
+ Container moodsitto-db-tests-mariadb-1 Stopping 
+ Container moodsitto-db-tests-mariadb-1 Stopped 
+ Container moodsitto-db-tests-mariadb-1 Removing 
+ Container moodsitto-db-tests-mariadb-1 Removed 
+ Network moodsitto-db-tests_moodsitto_test Removing 
+ Volume moodsitto-db-tests_moodsitto_test_data Removing 
+ Volume moodsitto-db-tests_moodsitto_test_data Removed 
+ Network moodsitto-db-tests_moodsitto_test Removed 
