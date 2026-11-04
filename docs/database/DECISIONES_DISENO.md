@@ -6,7 +6,7 @@ Se mantienen tablas y columnas del archivo original, incluidas abreviaturas, por
 
 ## Migración limpia y actualización heredada separadas
 
-`V001` y `V002` construyen una instancia nueva y verificable. No se automatiza un `ALTER` sobre una base heredada porque hacer obligatorias columnas con valores nulos o agregar unicidad con duplicados puede perder datos. `P001__legacy_read_only_audit.sql` produce los hallazgos necesarios para diseñar esa actualización sobre una copia respaldada.
+`V001`, `V002` y `V003` construyen una instancia nueva y verificable. V003 es incremental sobre V002 y conserva las columnas heredadas. No se automatiza un `ALTER` sobre una base heredada desconocida porque hacer obligatorias columnas con valores nulos o agregar unicidad con duplicados puede perder datos. `P001__legacy_read_only_audit.sql` produce los hallazgos necesarios para diseñar esa actualización sobre una copia respaldada.
 
 ## Integridad y borrado
 
@@ -21,7 +21,15 @@ Los identificadores son `INT UNSIGNED`, suficientes para el alcance académico. 
 
 ## Jerarquía emocional
 
-Se conserva `emocion_conjunto` aunque sea redundante. Las FK garantizan existencia, y una terna `UNIQUE` evita duplicados, pero la pertenencia entre sus tres niveles requiere validación transaccional. Una futura versión puede reemplazarla por la emoción específica, desde la cual se reconstruye la jerarquía.
+Se conserva `emocion_conjunto` aunque sea redundante. V003 agrega FK compuestas específica/media y media/central: la base rechaza una terna que mezcle ramas. Una futura versión coordinada podría guardar solo la emoción específica, pero no se rompe la compatibilidad actual.
+
+## Horarios y tomas
+
+`medicamento_horario` separa la pauta repetible del medicamento y conserva su vigencia. `toma_medicamento` materializa cada ocurrencia y la identifica unívocamente por horario + fecha/hora programada. Solo `tomada` admite y exige hora efectiva. Cambiar un tratamiento cierra la programación; no borra las tomas históricas. El cumplimiento excluye pendientes y canceladas del denominador.
+
+## Especialidades
+
+`doctor_especialidad` permite varias especialidades. `doctors.id_especialidad` se mantiene como especialidad principal heredada hasta que Backend y Frontend migren sus contratos.
 
 ## Índices
 

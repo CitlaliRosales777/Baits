@@ -1,47 +1,55 @@
 # Diccionario de datos
 
-Todos los identificadores son `INT UNSIGNED AUTO_INCREMENT`. Todas las tablas usan InnoDB, `utf8mb4` y la intercalación de la base. `PK`, `FK`, `UK` y `NN` significan clave primaria, foránea, única y no nulo.
+El modelo final tiene 23 tablas de dominio y `schema_migrations`. Usa InnoDB, `utf8mb4`, identificadores `INT UNSIGNED AUTO_INCREMENT` salvo la toma (`BIGINT`), y restricciones explícitas. `NN`, `UK` y `FK` significan no nulo, único y clave foránea.
 
-## Catálogos y soporte
+## Catálogos
 
-| Tabla | Propósito | Campos relevantes y reglas |
-|---|---|---|
-| `location` | Dirección reutilizable. | `calle VARCHAR(100) NN`, `colonia VARCHAR(50) NN`, `num_ext`, `num_int`, `cp`, `descripcion`; el resto es opcional. |
-| `area` | Área de atención. | `nombre_area VARCHAR(100) NN UK`, `descripcion`. |
-| `especialidad` | Especialidad profesional. | `especialidad VARCHAR(50) NN UK`, `descripcion`. |
-| `estados_clinicos` | Estado de evaluación diagnóstica. | `estado_c VARCHAR(50) NN UK`, `descripcion`. |
-| `estado` | Estado operativo compartido. | `estado VARCHAR(50) NN UK`, `descripcion`. APIcore debe validar qué valores aplican a cada entidad. |
-| `compuesto` | Compuesto de un medicamento. | `compuesto VARCHAR(100) NN`, `via_admin VARCHAR(100) NN`, `descripcion`; UK compuesta por nombre y vía. |
-| `dosis` | Texto de dosis. | `dosis VARCHAR(50) NN UK`, `descripcion`. No se usa para cálculo clínico. |
-| `horarios` | Hora reutilizable. | `horario TIME NN UK`, `descripcion`. |
-| `intensidad` | Escala emocional. | `valor TINYINT UNSIGNED NN UK` entre 1 y 10, `color CHAR(7)` hexadecimal opcional, `descripcion`. |
+| Tabla | Campos y reglas |
+|---|---|
+| `location` | `id_location` PK; calle y colonia NN; número exterior/interior, CP y descripción opcionales. |
+| `area` | `id_area` PK; `nombre_area VARCHAR(100)` NN UK; descripción opcional. |
+| `especialidad` | `id_especialidad` PK; nombre NN UK; descripción opcional. |
+| `estados_clinicos` | `id_estadoclini` PK; estado NN UK; descripción opcional. |
+| `estado` | `id_estado` PK; estado NN UK; descripción opcional. |
+| `compuesto` | `id_compuesto` PK; compuesto y vía de administración NN; UK conjunta; descripción opcional. |
+| `dosis` | `id_dosis` PK; dosis NN UK; descripción opcional. No se interpreta numéricamente. |
+| `horarios` | `id_horario` PK; hora NN UK; descripción opcional. |
+| `intensidad` | `id_intensidad` PK; valor NN UK entre 1–10; color hexadecimal y descripción opcionales. |
 
-## Personas y atención
+## Usuarios y atención
 
-| Tabla | Propósito | Campos relevantes y reglas |
-|---|---|---|
-| `users` | Cuenta y perfil. | Nombre, primer apellido, nacimiento, teléfono, `mail VARCHAR(254) NN UK`, `passw VARCHAR(255) NN` (hash); ubicación FK opcional. |
-| `doctors` | Profesional de atención. | Área FK NN, `cedula VARCHAR(100) NN UK`, nombre y primer apellido NN, especialidad FK NN, teléfono y ubicación opcionales. |
-| `diagnosticos` | Diagnóstico emitido. | `nombre`, `fecha` y FK a área, estado clínico, usuario, doctor y estado son NN; descripción/documento opcionales. |
-| `citas_medicas` | Cita de usuario con profesional. | FK NN a doctor, ubicación, área, estado y usuario; `fecha DATETIME NN`; descripción opcional. |
-| `medicamento` | Medicamento registrado para usuario. | Nombre, compuesto FK, `cantidad > 0`, dosis FK, estado FK, horario FK y usuario FK son NN; textos clínicos opcionales. |
-| `recordatorios` | Aviso programado. | Usuario, horario, estado, contenido y fecha son NN; cita FK opcional. |
+| Tabla | Campos y reglas |
+|---|---|
+| `users` | PK `id_user`; nombre, primer apellido, nacimiento, teléfono, correo UK y hash NN; segundo apellido, emergencia y ubicación opcionales. |
+| `doctors` | PK; área, cédula UK, nombre, primer apellido y especialidad heredada NN; segundo apellido, teléfono y ubicación opcionales. |
+| `doctor_especialidad` | PK compuesta doctor/especialidad; `es_principal BOOLEAN` NN. Permite varias especialidades. |
+| `diagnosticos` | PK; nombre, fecha, área, estado clínico, usuario, doctor y estado NN; descripción y referencia de documento opcionales. |
+| `citas_medicas` | PK; doctor, ubicación, área, estado, fecha/hora y usuario NN; descripción opcional. Índices usuario/fecha, doctor/fecha y estado/fecha. |
+
+## Medicamentos
+
+| Tabla | Campos y reglas |
+|---|---|
+| `medicamento` | PK; nombre, compuesto, cantidad positiva, dosis, estado, horario legado y usuario NN. Unidad, textos y fechas opcionales; fin ≥ inicio. |
+| `medicamento_horario` | PK `id_med_horario`; medicamento/usuario, hora y fecha inicial NN; fin e indicaciones opcionales; activo NN; UK medicamento/hora/inicio. FK compuesta garantiza propietario. |
+| `toma_medicamento` | PK `id_toma BIGINT`; horario/usuario, instante programado y estado NN; instante efectivo/observaciones opcionales. Estados: pendiente, tomada, omitida, cancelada. UK horario/instante. Tomada exige instante efectivo; otros estados lo prohíben. |
+
+## Recordatorios
+
+`recordatorios`: PK; usuario, tipo, horario, contenido, estado y fecha NN. Cita y horario de medicamento son opcionales. Tipo permitido: general, medicamento o cita. La aplicación valida la correspondencia contextual.
 
 ## Emociones
 
-| Tabla | Propósito | Campos relevantes y reglas |
-|---|---|---|
-| `emocion_central` | Primer nivel emocional. | Nombre NN UK, intensidad FK NN, descripción opcional. |
-| `emocion_media` | Segundo nivel. | Nombre e intensidad NN, central FK NN; UK `(id_emo_cen, nombre)`. |
-| `emocion_especifica` | Tercer nivel. | Nombre e intensidad NN, media FK NN; UK `(id_emo_media, nombre)`. |
-| `emocion_conjunto` | Terna compatible con el modelo original. | Tres FK NN y UK conjunta. APIcore valida coherencia de la jerarquía. |
-| `trackeo_emo` | Evento de seguimiento. | Fecha, hora, usuario FK y conjunto FK son NN; contexto opcional. |
+| Tabla | Campos y reglas |
+|---|---|
+| `emocion_central` | PK; nombre NN UK, intensidad FK NN y descripción opcional. |
+| `emocion_media` | PK; nombre, intensidad y central NN; UK por central/nombre y clave candidata media/central. |
+| `emocion_especifica` | PK; nombre, intensidad y media NN; UK por media/nombre y clave candidata específica/media. |
+| `emocion_conjunto` | PK; central, media y específica NN; UK de terna. FK compuestas impiden mezclar ramas. |
+| `trackeo_emo` | PK; fecha, hora, usuario, conjunto e intensidad seleccionada NN; contexto opcional. Índices por usuario/tiempo, emoción/fecha e intensidad/fecha. |
+
+La intensidad de las tablas de catálogo describe la clasificación configurada; `trackeo_emo.id_intensidad` registra la selección del usuario en cada evento y es la única usada para promedios.
 
 ## Tabla técnica
 
-`schema_migrations` registra `version` (PK), descripción y hora de aplicación. No sustituye una herramienta de migraciones concurrente: solo da trazabilidad básica para este repositorio.
-
-## Índices de consulta
-
-Además de PK/UK/FK, existen índices compuestos para diagnóstico por usuario/fecha y doctor/fecha; citas por usuario, doctor o estado con fecha; medicamento por usuario/estado y horario; recordatorio por usuario o estado con fecha; y seguimiento por usuario/fecha/hora o emoción/fecha.
-
+`schema_migrations`: `version VARCHAR(20)` PK, descripción y `applied_at TIMESTAMP`. Registra orden básico; no reemplaza bloqueo ni coordinación de una herramienta de migraciones productiva.
