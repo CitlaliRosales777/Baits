@@ -6,7 +6,7 @@ Motor objetivo: MariaDB
 
 ## Alcance y método
 
-Se leyó el script completo, se contrastaron sus nombres con los formularios del frontend y se contabilizaron las sentencias `CREATE TABLE` directamente. El repositorio no contiene APIcore ni otra implementación del modelo; por tanto, no fue posible comparar contratos de backend.
+Se leyó el script completo, se contrastaron sus nombres con los formularios del frontend y se contabilizaron las sentencias `CREATE TABLE` directamente. Posteriormente se inspeccionó en modo lectura `xtbt/apicore` en el commit `923fbe5` del 30 de octubre de 2026.
 
 ## Inventario real
 
@@ -55,7 +55,11 @@ Son datos personales o potencialmente médicos: identidad, fecha de nacimiento, 
 - `bd-moodsitto.sql` permanece sin cambios como referencia histórica.
 - `V002` es una migración de base limpia. No debe ejecutarse sobre la base heredada: primero se usa el preflight y se planifica una migración de datos según los valores nulos/duplicados encontrados.
 
-## Diferencias con otras implementaciones
+## Diferencias con APIcore
 
-No se encontró APIcore, SQL Server, Durus ni otro esquema en el repositorio. La comparación queda pendiente hasta que el equipo proporcione esos repositorios o contratos.
+El APIcore disponible es un prototipo independiente en Python y PHP. Ambos implementan un CRUD genérico de `apitest.moods` con `MoodId`, `MoodName` y `MoodStatus`; no contienen las 20 tablas de Moodsitto ni contratos para usuarios, jerarquía emocional, citas, medicamentos, recordatorios o diagnósticos.
+
+La incompatibilidad es estructural, no solo de nombres: `moods` representa un catálogo plano, mientras Moodsitto modela tres niveles y un seguimiento por usuario/fecha. No se añadió una vista engañosa para ocultar esta diferencia. APIcore debe incorporar modelos/repositorios específicos y pruebas de contrato antes de conectarse.
+
+No se encontró SQL Server ni otro esquema Moodsitto implementado. Los prototipos avanzados de esta rama son nuevos y siguen pendientes de infraestructura.
 

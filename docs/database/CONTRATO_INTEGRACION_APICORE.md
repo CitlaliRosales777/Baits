@@ -1,6 +1,29 @@
 # Contrato de integración pendiente con APIcore
 
-APIcore no está presente en este repositorio. Este documento describe necesidades de datos, no inventa URLs, verbos HTTP ni respuestas. El equipo de APIcore debe acordar y versionar el contrato antes de conectar el frontend.
+Fuente inspeccionada: [`xtbt/apicore`](https://github.com/xtbt/apicore), `main` en `923fbe5358ec72882af54bef9e567d0dda5b6374` (30-oct-2026). Este documento separa los contratos existentes de las necesidades de Moodsitto; no inventa rutas nuevas.
+
+## Contrato existente verificado
+
+El repositorio contiene dos implementaciones de demostración:
+
+| Implementación | Rutas observadas | Persistencia |
+|---|---|---|
+| Python (`http.server` + PyMySQL) | `GET /healthcheck`; `GET/POST /moods`; `GET/PUT/DELETE /moods/{id}` | `apitest.moods`, columnas `MoodId`, `MoodName`, `MoodStatus` |
+| PHP (PDO) | `GET /health-check`; `GET/POST /moods`; `PUT/DELETE /moods/{id}` | La misma tabla genérica |
+
+No hay rutas implementadas para registro, login, perfil, emociones jerárquicas, seguimiento, medicamentos, citas, recordatorios o diagnósticos. Tampoco hay autenticación, autorización, sesiones, OpenAPI ni pruebas de contrato. Por ello no existe todavía un contrato consumible por el frontend Moodsitto.
+
+## Incompatibilidades y bloqueadores
+
+- El modelo plano `moods` no equivale a `emocion_central/media/especifica`, `emocion_conjunto` ni `trackeo_emo`.
+- APIcore apunta a la base `apitest`, no `moodsitto`, y sus PK usan `MoodId`/`Id`.
+- Python y PHP tienen convenciones distintas de healthcheck y de envoltura JSON.
+- Las conexiones usan valores administrativos `root/root` en código; deben sustituirse por variables de entorno/secret manager y el rol mínimo.
+- PHP permite CORS `*` y refleja el cuerpo recibido en respuestas de depuración. Python retorna `str(exception)`. Ambos comportamientos pueden filtrar datos o detalles internos.
+- No se validan propiedad del usuario ni permisos. `BaseModel` construye identificadores SQL desde claves del cuerpo y debe usar listas explícitas de columnas por modelo.
+- El repositorio versiona un entorno virtual completo y artefactos compilados; debe reemplazarse por un archivo de dependencias bloqueadas y CI reproducible.
+
+La integración no debe apuntar APIcore al nuevo esquema hasta corregir estos bloqueadores y añadir pruebas sobre una instancia de desarrollo.
 
 ## Capacidades por flujo
 
@@ -38,8 +61,8 @@ Las consultas de referencia están en `databases/mariadb/queries/dashboard_histo
 
 ## Acuerdos pendientes
 
-1. Repositorio, lenguaje, driver y versión de APIcore.
-2. DTOs, rutas, códigos de error y paginación.
+1. Elegir una implementación mantenida (Python o PHP), su driver y versiones soportadas.
+2. Definir DTOs, rutas, códigos de error y paginación para Moodsitto.
 3. Algoritmo/parámetros de hash y política de sesión.
 4. Zona horaria, formato de fechas y manejo de horario de verano.
 5. Estados válidos por entidad; hoy comparten el catálogo `estado`.
@@ -47,4 +70,13 @@ Las consultas de referencia están en `databases/mariadb/queries/dashboard_histo
 7. Almacenamiento y autorización de documentos.
 8. Estrategia de concurrencia y reintentos.
 9. Asignación final de entidades entre MariaDB y SQL Server.
+
+## Secuencia de integración recomendada
+
+1. Retirar credenciales hardcodeadas y crear configuración segura para `moodsitto_app_role`.
+2. Unificar el formato de respuesta/error y desactivar debug/CORS abierto fuera de desarrollo.
+3. Implementar primero salud de servicio y salud de BD sin revelar secretos.
+4. Añadir modelos/repositorios de usuario y emociones con listas de campos explícitas.
+5. Ejecutar pruebas de contrato contra las migraciones de esta rama.
+6. Incorporar los demás flujos de la tabla anterior y, finalmente, conectar el frontend.
 
