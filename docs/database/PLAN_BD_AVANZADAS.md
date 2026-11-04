@@ -1,6 +1,6 @@
 # Plan de bases de datos avanzadas
 
-Este plan separa lo preparado de lo comprobado. Se validó MariaDB local en Docker y el prototipo Durus en un contenedor desechable con Python 3.10. No se dispone de VPS, nodos Spider/FederatedX, APIcore integrado, SQL Server ni SSMS.
+Este plan separa lo preparado de lo comprobado. Se validaron MariaDB, APIcore integrado y el prototipo Durus en contenedores desechables. No se dispone de VPS, nodos Spider/FederatedX, SQL Server ni SSMS.
 
 ## Unidad 2: objetos persistentes
 

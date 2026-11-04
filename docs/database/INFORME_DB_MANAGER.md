@@ -8,7 +8,7 @@ Base auditada: `main` en `1a5af7c`
 
 Se auditó el único esquema del repositorio, se preservó intacto y se creó una implementación MariaDB versionada para instalaciones limpias. El nuevo modelo conserva los nombres esperados por el frontend, endurece integridad, agrega índices, semillas sintéticas, consultas de integración y pruebas aisladas. MariaDB 11.4 ejecutó exitosamente dos migraciones, 20 tablas de dominio, 33 FK y 15 comprobaciones CRUD/integridad.
 
-Los diseños para fragmentación y SQL Server están preparados, pero no se marcan como ejecutados porque faltan esos entornos y APIcore integrado. El prototipo Durus sí se ejecutó en un contenedor desechable con Python 3.10 y cerró correctamente su almacenamiento.
+Los diseños para fragmentación y SQL Server están preparados, pero no se marcan como ejecutados porque faltan esos entornos. APIcore quedó integrado dentro de `backend/apicore/` y validado contra MariaDB; el prototipo Durus también se ejecutó en un contenedor desechable con Python 3.10.
 
 ## 2. Estado inicial
 
@@ -23,6 +23,7 @@ Los principales fueron FK de dominio opcionales, ausencia de políticas de borra
 - `databases/mariadb/`: migraciones, semilla, consultas, preflight, roles, fragmentación y pruebas.
 - `databases/sqlserver/`: nodo clínico propuesto e instrucciones.
 - `databases/durus/`: prototipo de objetos persistentes e instrucciones.
+- `backend/apicore/`: backend Python integrado, contenedor y pruebas unitarias/E2E.
 - `docs/database/`: auditoría, ER, diccionario, decisiones, CRUD, APIcore, bases avanzadas, seguridad, evidencias e informe.
 - `.gitignore`: protege secretos locales, respaldos y almacenamiento Durus.
 
@@ -49,7 +50,7 @@ También se revisó Baits en busca de secretos. En los scripts aparecen nombres 
 
 ## 8. Limitaciones
 
-- APIcore se inspeccionó estáticamente, pero no se modificó ni se ejecutó integrado con Moodsitto.
+- APIcore interno fue validado en contenedores; el repositorio externo original no se modificó porque la cuenta disponible solo tenía lectura.
 - No hubo base heredada con datos para probar actualización in-place.
 - No se ejecutaron pruebas multisesión de concurrencia.
 - No estaban disponibles SQL Server, SSMS ni VPS/nodos MariaDB; Durus solo se validó en un contenedor efímero, no en la infraestructura de demostración.
@@ -58,7 +59,7 @@ También se revisó Baits en busca de secretos. En los scripts aparecen nombres 
 
 ## 9. Integraciones pendientes
 
-El APIcore inspeccionado (`xtbt/apicore@923fbe5`) solo implementa un CRUD de demostración para `apitest.moods`; no es compatible todavía con el modelo Moodsitto. Debe elegir su implementación definitiva, retirar `root/root`, normalizar respuestas, eliminar fugas de debug, añadir autenticación/autorización y acordar DTOs/rutas, hashing, zona horaria, paginación, estados, documentos, borrado lógico, concurrencia y estrategia multibase. Debe usar consultas preparadas con listas explícitas de columnas y `moodsitto_app_role`, nunca `root`.
+El APIcore original (`xtbt/apicore@923fbe5`) solo implementaba un CRUD de demostración para `apitest.moods`. La adaptación interna ya usa `moodsitto`, bcrypt, tokens firmados, consultas parametrizadas, configuración por entorno y permisos mínimos. Antes de producción siguen pendientes OpenAPI, revocación/refresh, rate limiting, zona horaria, estados por entidad, documentos, borrado lógico, concurrencia y estrategia multibase.
 
 Para bases avanzadas quedan pendientes: ampliar Durus con abort/reapertura/concurrencia, desplegar nodos de fragmentación, crear SQL Server, implementar composición/idempotencia en APIcore y capturar evidencias reales de caída/recuperación. No se asume una transacción distribuida atómica.
 
@@ -84,7 +85,7 @@ Para una base heredada: obtener respaldo, restaurarlo en un entorno aislado, eje
 ## 11. Recomendaciones
 
 1. Integrar el runner en CI sin secretos persistentes.
-2. Proporcionar APIcore y fijar el contrato antes de cambiar nombres o entidades.
+2. Versionar el contrato APIcore con OpenAPI antes de cambiar nombres o entidades.
 3. Definir retención/borrado lógico y cumplimiento para datos de salud.
 4. Agregar pruebas de concurrencia e idempotencia.
 5. Validar restauraciones periódicas y medir RPO/RTO.
