@@ -1,6 +1,6 @@
 # Auditoría de la base de datos Moodsitto
 
-Fecha de revisión: 3 de noviembre de 2026  
+Fecha de revisión: 4 de noviembre de 2026  
 Fuente auditada: `bd-moodsitto.sql` en `main` (`1a5af7c`)  
 Motor objetivo: MariaDB
 
@@ -30,7 +30,10 @@ Todas tienen clave primaria numérica autoincremental. El modelo original declar
 | Media | Catálogos, correo y cédula carecen de unicidad uniforme. | Duplicados y resultados ambiguos. | Restricciones `UNIQUE` en correo, cédula y nombres/valores de catálogos. |
 | Media | Solo existen los índices creados implícitamente por PK, UNIQUE y FK; faltan índices compuestos para flujos de usuario/fecha. | Consultas lentas en dashboard e historial. | Índices por `(id_user, fecha)`, doctor/fecha, estado/fecha y emoción/fecha. |
 | Media | `cantidad` acepta cero o negativos; color no valida formato. | Datos inválidos. | `CHECK (cantidad > 0)`, intensidad 1–10 y color hexadecimal. |
-| Media | `emocion_conjunto` repite central, media y específica sin asegurar por sí misma que pertenezcan a la misma jerarquía. | Combinaciones lógicamente inconsistentes. | Se exige la terna completa y única. La consistencia entre niveles debe validarla APIcore dentro de una transacción; una futura normalización podría guardar solo `id_emo_espe`. |
+| Alta | `emocion_conjunto` repite central, media y específica sin asegurar que pertenezcan a la misma jerarquía. | Combinaciones lógicamente inconsistentes y reportes incorrectos. | V003 agrega claves candidatas y FK compuestas que impiden mezclar ramas. |
+| Alta | `medicamento.id_horario` solo admite una hora y no existe registro de tomas. | No se pueden modelar tratamientos reales con varias horas ni un checklist histórico. | V003 agrega `medicamento_horario` y `toma_medicamento`, con vigencia, estados, unicidad y confirmación explícita. |
+| Media | `doctors.id_especialidad` limita cada profesional a una especialidad. | Directorio incompleto. | V003 agrega `doctor_especialidad`; la columna original se conserva por compatibilidad. |
+| Media | La intensidad está asociada a catálogos de emociones, no al evento del usuario. | Los promedios no representan la intensidad seleccionada al registrar el seguimiento. | V003 agrega `trackeo_emo.id_intensidad` obligatorio y lo usa en reportes. |
 | Media | Fechas y campos esenciales (`fecha`, `contenido`) son opcionales. | Operaciones incompletas. | Se vuelven obligatorios en el modelo nuevo donde el dominio lo exige. |
 | Baja | Nombres mezclan inglés, español, singular/plural y abreviaturas (`users`, `trackeo_emo`, `id_estadoclini`). | Mayor costo cognitivo. | Se conservan para compatibilidad. APIcore deberá encapsularlos mediante DTO/repositorios; un renombrado requiere versión de contrato. |
 | Baja | `documento` no define si guarda contenido, URL o ruta. | Exposición de archivos y acoplamiento al servidor. | Se define como referencia opaca; el archivo debe residir en almacenamiento privado y APIcore controlar acceso. |
@@ -41,8 +44,9 @@ El esquema está mayormente en tercera forma normal: catálogos, profesionales y
 
 - `citas_medicas.id_area` puede deducirse de `doctors.id_area`, pero se conserva porque una cita podría registrar el área efectiva en ese momento.
 - `diagnosticos.id_area` también conserva contexto histórico.
-- `emocion_conjunto` duplica la ruta jerárquica; se conserva exclusivamente por compatibilidad.
-- `id_horario` en medicamento modela un solo horario. Si un medicamento requiere varios, se necesitará una tabla puente versionada en una futura migración.
+- `emocion_conjunto` duplica la ruta jerárquica; se conserva por compatibilidad y sus FK compuestas garantizan coherencia.
+- `medicamento.id_horario` se conserva para consumidores heredados; el modelo nuevo usa `medicamento_horario` y admite varias horas.
+- `doctors.id_especialidad` conserva la especialidad principal histórica; `doctor_especialidad` representa la relación completa.
 
 ## Seguridad y datos sensibles
 
@@ -50,16 +54,16 @@ Son datos personales o potencialmente médicos: identidad, fecha de nacimiento, 
 
 ## Compatibilidad
 
-- MariaDB 11.4 ejecutó las migraciones y pruebas correctamente.
+- MariaDB 11.4 ejecutó V001–V003, 23 tablas, 42 FK y las pruebas correctamente.
 - Los campos del registro/login (`name`, `lastname1`, `lastname2`, `date_b`, `phone`, `emer_phone`, `mail`, `passw`) se conservan.
 - `bd-moodsitto.sql` permanece sin cambios como referencia histórica.
 - `V002` es una migración de base limpia. No debe ejecutarse sobre la base heredada: primero se usa el preflight y se planifica una migración de datos según los valores nulos/duplicados encontrados.
 
 ## Diferencias con APIcore
 
-El APIcore disponible es un prototipo independiente en Python y PHP. Ambos implementan un CRUD genérico de `apitest.moods` con `MoodId`, `MoodName` y `MoodStatus`; no contienen las 20 tablas de Moodsitto ni contratos para usuarios, jerarquía emocional, citas, medicamentos, recordatorios o diagnósticos.
+El APIcore externo revisado es un prototipo independiente en Python y PHP. Ambos implementan un CRUD genérico de `apitest.moods` con `MoodId`, `MoodName` y `MoodStatus`; no contienen el modelo de Moodsitto ni contratos para usuarios, jerarquía emocional, citas, medicamentos, recordatorios o diagnósticos.
 
-La incompatibilidad es estructural, no solo de nombres: `moods` representa un catálogo plano, mientras Moodsitto modela tres niveles y un seguimiento por usuario/fecha. No se añadió una vista engañosa para ocultar esta diferencia. APIcore debe incorporar modelos/repositorios específicos y pruebas de contrato antes de conectarse.
+La incompatibilidad es estructural, no solo de nombres: `moods` representa un catálogo plano, mientras Moodsitto modela tres niveles y un seguimiento por usuario/fecha. No se modificó APIcore. `INTEGRACION_BACKEND.md` entrega el contrato de persistencia para que su responsable implemente los servicios.
 
 No se encontró SQL Server ni otro esquema Moodsitto implementado. Los prototipos avanzados de esta rama son nuevos y siguen pendientes de infraestructura.
 

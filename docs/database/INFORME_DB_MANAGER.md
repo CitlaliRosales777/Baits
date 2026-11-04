@@ -1,99 +1,88 @@
-# Informe DB Manager — Moodsitto
+# Informe final del DB Manager — Moodsitto
 
-Fecha: 3 de noviembre de 2026  
+Fecha: 4 de noviembre de 2026  
 Rama: `feature/db-manager`  
-Base auditada: `main` en `1a5af7c`
+Fuente original: `bd-moodsitto.sql`, conservada intacta
 
-## 1. Resumen ejecutivo
+## Resumen
 
-Se auditó el único esquema del repositorio, se preservó intacto y se creó una implementación MariaDB versionada para instalaciones limpias. El nuevo modelo conserva los nombres esperados por el frontend, endurece integridad, agrega índices, semillas sintéticas, consultas de integración y pruebas aisladas. MariaDB 11.4 ejecutó exitosamente dos migraciones, 20 tablas de dominio, 33 FK y 15 comprobaciones CRUD/integridad.
+Se auditó el esquema original de 20 tablas y se creó una entrega MariaDB reproducible, compatible y exclusiva del rol DB Manager. El resultado agrega horarios múltiples, checklist de tomas, especialidades múltiples, intensidad por seguimiento, integridad jerárquica, consultas de reportes, datos sintéticos, pruebas aisladas y documentación para cada rol. No se modificaron Frontend ni Backend/APIcore.
 
-Los diseños para fragmentación y SQL Server están preparados, pero no se marcan como ejecutados porque faltan esos entornos. APIcore quedó integrado dentro de `backend/apicore/` y validado contra MariaDB; el prototipo Durus también se ejecutó en un contenedor desechable con Python 3.10.
+## Estado inicial
 
-## 2. Estado inicial
+El repositorio contenía un frontend estático y `bd-moodsitto.sql`. No había migraciones, semillas completas, pruebas automatizadas, consultas de reportes, roles mínimos, respaldo documentado ni guías de integración por rol. El script original define 20 tablas y 33 FK, con relaciones de dominio opcionales, un solo horario por medicamento, ausencia de tomas y redundancia emocional no validada.
 
-El repositorio Baits contenía dos commits, un frontend estático sin backend y `bd-moodsitto.sql`. El script original define 20 tablas, no 18. No había migraciones, semillas, pruebas, roles, respaldo documentado ni scripts de bases avanzadas. El APIcore está en un repositorio separado y se proporcionó durante el trabajo.
+## Implementado
 
-## 3. Problemas identificados
+- V001: base `moodsitto`, `utf8mb4` y ledger.
+- V002: las 20 tablas originales con InnoDB, obligatoriedad, unicidad, `CHECK`, políticas de borrado e índices.
+- V003: `medicamento_horario`, `toma_medicamento`, `doctor_especialidad`, vigencia de tratamientos, recordatorios vinculados, intensidad del evento y FK compuestas emocionales.
+- 23 tablas de dominio y 42 claves foráneas.
+- Semillas sintéticas de catálogos y flujos completos.
+- Consultas para seguimiento, reportes, medicamentos, tomas, citas, médicos y recordatorios.
+- Roles de referencia, preflight heredado, respaldo/restauración y runner Docker aislado.
+- Auditoría, ER, diccionario, decisiones, guías Backend/Frontend/QA/DevOps y entrega general.
 
-Los principales fueron FK de dominio opcionales, ausencia de políticas de borrado, catálogos sin unicidad, pocos índices de flujo, cantidades inválidas posibles, nomenclatura mixta, redundancia de jerarquía emocional y falta de política verificable para hashes/documentos. El detalle y gravedad están en `AUDITORIA_BD.md`.
+## Verificado
 
-## 4. Archivos creados y modificados
+MariaDB 11.4 ejecutó satisfactoriamente V001–V003, S001–S002, preflight, 22 comprobaciones CRUD/integridad y aserciones de reportes. Se verificaron InnoDB, conteos de tablas/FK/migraciones, transacciones, horarios múltiples, estados de toma, prevención de duplicados, cumplimiento, totales, frecuencias, porcentajes, promedios, periodos vacíos, especialidades y rechazo de jerarquía emocional inválida. El entorno eliminó contenedor, red y volumen al finalizar.
 
-- `databases/mariadb/`: migraciones, semilla, consultas, preflight, roles, fragmentación y pruebas.
-- `databases/sqlserver/`: nodo clínico propuesto e instrucciones.
-- `databases/durus/`: prototipo de objetos persistentes e instrucciones.
-- `backend/apicore/`: backend Python integrado, contenedor y pruebas unitarias/E2E.
-- `docs/database/`: auditoría, ER, diccionario, decisiones, CRUD, APIcore, bases avanzadas, seguridad, evidencias e informe.
-- `.gitignore`: protege secretos locales, respaldos y almacenamiento Durus.
+Evidencia: `evidencias/mariadb-test-2026-11-04.txt`.
 
-No se modificó el frontend ni `bd-moodsitto.sql`.
+## Consultas disponibles
 
-## 5. Migraciones
+- `emotional_tracking.sql`: alta, historial, periodo, emoción, intensidad y recientes.
+- `emotional_reports.sql`: totales, frecuencia absoluta/relativa, porcentajes, promedio, categoría, evolución y comparación.
+- `medications.sql`: activos, finalizados, horarios, checklist, historial, cumplimiento y transiciones.
+- `appointments_doctors.sql`: próximas, historial, filtros, alta, edición, cancelación y especialidades.
+- `reminders.sql`: pendientes, vencidos, medicamentos y citas.
 
-- `V001`: crea la base con `utf8mb4` y el ledger `schema_migrations`.
-- `V002`: crea el modelo compatible con 20 tablas, reglas de integridad e índices.
+## Reglas relevantes
 
-Están destinadas a una base limpia. Para una instalación heredada se añadió un preflight de solo lectura; no se ejecutan `ALTER` destructivos sin conocer los datos reales y disponer de respaldo restaurable.
+- Una toma se identifica por horario + instante programado.
+- Llegar al horario nunca confirma una toma.
+- `tomada` exige hora efectiva; omitida/pendiente/cancelada no la admiten.
+- Cumplimiento = tomadas / (tomadas + omitidas); pendientes y canceladas se muestran aparte.
+- Las FK compuestas impiden mezclar niveles emocionales.
+- Los promedios usan `intensidad.valor` registrado en el evento, no IDs ni categorías.
+- Las consultas se restringen al usuario autorizado y se parametrizan desde Backend.
 
-## 6. Modelo resultante
+## Pendiente
 
-El modelo mantiene usuarios, profesionales, diagnósticos, citas, medicamentos, recordatorios y tres niveles de emoción. Las relaciones clínicas son obligatorias y restringen borrados; ubicación y cita de recordatorio son opcionales donde el dominio lo permite. El ER y el diccionario contienen cardinalidades, campos e índices.
+- Backend: contratos REST/OpenAPI, autenticación/autorización, transacciones de servicio, documentos, notificaciones y zona horaria.
+- Frontend/UX: interfaces, validaciones visuales y clasificación emocional definitiva.
+- Product Manager: estados por entidad, retención, borrado lógico y reglas de historial.
+- QA: contratos integrados, concurrencia y carga.
+- DevOps: revisión humana, gestión de secretos, TLS, despliegue, respaldo/restauración periódica y automatización autorizada.
+- Base heredada: diseñar upgrade específico después de auditar una copia real.
 
-## 7. Pruebas ejecutadas y resultados
+## Bloqueado/no comprobado
 
-Entorno real: Docker Desktop, imagen `mariadb:11.4`, contenedor/red/volumen aislados y eliminados al terminar.
+- Migración in-place: no se proporcionó base heredada con datos.
+- SQL Server, Spider/FederatedX, nodos distribuidos y fallos de red: no existe infraestructura disponible dentro del alcance.
+- Durus y APIcore multibase: no autorizados para implementación por este rol.
+- Integración Frontend/Backend: depende de otros integrantes.
 
-Resultado: PASS para instalación limpia, InnoDB, 20 tablas, 33 FK, creación de seis flujos, lectura con JOIN, actualización, borrado controlado, rechazo de FK inválida, correo duplicado, compuesto duplicado, vía de administración nula, cantidad cero y borrado de usuario referenciado; la transacción CRUD se revirtió. El preflight comprobó todas las restricciones `NOT NULL`, `UNIQUE` y `CHECK` de V002 sin hallazgos en la instalación limpia. Dos ejecuciones simultáneas también terminaron en PASS con proyectos Compose diferentes. La salida estándar está en `evidencias/mariadb-test-2026-11-03.txt`.
+## Seguridad
 
-También se revisó Baits en busca de secretos. En los scripts aparecen nombres de campos/inputs de contraseña, marcadores, una variable efímera y un hash ficticio no utilizable; no se incorporaron credenciales reales. La documentación sí registra, como hallazgo de seguridad, las credenciales administrativas hardcodeadas observadas en el repositorio externo APIcore, sin copiar archivos de configuración ni otros valores.
+No se incorporaron credenciales reales ni información médica real. La aplicación normal no debe usar `root`. Los datos personales, emocionales y clínicos requieren TLS, mínimos privilegios, respaldo cifrado, control de acceso, auditoría y política de retención. `passw` almacena exclusivamente hash; `documento` es una referencia opaca a almacenamiento privado.
 
-## 8. Limitaciones
-
-- APIcore interno fue validado en contenedores; el repositorio externo original no se modificó porque la cuenta disponible solo tenía lectura.
-- No hubo base heredada con datos para probar actualización in-place.
-- No se ejecutaron pruebas multisesión de concurrencia.
-- No estaban disponibles SQL Server, SSMS ni VPS/nodos MariaDB; Durus solo se validó en un contenedor efímero, no en la infraestructura de demostración.
-- No se probaron Spider/FederatedX ni fallos reales de red.
-- El catálogo compartido `estado` necesita reglas por entidad en APIcore.
-
-## 9. Integraciones pendientes
-
-El APIcore original (`xtbt/apicore@923fbe5`) solo implementaba un CRUD de demostración para `apitest.moods`. La adaptación interna ya usa `moodsitto`, bcrypt, tokens firmados, consultas parametrizadas, configuración por entorno y permisos mínimos. Antes de producción siguen pendientes OpenAPI, revocación/refresh, rate limiting, zona horaria, estados por entidad, documentos, borrado lógico, concurrencia y estrategia multibase.
-
-Para bases avanzadas quedan pendientes: ampliar Durus con abort/reapertura/concurrencia, desplegar nodos de fragmentación, crear SQL Server, implementar composición/idempotencia en APIcore y capturar evidencias reales de caída/recuperación. No se asume una transacción distribuida atómica.
-
-## 10. Reproducción
-
-Requisitos: Git, Docker Desktop/Engine, Docker Compose v2 y PowerShell.
+## Reproducción
 
 ```powershell
 git switch feature/db-manager
 & .\databases\mariadb\tests\run-tests.ps1
 ```
 
-Resultado esperado final:
+Resultado esperado:
 
 ```text
-PASS schema: 20 tables, 33 FKs, 2 migrations, all InnoDB
+PASS schema: 23 tables, 42 FKs, 3 migrations, all InnoDB
 PASS CRUD/integrity: transaction will be rolled back
+PASS reports: totals, frequency, percentage, averages, empty periods and compliance
 PASS: migraciones, datos sintéticos y pruebas SQL completados.
 ```
 
-Para una base heredada: obtener respaldo, restaurarlo en un entorno aislado, ejecutar `preflight/P001__legacy_read_only_audit.sql` y diseñar una migración específica para los hallazgos. No ejecutar `V002` sobre tablas existentes.
+## Entrega a DevOps
 
-## 11. Recomendaciones
-
-1. Integrar el runner en CI sin secretos persistentes.
-2. Versionar el contrato APIcore con OpenAPI antes de cambiar nombres o entidades.
-3. Definir retención/borrado lógico y cumplimiento para datos de salud.
-4. Agregar pruebas de concurrencia e idempotencia.
-5. Validar restauraciones periódicas y medir RPO/RTO.
-6. Ejecutar la fase multibase solo en infraestructura de desarrollo con datos sintéticos.
-
-## 12. Entrega a DevOps
-
-La rama `feature/db-manager` se publicó y se abrió el PR [#1](https://github.com/CitlaliRosales777/Baits/pull/1) hacia `main` con el título solicitado. GitGuardian reportó éxito al abrirlo.
-
-No se encontró `.github/CODEOWNERS`, protección clásica para `main` ni rulesets accesibles en el repositorio. Hay colaboradores con permisos de escritura/administración, pero ninguno está identificado explícitamente como responsable DevOps; por ello no se solicitó revisión a una persona al azar. El PR permanece abierto, sin aprobación propia y sin fusionar, a la espera de que el equipo identifique/asigne al revisor responsable.
-
+La rama se publica mediante el PR #1 hacia `main`. No se encontró `.github/CODEOWNERS` ni una persona identificada explícitamente como responsable DevOps; no se solicitó revisión al azar. El PR debe permanecer abierto, sin aprobación propia ni fusión, hasta revisión humana.
