@@ -23,21 +23,7 @@ Desde la raíz del repositorio:
 
 El runner genera una contraseña efímera, crea un proyecto Compose aislado, aplica migraciones y semillas en orden, ejecuta todas las pruebas y elimina contenedor, red y volumen. No publica puertos y no toca una base compartida.
 
-Para inspeccionar temporalmente el contenedor después de las pruebas:
-
-```powershell
-& .\databases\mariadb\tests\run-tests.ps1 -KeepContainer
-```
-
-Al terminar la inspección:
-
-```powershell
-$env:MOODSITTO_TEST_ROOT_PASSWORD = 'el-mismo-valor-usado-en-la-ejecucion'
-docker compose -p moodsitto-db-tests -f .\databases\mariadb\docker-compose.test.yml down --volumes
-Remove-Item Env:\MOODSITTO_TEST_ROOT_PASSWORD
-```
-
-Como la contraseña del runner se genera internamente, `-KeepContainer` está pensado para depuración dentro de la misma sesión del script. Para trabajo manual copie `.env.example` a `.env`, asigne un secreto local y no confirme ese archivo.
+Para trabajo manual copie `.env.example` a `.env`, asigne un secreto local y no confirme ese archivo. El runner automatizado siempre elimina sus recursos efímeros, incluso ante un fallo.
 
 ## Base heredada
 

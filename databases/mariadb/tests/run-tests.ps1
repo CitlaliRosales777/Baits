@@ -1,7 +1,5 @@
 [CmdletBinding()]
-param(
-    [switch]$KeepContainer
-)
+param()
 
 $ErrorActionPreference = 'Stop'
 $composeFile = Join-Path $PSScriptRoot '..\docker-compose.test.yml'
@@ -40,9 +38,7 @@ try {
     Write-Output 'PASS: migraciones, datos sintéticos y pruebas SQL completados.'
 }
 finally {
-    if (-not $KeepContainer) {
-        & docker compose -p $projectName -f $composeFile down --volumes --remove-orphans
-    }
+    & docker compose -p $projectName -f $composeFile down --volumes --remove-orphans
     Remove-Item Env:\MOODSITTO_TEST_ROOT_PASSWORD -ErrorAction SilentlyContinue
 }
 
