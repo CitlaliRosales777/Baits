@@ -6,7 +6,7 @@
 & .\databases\mariadb\tests\run-tests.ps1
 ```
 
-El runner levanta MariaDB 11.4 sin publicar puertos, crea un volumen exclusivo, genera una contraseña efímera, aplica migraciones/semillas, ejecuta las pruebas y elimina el entorno. No se conecta a bases compartidas.
+El runner levanta MariaDB 11.4 sin publicar puertos, genera un proyecto y volumen exclusivos por ejecución, crea una contraseña efímera, aplica migraciones/semillas, ejecuta las pruebas y elimina el entorno. No se conecta a bases compartidas y dos ejecuciones no comparten nombres ni volúmenes.
 
 ## Cobertura automatizada
 
@@ -18,7 +18,8 @@ El runner levanta MariaDB 11.4 sin publicar puertos, crea un volumen exclusivo, 
 | DELETE controlado | recordatorio sin dependencias hijas | PASS |
 | FK inexistente | seguimiento con usuario/emoción inexistentes | Rechazado, PASS |
 | UNIQUE | segundo usuario con mismo correo | Rechazado, PASS |
-| CHECK | medicamento con cantidad cero | Rechazado, PASS |
+| CHECK/NOT NULL | medicamento con cantidad cero y compuesto sin vía | Rechazados, PASS |
+| UNIQUE compuesto | mismo nombre y vía de administración | Rechazado, PASS |
 | Integridad al borrar | usuario con registros dependientes | Rechazado, PASS |
 | Transacción | todas las operaciones CRUD | `ROLLBACK`, PASS |
 | Instalación limpia | 20 tablas, 33 FK, 2 migraciones, InnoDB | PASS |
@@ -37,5 +38,5 @@ InnoDB ofrece aislamiento transaccional y bloqueo por fila, pero no se ejecutó 
 
 ## Repetibilidad
 
-El runner destruye únicamente el proyecto Compose llamado `moodsitto-db-tests` y su volumen nombrado. Cada ejecución parte de cero. Los datos de cada prueba se revierten, y las semillas son ficticias.
+El runner destruye únicamente el proyecto Compose con sufijo aleatorio que creó esa ejecución. Cada ejecución parte de cero. Los datos de cada prueba se revierten, y las semillas son ficticias.
 

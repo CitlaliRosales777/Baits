@@ -57,6 +57,30 @@ BEGIN
     INSERT INTO test_results VALUES ('invalid CHECK rejected', 'PASS');
 END//
 
+CREATE PROCEDURE expect_null_compound_route()
+BEGIN
+    DECLARE null_detected BOOLEAN DEFAULT FALSE;
+    DECLARE CONTINUE HANDLER FOR SQLSTATE '23000' SET null_detected = TRUE;
+    INSERT INTO compuesto (compuesto, via_admin)
+    VALUES ('Compuesto sin vía de prueba', NULL);
+    IF null_detected = FALSE THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'FAIL: NULL compound route accepted';
+    END IF;
+    INSERT INTO test_results VALUES ('null compound route rejected', 'PASS');
+END//
+
+CREATE PROCEDURE expect_duplicate_compound()
+BEGIN
+    DECLARE duplicate_detected BOOLEAN DEFAULT FALSE;
+    DECLARE CONTINUE HANDLER FOR SQLSTATE '23000' SET duplicate_detected = TRUE;
+    INSERT INTO compuesto (compuesto, descripcion, via_admin)
+    VALUES ('Compuesto sintético A', 'Duplicado que debe fallar', 'Oral');
+    IF duplicate_detected = FALSE THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'FAIL: duplicate compound accepted';
+    END IF;
+    INSERT INTO test_results VALUES ('duplicate compound rejected', 'PASS');
+END//
+
 CREATE PROCEDURE expect_restricted_user_delete()
 BEGIN
     DECLARE restricted_detected BOOLEAN DEFAULT FALSE;
@@ -166,6 +190,8 @@ INSERT INTO test_results VALUES ('UPDATE user', 'PASS');
 CALL expect_duplicate_mail();
 CALL expect_invalid_fk();
 CALL expect_invalid_quantity();
+CALL expect_null_compound_route();
+CALL expect_duplicate_compound();
 CALL expect_restricted_user_delete();
 
 DELETE FROM recordatorios WHERE id_recordatorio = @id_recordatorio;
@@ -183,6 +209,8 @@ ROLLBACK;
 DROP PROCEDURE expect_duplicate_mail;
 DROP PROCEDURE expect_invalid_fk;
 DROP PROCEDURE expect_invalid_quantity;
+DROP PROCEDURE expect_null_compound_route;
+DROP PROCEDURE expect_duplicate_compound;
 DROP PROCEDURE expect_restricted_user_delete;
 DROP PROCEDURE assert_true;
 

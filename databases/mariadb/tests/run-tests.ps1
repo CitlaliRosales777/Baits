@@ -3,7 +3,8 @@ param()
 
 $ErrorActionPreference = 'Stop'
 $composeFile = Join-Path $PSScriptRoot '..\docker-compose.test.yml'
-$projectName = 'moodsitto-db-tests'
+$runSuffix = [guid]::NewGuid().ToString('N').Substring(0, 12)
+$projectName = "moodsitto-db-tests-$runSuffix"
 $testPassword = [guid]::NewGuid().ToString('N')
 $env:MOODSITTO_TEST_ROOT_PASSWORD = $testPassword
 
@@ -30,6 +31,10 @@ try {
     Get-ChildItem (Join-Path $PSScriptRoot '..\seeds\*.sql') |
         Sort-Object Name |
         ForEach-Object { Invoke-ComposeSqlFile "/workspace/seeds/$($_.Name)" }
+
+    Get-ChildItem (Join-Path $PSScriptRoot '..\preflight\*.sql') |
+        Sort-Object Name |
+        ForEach-Object { Invoke-ComposeSqlFile "/workspace/preflight/$($_.Name)" }
 
     Get-ChildItem (Join-Path $PSScriptRoot '*.sql') |
         Sort-Object Name |

@@ -44,7 +44,7 @@ CREATE TABLE compuesto (
     id_compuesto    INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     compuesto       VARCHAR(100) NOT NULL,
     descripcion     TEXT,
-    via_admin       VARCHAR(100),
+    via_admin       VARCHAR(100) NOT NULL,
     CONSTRAINT uq_compuesto_nombre_via UNIQUE (compuesto, via_admin)
 ) ENGINE=InnoDB;
 

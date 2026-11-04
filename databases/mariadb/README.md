@@ -21,7 +21,7 @@ Desde la raíz del repositorio:
 & .\databases\mariadb\tests\run-tests.ps1
 ```
 
-El runner genera una contraseña efímera, crea un proyecto Compose aislado, aplica migraciones y semillas en orden, ejecuta todas las pruebas y elimina contenedor, red y volumen. No publica puertos y no toca una base compartida.
+El runner genera una contraseña efímera y un nombre de proyecto Compose único por ejecución, aplica migraciones y semillas en orden, ejecuta todas las pruebas y elimina contenedor, red y volumen. No publica puertos, no toca una base compartida y permite ejecuciones paralelas en el mismo daemon.
 
 Para trabajo manual copie `.env.example` a `.env`, asigne un secreto local y no confirme ese archivo. El runner automatizado siempre elimina sus recursos efímeros, incluso ante un fallo.
 

@@ -11,7 +11,7 @@ Todos los identificadores son `INT UNSIGNED AUTO_INCREMENT`. Todas las tablas us
 | `especialidad` | Especialidad profesional. | `especialidad VARCHAR(50) NN UK`, `descripcion`. |
 | `estados_clinicos` | Estado de evaluación diagnóstica. | `estado_c VARCHAR(50) NN UK`, `descripcion`. |
 | `estado` | Estado operativo compartido. | `estado VARCHAR(50) NN UK`, `descripcion`. APIcore debe validar qué valores aplican a cada entidad. |
-| `compuesto` | Compuesto de un medicamento. | `compuesto VARCHAR(100) NN`, `via_admin VARCHAR(100)`, `descripcion`; UK compuesta por nombre y vía. |
+| `compuesto` | Compuesto de un medicamento. | `compuesto VARCHAR(100) NN`, `via_admin VARCHAR(100) NN`, `descripcion`; UK compuesta por nombre y vía. |
 | `dosis` | Texto de dosis. | `dosis VARCHAR(50) NN UK`, `descripcion`. No se usa para cálculo clínico. |
 | `horarios` | Hora reutilizable. | `horario TIME NN UK`, `descripcion`. |
 | `intensidad` | Escala emocional. | `valor TINYINT UNSIGNED NN UK` entre 1 y 10, `color CHAR(7)` hexadecimal opcional, `descripcion`. |

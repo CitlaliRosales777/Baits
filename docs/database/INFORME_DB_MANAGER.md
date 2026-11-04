@@ -6,7 +6,7 @@ Base auditada: `main` en `1a5af7c`
 
 ## 1. Resumen ejecutivo
 
-Se auditó el único esquema del repositorio, se preservó intacto y se creó una implementación MariaDB versionada para instalaciones limpias. El nuevo modelo conserva los nombres esperados por el frontend, endurece integridad, agrega índices, semillas sintéticas, consultas de integración y pruebas aisladas. MariaDB 11.4 ejecutó exitosamente dos migraciones, 20 tablas de dominio, 33 FK y 13 comprobaciones CRUD/integridad.
+Se auditó el único esquema del repositorio, se preservó intacto y se creó una implementación MariaDB versionada para instalaciones limpias. El nuevo modelo conserva los nombres esperados por el frontend, endurece integridad, agrega índices, semillas sintéticas, consultas de integración y pruebas aisladas. MariaDB 11.4 ejecutó exitosamente dos migraciones, 20 tablas de dominio, 33 FK y 15 comprobaciones CRUD/integridad.
 
 Los diseños para Durus, fragmentación y SQL Server están preparados, pero no se marcan como ejecutados porque faltan esos entornos y APIcore.
 
@@ -43,7 +43,7 @@ El modelo mantiene usuarios, profesionales, diagnósticos, citas, medicamentos, 
 
 Entorno real: Docker Desktop, imagen `mariadb:11.4`, contenedor/red/volumen aislados y eliminados al terminar.
 
-Resultado: PASS para instalación limpia, InnoDB, 20 tablas, 33 FK, creación de seis flujos, lectura con JOIN, actualización, borrado controlado, rechazo de FK inválida, correo duplicado, cantidad cero y borrado de usuario referenciado; la transacción CRUD se revirtió. La salida está en `evidencias/mariadb-test-2026-11-03.txt`.
+Resultado: PASS para instalación limpia, InnoDB, 20 tablas, 33 FK, creación de seis flujos, lectura con JOIN, actualización, borrado controlado, rechazo de FK inválida, correo duplicado, compuesto duplicado, vía de administración nula, cantidad cero y borrado de usuario referenciado; la transacción CRUD se revirtió. El preflight comprobó todas las restricciones `NOT NULL`, `UNIQUE` y `CHECK` de V002 sin hallazgos en la instalación limpia. Dos ejecuciones simultáneas también terminaron en PASS con proyectos Compose diferentes. La salida estándar está en `evidencias/mariadb-test-2026-11-03.txt`.
 
 También se revisó Baits en busca de secretos. En los scripts aparecen nombres de campos/inputs de contraseña, marcadores, una variable efímera y un hash ficticio no utilizable; no se incorporaron credenciales reales. La documentación sí registra, como hallazgo de seguridad, las credenciales administrativas hardcodeadas observadas en el repositorio externo APIcore, sin copiar archivos de configuración ni otros valores.
 

@@ -1,17 +1,61 @@
- Network moodsitto-db-tests_moodsitto_test Creating 
- Network moodsitto-db-tests_moodsitto_test Creating 
- Volume moodsitto-db-tests_moodsitto_test_data Creating 
- Volume moodsitto-db-tests_moodsitto_test_data Creating 
- Volume moodsitto-db-tests_moodsitto_test_data Created 
- Volume moodsitto-db-tests_moodsitto_test_data Created 
- Network moodsitto-db-tests_moodsitto_test Created 
- Network moodsitto-db-tests_moodsitto_test Created 
- Container moodsitto-db-tests-mariadb-1 Creating 
- Container moodsitto-db-tests-mariadb-1 Created 
- Container moodsitto-db-tests-mariadb-1 Starting 
- Container moodsitto-db-tests-mariadb-1 Started 
- Container moodsitto-db-tests-mariadb-1 Waiting 
- Container moodsitto-db-tests-mariadb-1 Healthy 
+ Network moodsitto-db-tests-f37cb02be1dd_moodsitto_test Creating
+ Network moodsitto-db-tests-f37cb02be1dd_moodsitto_test Creating
+ Volume moodsitto-db-tests-f37cb02be1dd_moodsitto_test_data Creating
+ Volume moodsitto-db-tests-f37cb02be1dd_moodsitto_test_data Creating
+ Volume moodsitto-db-tests-f37cb02be1dd_moodsitto_test_data Created
+ Volume moodsitto-db-tests-f37cb02be1dd_moodsitto_test_data Created
+ Network moodsitto-db-tests-f37cb02be1dd_moodsitto_test Created
+ Network moodsitto-db-tests-f37cb02be1dd_moodsitto_test Created
+ Container moodsitto-db-tests-f37cb02be1dd-mariadb-1 Creating
+ Container moodsitto-db-tests-f37cb02be1dd-mariadb-1 Created
+ Container moodsitto-db-tests-f37cb02be1dd-mariadb-1 Starting
+ Container moodsitto-db-tests-f37cb02be1dd-mariadb-1 Started
+ Container moodsitto-db-tests-f37cb02be1dd-mariadb-1 Waiting
+ Container moodsitto-db-tests-f37cb02be1dd-mariadb-1 Healthy
+check_name	finding_count
+observed_domain_table_count	20
+check_name	finding_count
+null_required_location	0
+null_required_area	0
+null_required_especialidad	0
+null_required_estados_clinicos	0
+null_required_estado	0
+null_required_compuesto	0
+null_required_dosis	0
+null_required_horarios	0
+null_required_intensidad	0
+null_required_users	0
+null_required_doctors	0
+null_required_diagnosticos	0
+null_required_citas_medicas	0
+null_required_medicamento	0
+null_required_recordatorios	0
+null_required_emocion_central	0
+null_required_emocion_media	0
+null_required_emocion_especifica	0
+null_required_emocion_conjunto	0
+null_required_trackeo_emo	0
+check_name	finding_count
+duplicate_area_nombre	0
+duplicate_especialidad_nombre	0
+duplicate_estado_clinico_nombre	0
+duplicate_estado_nombre	0
+duplicate_compuesto_nombre_via	0
+duplicate_dosis_nombre	0
+duplicate_horario	0
+duplicate_intensidad_valor	0
+duplicate_user_mail	0
+duplicate_doctor_cedula	0
+duplicate_emocion_central_nombre	0
+duplicate_emocion_media_padre_nombre	0
+duplicate_emocion_especifica_padre_nombre	0
+duplicate_emocion_conjunto	0
+check_name	finding_count
+invalid_intensity_range	0
+invalid_intensity_color	0
+invalid_medication_quantity	0
+check_name	finding_count
+inconsistent_emotion_hierarchy	0
 result
 PASS schema: 20 tables, 33 FKs, 2 migrations, all InnoDB
 test_name	result
@@ -22,8 +66,10 @@ CREATE medication	PASS
 CREATE reminder	PASS
 CREATE user	PASS
 DELETE controlled reminder	PASS
+duplicate compound rejected	PASS
 invalid CHECK rejected	PASS
 invalid FK rejected	PASS
+null compound route rejected	PASS
 READ relational JOIN	PASS
 referenced delete rejected	PASS
 unique email rejected	PASS
@@ -31,11 +77,11 @@ UPDATE user	PASS
 result
 PASS CRUD/integrity: transaction will be rolled back
 PASS: migraciones, datos sintéticos y pruebas SQL completados.
- Container moodsitto-db-tests-mariadb-1 Stopping 
- Container moodsitto-db-tests-mariadb-1 Stopped 
- Container moodsitto-db-tests-mariadb-1 Removing 
- Container moodsitto-db-tests-mariadb-1 Removed 
- Network moodsitto-db-tests_moodsitto_test Removing 
- Volume moodsitto-db-tests_moodsitto_test_data Removing 
- Volume moodsitto-db-tests_moodsitto_test_data Removed 
- Network moodsitto-db-tests_moodsitto_test Removed 
+ Container moodsitto-db-tests-f37cb02be1dd-mariadb-1 Stopping
+ Container moodsitto-db-tests-f37cb02be1dd-mariadb-1 Stopped
+ Container moodsitto-db-tests-f37cb02be1dd-mariadb-1 Removing
+ Container moodsitto-db-tests-f37cb02be1dd-mariadb-1 Removed
+ Volume moodsitto-db-tests-f37cb02be1dd_moodsitto_test_data Removing
+ Network moodsitto-db-tests-f37cb02be1dd_moodsitto_test Removing
+ Volume moodsitto-db-tests-f37cb02be1dd_moodsitto_test_data Removed
+ Network moodsitto-db-tests-f37cb02be1dd_moodsitto_test Removed
