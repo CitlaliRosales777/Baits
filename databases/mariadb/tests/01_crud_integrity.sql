@@ -33,9 +33,10 @@ BEGIN
     DECLARE fk_detected BOOLEAN DEFAULT FALSE;
     DECLARE CONTINUE HANDLER FOR SQLSTATE '23000' SET fk_detected = TRUE;
     INSERT INTO trackeo_emo
-        (fecha, hora, contexto, id_user, id_emo_conjunto)
+        (fecha, hora, contexto, id_user, id_emo_conjunto, id_intensidad)
     VALUES
-        ('2026-01-15', '10:00:00', 'Debe fallar', 4294967295, 4294967295);
+        ('2026-01-15', '10:00:00', 'Debe fallar', 4294967295, 4294967295,
+         @id_intensidad);
     IF fk_detected = FALSE THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'FAIL: invalid foreign key accepted';
     END IF;
@@ -91,6 +92,46 @@ BEGIN
     END IF;
     INSERT INTO test_results VALUES ('referenced delete rejected', 'PASS');
 END//
+
+CREATE PROCEDURE expect_duplicate_intake()
+BEGIN
+    DECLARE duplicate_detected BOOLEAN DEFAULT FALSE;
+    DECLARE CONTINUE HANDLER FOR SQLSTATE '23000' SET duplicate_detected = TRUE;
+    INSERT INTO toma_medicamento
+        (id_med_horario, id_user, fecha_hora_programada, estado_toma)
+    VALUES
+        (@id_med_horario_am, @id_user, '2026-02-20 08:00:00', 'pendiente');
+    IF duplicate_detected = FALSE THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'FAIL: duplicate intake accepted';
+    END IF;
+    INSERT INTO test_results VALUES ('duplicate intake rejected', 'PASS');
+END//
+
+CREATE PROCEDURE expect_invalid_intake_confirmation()
+BEGIN
+    DECLARE check_detected BOOLEAN DEFAULT FALSE;
+    DECLARE CONTINUE HANDLER FOR SQLSTATE '23000' SET check_detected = TRUE;
+    INSERT INTO toma_medicamento
+        (id_med_horario, id_user, fecha_hora_programada, estado_toma)
+    VALUES
+        (@id_med_horario_pm, @id_user, '2026-02-21 20:00:00', 'tomada');
+    IF check_detected = FALSE THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'FAIL: taken intake without confirmation accepted';
+    END IF;
+    INSERT INTO test_results VALUES ('invalid intake confirmation rejected', 'PASS');
+END//
+
+CREATE PROCEDURE expect_invalid_emotion_hierarchy()
+BEGIN
+    DECLARE fk_detected BOOLEAN DEFAULT FALSE;
+    DECLARE CONTINUE HANDLER FOR SQLSTATE '23000' SET fk_detected = TRUE;
+    INSERT INTO emocion_conjunto (id_emo_espe, id_emo_media, id_emo_cen)
+    VALUES (@id_emo_espe_original, @id_emo_media_alterna, @id_emo_cen_alterna);
+    IF fk_detected = FALSE THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'FAIL: invalid emotion hierarchy accepted';
+    END IF;
+    INSERT INTO test_results VALUES ('invalid emotion hierarchy rejected', 'PASS');
+END//
 DELIMITER ;
 
 START TRANSACTION;
@@ -121,6 +162,10 @@ SET @id_compuesto = (
 SET @id_dosis = (SELECT id_dosis FROM dosis WHERE dosis = 'Dosis de prueba');
 SET @id_horario = (SELECT id_horario FROM horarios WHERE horario = '08:00:00');
 SET @id_emocion = (SELECT MIN(id_emocion_conjun) FROM emocion_conjunto);
+SET @id_intensidad = (SELECT id_intensidad FROM intensidad WHERE valor = 6);
+SET @id_emo_espe_original = (
+    SELECT id_emo_espe FROM emocion_conjunto WHERE id_emocion_conjun = @id_emocion
+);
 
 INSERT INTO doctors
     (id_area, cedula, nombre, apellido_p, num_tel, id_location, id_especialidad)
@@ -128,6 +173,10 @@ VALUES
     (@id_area, 'CEDULA-FICTICIA-001', 'Profesional', 'Prueba', '0000000003',
      @id_location, @id_especialidad);
 SET @id_doctor = LAST_INSERT_ID();
+
+INSERT INTO doctor_especialidad (id_doctor, id_especialidad, es_principal)
+VALUES (@id_doctor, @id_especialidad, TRUE);
+INSERT INTO test_results VALUES ('CREATE doctor specialty', 'PASS');
 
 INSERT INTO citas_medicas
     (id_doctor, id_location, id_area, id_estado, fecha, descripcion, id_user)
@@ -138,18 +187,44 @@ SET @id_cita = LAST_INSERT_ID();
 INSERT INTO test_results VALUES ('CREATE appointment', 'PASS');
 
 INSERT INTO medicamento
-    (nombre, id_compuesto, cantidad, id_dosis, id_estado, recomendaciones,
-     advertencias, tratamiento, id_horario, id_user)
+    (nombre, id_compuesto, cantidad, unidad_medida, id_dosis, id_estado,
+     recomendaciones, advertencias, tratamiento, fecha_inicio, fecha_fin,
+     id_horario, id_user)
 VALUES
-    ('Medicamento ficticio', @id_compuesto, 10, @id_dosis, @id_estado,
-     'Solo demostración', 'No consumir', 'Plan ficticio', @id_horario, @id_user);
+    ('Medicamento ficticio', @id_compuesto, 10, 'unidad', @id_dosis, @id_estado,
+     'Solo demostración', 'No consumir', 'Plan ficticio', '2026-02-20',
+     '2026-03-20', @id_horario, @id_user);
 SET @id_medicamento = LAST_INSERT_ID();
 INSERT INTO test_results VALUES ('CREATE medication', 'PASS');
 
-INSERT INTO recordatorios
-    (id_user, id_cita, id_horario, contenido, id_estado, fecha)
+INSERT INTO medicamento_horario
+    (id_medicamento, id_user, id_horario, fecha_inicio, fecha_fin, activo)
 VALUES
-    (@id_user, @id_cita, @id_horario, 'Recordatorio ficticio', @id_estado,
+    (@id_medicamento, @id_user, @id_horario, '2026-02-20', '2026-03-20', TRUE);
+SET @id_med_horario_am = LAST_INSERT_ID();
+
+SET @id_horario_pm = (SELECT id_horario FROM horarios WHERE horario = '20:00:00');
+INSERT INTO medicamento_horario
+    (id_medicamento, id_user, id_horario, fecha_inicio, fecha_fin, activo)
+VALUES
+    (@id_medicamento, @id_user, @id_horario_pm, '2026-02-20', '2026-03-20', TRUE);
+SET @id_med_horario_pm = LAST_INSERT_ID();
+INSERT INTO test_results VALUES ('CREATE multiple medication schedules', 'PASS');
+
+INSERT INTO toma_medicamento
+    (id_med_horario, id_user, fecha_hora_programada, fecha_hora_efectiva,
+     estado_toma)
+VALUES
+    (@id_med_horario_am, @id_user, '2026-02-20 08:00:00',
+     '2026-02-20 08:03:00', 'tomada'),
+    (@id_med_horario_pm, @id_user, '2026-02-20 20:00:00', NULL, 'omitida'),
+    (@id_med_horario_am, @id_user, '2026-02-21 08:00:00', NULL, 'pendiente');
+INSERT INTO test_results VALUES ('CREATE medication intake checklist', 'PASS');
+
+INSERT INTO recordatorios
+    (id_user, id_cita, id_med_horario, tipo, id_horario, contenido, id_estado, fecha)
+VALUES
+    (@id_user, @id_cita, NULL, 'cita', @id_horario, 'Recordatorio ficticio', @id_estado,
      '2026-02-20 08:30:00');
 SET @id_recordatorio = LAST_INSERT_ID();
 INSERT INTO test_results VALUES ('CREATE reminder', 'PASS');
@@ -163,9 +238,10 @@ SET @id_diagnostico = LAST_INSERT_ID();
 INSERT INTO test_results VALUES ('CREATE diagnosis', 'PASS');
 
 INSERT INTO trackeo_emo
-    (fecha, hora, contexto, id_user, id_emo_conjunto)
+    (fecha, hora, contexto, id_user, id_emo_conjunto, id_intensidad)
 VALUES
-    ('2026-02-20', '10:15:00', 'Seguimiento ficticio', @id_user, @id_emocion);
+    ('2026-02-20', '10:15:00', 'Seguimiento ficticio', @id_user, @id_emocion,
+     @id_intensidad);
 SET @id_trackeo = LAST_INSERT_ID();
 INSERT INTO test_results VALUES ('CREATE emotion tracking', 'PASS');
 
@@ -180,6 +256,24 @@ SET @join_count = (
 CALL assert_true(@join_count = 1, 'FAIL: relational READ/JOIN');
 INSERT INTO test_results VALUES ('READ relational JOIN', 'PASS');
 
+SET @cumplimiento = (
+    SELECT ROUND(100 * SUM(estado_toma = 'tomada') / NULLIF(
+        SUM(estado_toma IN ('tomada', 'omitida')), 0
+    ), 2)
+    FROM toma_medicamento
+    WHERE id_user = @id_user
+);
+CALL assert_true(@cumplimiento = 50.00, 'FAIL: medication compliance calculation');
+INSERT INTO test_results VALUES ('READ medication compliance', 'PASS');
+
+INSERT INTO emocion_central (nombre, descripcion, id_intensidad)
+VALUES ('Central alterna de prueba', 'Solo prueba transaccional', @id_intensidad);
+SET @id_emo_cen_alterna = LAST_INSERT_ID();
+INSERT INTO emocion_media (nombre, descripcion, id_intensidad, id_emo_cen)
+VALUES ('Media alterna de prueba', 'Solo prueba transaccional', @id_intensidad,
+        @id_emo_cen_alterna);
+SET @id_emo_media_alterna = LAST_INSERT_ID();
+
 UPDATE users SET phone = '0000000099' WHERE id_user = @id_user;
 CALL assert_true(
     (SELECT phone FROM users WHERE id_user = @id_user) = '0000000099',
@@ -193,6 +287,9 @@ CALL expect_invalid_quantity();
 CALL expect_null_compound_route();
 CALL expect_duplicate_compound();
 CALL expect_restricted_user_delete();
+CALL expect_duplicate_intake();
+CALL expect_invalid_intake_confirmation();
+CALL expect_invalid_emotion_hierarchy();
 
 DELETE FROM recordatorios WHERE id_recordatorio = @id_recordatorio;
 CALL assert_true(
@@ -212,5 +309,8 @@ DROP PROCEDURE expect_invalid_quantity;
 DROP PROCEDURE expect_null_compound_route;
 DROP PROCEDURE expect_duplicate_compound;
 DROP PROCEDURE expect_restricted_user_delete;
+DROP PROCEDURE expect_duplicate_intake;
+DROP PROCEDURE expect_invalid_intake_confirmation;
+DROP PROCEDURE expect_invalid_emotion_hierarchy;
 DROP PROCEDURE assert_true;
 

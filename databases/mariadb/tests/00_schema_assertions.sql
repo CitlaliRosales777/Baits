@@ -21,17 +21,17 @@ SET @table_count = (
       AND table_type = 'BASE TABLE'
       AND table_name <> 'schema_migrations'
 );
-CALL assert_equals(@table_count, 20, 'FAIL: expected 20 domain tables');
+CALL assert_equals(@table_count, 23, 'FAIL: expected 23 domain tables');
 
 SET @fk_count = (
     SELECT COUNT(*)
     FROM information_schema.referential_constraints
     WHERE constraint_schema = 'moodsitto'
 );
-CALL assert_equals(@fk_count, 33, 'FAIL: expected 33 foreign keys');
+CALL assert_equals(@fk_count, 42, 'FAIL: expected 42 foreign keys');
 
 SET @migration_count = (SELECT COUNT(*) FROM schema_migrations);
-CALL assert_equals(@migration_count, 2, 'FAIL: expected two migrations');
+CALL assert_equals(@migration_count, 3, 'FAIL: expected three migrations');
 
 SET @engine_count = (
     SELECT COUNT(*)
@@ -40,8 +40,8 @@ SET @engine_count = (
       AND table_type = 'BASE TABLE'
       AND engine = 'InnoDB'
 );
-CALL assert_equals(@engine_count, 21, 'FAIL: all tables must use InnoDB');
+CALL assert_equals(@engine_count, 24, 'FAIL: all tables must use InnoDB');
 
 DROP PROCEDURE assert_equals;
-SELECT 'PASS schema: 20 tables, 33 FKs, 2 migrations, all InnoDB' AS result;
+SELECT 'PASS schema: 23 tables, 42 FKs, 3 migrations, all InnoDB' AS result;
 
