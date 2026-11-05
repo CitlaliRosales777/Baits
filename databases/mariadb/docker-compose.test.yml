@@ -1,0 +1,21 @@
+services:
+  mariadb:
+    image: mariadb:11.4
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MOODSITTO_TEST_ROOT_PASSWORD:?Define MOODSITTO_TEST_ROOT_PASSWORD}
+    volumes:
+      - ./:/workspace:ro
+      - moodsitto_test_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+    networks:
+      - moodsitto_test
+
+volumes:
+  moodsitto_test_data:
+
+networks:
+  moodsitto_test:

@@ -1,0 +1,6 @@
+.env
+databases/mariadb/.env
+databases/mariadb/.test-state/
+*.bak
+*.sql.gz
+*.durus

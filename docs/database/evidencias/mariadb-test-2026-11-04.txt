@@ -1,0 +1,20 @@
+Fecha local: 2026-11-04 (America/Tijuana)
+Entorno: Docker aislado, imagen mariadb:11.4
+Comando: & .\databases\mariadb\tests\run-tests.ps1
+
+PASS schema: 23 tables, 42 FKs, 3 migrations, all InnoDB
+
+Comprobaciones CRUD/integridad aprobadas: 22
+- altas de usuario, cita, diagnóstico, especialidad, seguimiento, medicamento,
+  horarios múltiples, checklist y recordatorio;
+- lectura relacional y cumplimiento;
+- actualización de usuario y borrado controlado;
+- rechazo de correo/compuesto/toma duplicados;
+- rechazo de CHECK, FK, vía nula, confirmación inválida y jerarquía emocional inválida;
+- rechazo de borrado de usuario referenciado.
+
+PASS CRUD/integrity: transaction will be rolled back
+PASS reports: totals, frequency, percentage, averages, empty periods and compliance
+PASS: migraciones, datos sintéticos y pruebas SQL completados.
+
+Limpieza observada: contenedor, red y volumen eliminados al terminar.
