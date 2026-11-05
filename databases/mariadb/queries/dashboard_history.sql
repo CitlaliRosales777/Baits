@@ -51,4 +51,3 @@ JOIN horarios h ON h.id_horario = m.id_horario
 JOIN estado e ON e.id_estado = m.id_estado
 WHERE m.id_user = ? AND e.estado = 'Activo'
 ORDER BY h.horario, m.nombre;
-

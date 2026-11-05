@@ -14,4 +14,3 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
 
 INSERT INTO schema_migrations (version, description)
 VALUES ('V001', 'create database and migration ledger');
-

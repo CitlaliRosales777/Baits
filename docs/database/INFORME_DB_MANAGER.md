@@ -1,7 +1,7 @@
 # Informe final del DB Manager — Moodsitto
 
-Fecha: 4 de noviembre de 2026  
-Rama: `feature/db-manager`  
+Fecha: 4 de noviembre de 2026
+Rama: `feature/db-manager`
 Fuente original: `bd-moodsitto.sql`, conservada intacta
 
 ## Resumen

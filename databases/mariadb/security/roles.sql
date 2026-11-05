@@ -12,4 +12,3 @@ GRANT ALL PRIVILEGES ON moodsitto.* TO moodsitto_migration_role;
 -- Ejemplo de asignación posterior (reemplace el usuario ya creado de forma segura):
 -- GRANT moodsitto_app_role TO 'moodsitto_api'@'%';
 -- SET DEFAULT ROLE moodsitto_app_role FOR 'moodsitto_api'@'%';
-

@@ -270,4 +270,3 @@ CREATE TABLE trackeo_emo (
 
 INSERT INTO schema_migrations (version, description)
 VALUES ('V002', 'create compatible relational model with integrity rules');
-

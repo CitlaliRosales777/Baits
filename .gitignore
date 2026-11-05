@@ -4,4 +4,3 @@ databases/mariadb/.test-state/
 *.bak
 *.sql.gz
 *.durus
-

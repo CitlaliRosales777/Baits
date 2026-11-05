@@ -58,4 +58,3 @@ Nunca probar una restauración encima de la única copia ni de la base compartid
 ## Revisión de secretos
 
 La búsqueda del repositorio solo encontró nombres de campos/inputs de contraseña y hashes ficticios no utilizables. Antes del PR y en CI debe repetirse un escaneo de secretos y revisarse el historial completo.
-

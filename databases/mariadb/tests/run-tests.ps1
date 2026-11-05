@@ -46,4 +46,3 @@ finally {
     & docker compose -p $projectName -f $composeFile down --volumes --remove-orphans
     Remove-Item Env:\MOODSITTO_TEST_ROOT_PASSWORD -ErrorAction SilentlyContinue
 }
-

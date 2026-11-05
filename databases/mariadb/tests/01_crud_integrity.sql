@@ -313,4 +313,3 @@ DROP PROCEDURE expect_duplicate_intake;
 DROP PROCEDURE expect_invalid_intake_confirmation;
 DROP PROCEDURE expect_invalid_emotion_hierarchy;
 DROP PROCEDURE assert_true;
-

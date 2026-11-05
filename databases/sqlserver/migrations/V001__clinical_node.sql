@@ -34,4 +34,3 @@ GO
 
 -- No existe una FK entre motores. APIcore crea/verifica user_reference mediante
 -- una operación idempotente antes de escribir la nota y registra fallos parciales.
-

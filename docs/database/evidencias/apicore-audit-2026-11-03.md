@@ -1,9 +1,9 @@
 # Evidencia de revisión estática de APIcore
 
-Repositorio: `https://github.com/xtbt/apicore`  
-Rama: `main`  
-Commit: `923fbe5358ec72882af54bef9e567d0dda5b6374`  
-Fecha del commit: 30 de octubre de 2026, 18:03:36 -07:00  
+Repositorio: `https://github.com/xtbt/apicore`
+Rama: `main`
+Commit: `923fbe5358ec72882af54bef9e567d0dda5b6374`
+Fecha del commit: 30 de octubre de 2026, 18:03:36 -07:00
 Fecha de revisión: 3 de noviembre de 2026
 
 ## Archivos de aplicación revisados
@@ -25,4 +25,3 @@ Fecha de revisión: 3 de noviembre de 2026
 - Existe un `.env` versionado, pero estaba vacío en el commit revisado; no se imprimieron ni almacenaron valores secretos.
 
 La revisión fue de solo lectura sobre un clon temporal. No se alteró ni ejecutó el repositorio APIcore contra la base Moodsitto.
-

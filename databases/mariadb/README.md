@@ -44,4 +44,3 @@ tests/01_crud_integrity.sql
 ```
 
 Use siempre una cuenta de migración separada. Backend/APIcore debe conectarse con un usuario al que se le haya asignado `moodsitto_app_role`, nunca como `root`.
-

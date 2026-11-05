@@ -44,4 +44,3 @@ CALL assert_equals(@engine_count, 24, 'FAIL: all tables must use InnoDB');
 
 DROP PROCEDURE assert_equals;
 SELECT 'PASS schema: 23 tables, 42 FKs, 3 migrations, all InnoDB' AS result;
-

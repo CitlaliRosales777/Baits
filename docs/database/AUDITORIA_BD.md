@@ -1,7 +1,7 @@
 # Auditoría de la base de datos Moodsitto
 
-Fecha de revisión: 4 de noviembre de 2026  
-Fuente auditada: `bd-moodsitto.sql` en `main` (`1a5af7c`)  
+Fecha de revisión: 4 de noviembre de 2026
+Fuente auditada: `bd-moodsitto.sql` en `main` (`1a5af7c`)
 Motor objetivo: MariaDB
 
 ## Alcance y método
@@ -66,4 +66,3 @@ El APIcore externo revisado es un prototipo independiente en Python y PHP. Ambos
 La incompatibilidad es estructural, no solo de nombres: `moods` representa un catálogo plano, mientras Moodsitto modela tres niveles y un seguimiento por usuario/fecha. No se modificó APIcore. `INTEGRACION_BACKEND.md` entrega el contrato de persistencia para que su responsable implemente los servicios.
 
 No se encontró SQL Server ni otro esquema Moodsitto implementado. Los prototipos avanzados de esta rama son nuevos y siguen pendientes de infraestructura.
-

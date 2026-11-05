@@ -53,4 +53,3 @@ FROM emocion_especifica ee
 JOIN emocion_media em ON em.id_emo_media = ee.id_emo_media
 JOIN emocion_central ec ON ec.id_emo_cen = em.id_emo_cen
 WHERE ee.nombre = 'Motivación';
-

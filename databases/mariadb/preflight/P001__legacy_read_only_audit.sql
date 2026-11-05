@@ -133,4 +133,3 @@ FROM emocion_conjunto eco
 JOIN emocion_especifica ee ON ee.id_emo_espe = eco.id_emo_espe
 JOIN emocion_media em ON em.id_emo_media = eco.id_emo_media
 WHERE ee.id_emo_media <> eco.id_emo_media OR em.id_emo_cen <> eco.id_emo_cen;
-

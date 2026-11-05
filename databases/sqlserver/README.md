@@ -12,4 +12,3 @@ Prueba manual prevista:
 4. Consultar ambas tablas desde SSMS/DBeaver.
 5. Detener SQL Server, verificar que APIcore mantiene disponibles los flujos exclusivos de MariaDB y devuelve un error controlado para el nodo clínico.
 6. Reiniciar, reintentar una operación con la misma clave de idempotencia y comprobar que no se duplica.
-

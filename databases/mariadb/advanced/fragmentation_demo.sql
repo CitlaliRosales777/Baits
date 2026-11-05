@@ -30,4 +30,3 @@ WHERE fecha < CURRENT_DATE - INTERVAL 90 DAY;
 -- SELECT * FROM vw_trackeo_recent_fragment
 -- UNION ALL
 -- SELECT * FROM vw_trackeo_archive_fragment;
-

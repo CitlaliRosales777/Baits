@@ -42,4 +42,3 @@ Se priorizan las rutas esperadas de dashboard e historial: usuario/fecha, doctor
 ## Datos de prueba
 
 Las semillas son sintéticas y explícitamente no clínicas. Los usuarios transaccionales de prueba usan `.invalid` y todas sus operaciones se revierten con `ROLLBACK`.
-
