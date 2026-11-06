@@ -72,6 +72,7 @@ function iniciar_sesion(PDO $bd, array $entrada): void
         responder(422, ['error' => 'Escribe tu correo y tu contrasena']);
     }
 
+    revisar_bloqueo($mail);
     $st = $bd->prepare('SELECT id_user, name, passw FROM users WHERE mail = :mail');
     $st->execute([':mail' => $mail]);
     $usuario = $st->fetch();
@@ -79,9 +80,11 @@ function iniciar_sesion(PDO $bd, array $entrada): void
     $hash = $usuario ? $usuario['passw'] : password_hash('relleno', PASSWORD_DEFAULT);
     $correcto = password_verify($passw, $hash);
     if (!$usuario || !$correcto) {
+        registrar_fallo($mail);
         responder(401, ['error' => 'Correo o contrasena incorrectos']);
     }
 
+    limpiar_fallos($mail);
     session_regenerate_id(true);
     $_SESSION['id_user'] = (int) $usuario['id_user'];
     responder(200, ['mensaje' => 'Sesion iniciada', 'id_user' => (int) $usuario['id_user'], 'name' => $usuario['name']]);

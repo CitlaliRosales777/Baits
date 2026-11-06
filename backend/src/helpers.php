@@ -11,8 +11,11 @@ function responder(int $codigo, array $datos): void
 
 function leer_entrada(): array
 {
-    $crudo = file_get_contents('php://input');
-    $json = json_decode($crudo === false ? '' : $crudo, true);
+    $crudo = (string) file_get_contents('php://input', false, null, 0, 20001);
+    if (strlen($crudo) > 20000) {
+        responder(413, ['error' => 'Peticion demasiado grande']);
+    }
+    $json = json_decode($crudo, true);
     if (is_array($json)) {
         return $json;
     }
