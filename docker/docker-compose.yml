@@ -1,0 +1,43 @@
+services:
+  db:
+    image: mariadb:11.4
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Falta DB_ROOT_PASSWORD en docker/.env}
+      MARIADB_DATABASE: moodsitto_backend_dev
+      MARIADB_USER: moodsitto_api
+      MARIADB_PASSWORD: ${DB_PASS:?Falta DB_PASS en docker/.env}
+    volumes:
+      - moodsitto_db:/var/lib/mysql
+      - ./db:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+
+  api:
+    build: ../backend
+    environment:
+      DB_HOST: db
+      DB_NAME: moodsitto_backend_dev
+      DB_USER: moodsitto_api
+      DB_PASS: ${DB_PASS}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    image: nginx:1.27-alpine
+    ports:
+      - "127.0.0.1:8080:80"
+    volumes:
+      - ../fronted:/usr/share/nginx/html:ro
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  moodsitto_db:

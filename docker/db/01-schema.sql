@@ -1,0 +1,24 @@
+CREATE TABLE IF NOT EXISTS location (
+  id_location INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  calle VARCHAR(100) NOT NULL,
+  colonia VARCHAR(50) NOT NULL,
+  num_ext VARCHAR(10),
+  cp VARCHAR(10),
+  num_int VARCHAR(10),
+  descripcion TEXT
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS users (
+  id_user INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  lastname1 VARCHAR(100) NOT NULL,
+  lastname2 VARCHAR(100),
+  date_b DATE NOT NULL,
+  phone VARCHAR(15) NOT NULL,
+  emer_phone VARCHAR(15),
+  mail VARCHAR(254) NOT NULL,
+  passw VARCHAR(255) NOT NULL,
+  id_location INT UNSIGNED,
+  CONSTRAINT uq_users_mail UNIQUE (mail),
+  CONSTRAINT fk_user_location FOREIGN KEY (id_location) REFERENCES location(id_location) ON UPDATE RESTRICT ON DELETE SET NULL
+) ENGINE=InnoDB;

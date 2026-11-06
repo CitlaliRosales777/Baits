@@ -1,0 +1,6 @@
+#!/bin/bash
+mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" <<SQL
+REVOKE ALL PRIVILEGES ON \`moodsitto\_backend\_dev\`.* FROM '${MARIADB_USER}'@'%';
+GRANT SELECT, INSERT, UPDATE, DELETE ON \`${MARIADB_DATABASE}\`.* TO '${MARIADB_USER}'@'%';
+FLUSH PRIVILEGES;
+SQL
