@@ -8,13 +8,24 @@ CREATE DATABASE IF NOT EXISTS moodsitto
   CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE moodsitto;
 
+
+-- PARTE 1. INFORMACIÓN SOBRE LA INSTALACIÓN
+-- Guarda un registro para saber qué versión de la base de datos se instaló.
+--
+-- schema_migrations: Versiones de la base de datos
+-- Anota qué cambios se han instalado, para que el equipo sepa qué versión está usando.
 CREATE TABLE schema_migrations (
   version VARCHAR(64) NOT NULL PRIMARY KEY,
   description VARCHAR(255) NOT NULL,
   applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
--- Catalogos originales; se mantienen los nombres por compatibilidad.
+
+-- PARTE 2. DATOS QUE SE USAN EN VARIAS PANTALLAS
+-- Aquí van opciones que pueden repetirse, como direcciones, especialidades y horarios.
+--
+-- location: Direcciones
+-- Guarda direcciones de usuarios, consultorios u otros lugares de atención.
 CREATE TABLE location (
   id_location INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   calle VARCHAR(100) NOT NULL,
@@ -22,30 +33,45 @@ CREATE TABLE location (
   num_ext VARCHAR(10), cp VARCHAR(10), num_int VARCHAR(10), descripcion TEXT
 ) ENGINE=InnoDB;
 
+
+-- area: Áreas de atención
+-- Guarda nombres de áreas, como medicina general o psicología, para elegirlas después.
 CREATE TABLE area (
   id_area INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   nombre_area VARCHAR(100) NOT NULL UNIQUE,
   descripcion TEXT
 ) ENGINE=InnoDB;
 
+
+-- especialidad: Especialidades médicas
+-- Guarda especialidades que pueden tener los médicos, como pediatría o psiquiatría.
 CREATE TABLE especialidad (
   id_especialidad INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   especialidad VARCHAR(50) NOT NULL UNIQUE,
   descripcion TEXT
 ) ENGINE=InnoDB;
 
+
+-- estados_clinicos: Estado de un diagnóstico
+-- Indica en qué situación se encuentra un diagnóstico. Los nombres concretos los define el equipo.
 CREATE TABLE estados_clinicos (
   id_estadoclini INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   estado_c VARCHAR(50) NOT NULL UNIQUE,
   descripcion TEXT
 ) ENGINE=InnoDB;
 
+
+-- estado: Situación de un registro
+-- Permite marcar en qué estado está una cita, un medicamento o un recordatorio.
 CREATE TABLE estado (
   id_estado INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   estado VARCHAR(50) NOT NULL UNIQUE,
   descripcion TEXT
 ) ENGINE=InnoDB;
 
+
+-- compuesto: Contenido principal del medicamento
+-- Guarda el nombre de la sustancia del medicamento y cómo se administra.
 CREATE TABLE compuesto (
   id_compuesto INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   compuesto VARCHAR(100) NOT NULL,
@@ -54,18 +80,27 @@ CREATE TABLE compuesto (
   CONSTRAINT uq_compuesto_via UNIQUE (compuesto, via_admin)
 ) ENGINE=InnoDB;
 
+
+-- dosis: Dosis
+-- Guarda las dosis que se pueden seleccionar al registrar un medicamento.
 CREATE TABLE dosis (
   id_dosis INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   dosis VARCHAR(50) NOT NULL UNIQUE,
   descripcion TEXT
 ) ENGINE=InnoDB;
 
+
+-- horarios: Horas
+-- Guarda horas, como 08:00 o 20:00, para organizar medicamentos y avisos.
 CREATE TABLE horarios (
   id_horario INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   horario TIME NOT NULL UNIQUE,
   descripcion TEXT
 ) ENGINE=InnoDB;
 
+
+-- intensidad: Qué tan fuerte se siente algo
+-- Guarda valores del 1 al 10 para indicar intensidad, con un color opcional.
 CREATE TABLE intensidad (
   id_intensidad INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   valor TINYINT UNSIGNED NOT NULL UNIQUE,
@@ -75,7 +110,13 @@ CREATE TABLE intensidad (
   CONSTRAINT chk_intensidad_hex CHECK (color IS NULL OR color REGEXP '^#[0-9a-fA-F]{6}$')
 ) ENGINE=InnoDB;
 
--- Campos del registro/login PHP conservados exactamente.
+
+-- PARTE 3. PERSONAS, MÉDICOS Y CITAS
+-- Guarda quién usa la aplicación y la información relacionada con su atención médica.
+--
+-- users: Cuentas de las personas
+-- Guarda nombre, correo, teléfonos y datos necesarios para iniciar sesión.
+-- La contraseña real NO se guarda aquí; se guarda una versión protegida.
 CREATE TABLE users (
   id_user INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
@@ -85,7 +126,7 @@ CREATE TABLE users (
   phone VARCHAR(15) NOT NULL,
   emer_phone VARCHAR(15),
   mail VARCHAR(254) NOT NULL,
-  passw VARCHAR(255) NOT NULL COMMENT 'Hash generado por API. Nunca contrasena en claro.',
+  passw VARCHAR(255) NOT NULL COMMENT 'La contraseña se guarda protegida; nunca se guarda el texto original.',
   id_location INT UNSIGNED,
   activo BOOLEAN NOT NULL DEFAULT TRUE,
   email_verified_at DATETIME NULL,
@@ -99,6 +140,9 @@ CREATE TABLE users (
      ON UPDATE RESTRICT ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
+
+-- doctors: Médicos y especialistas
+-- Guarda nombre, teléfono, especialidad y lugar de atención de cada profesional.
 CREATE TABLE doctors (
   id_doctor INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   id_area INT UNSIGNED NOT NULL,
@@ -115,6 +159,9 @@ CREATE TABLE doctors (
   CONSTRAINT fk_doctor_especialidad FOREIGN KEY (id_especialidad) REFERENCES especialidad(id_especialidad) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
+
+-- doctor_especialidad: Un médico con varias especialidades
+-- Permite que un mismo médico aparezca con más de una especialidad.
 CREATE TABLE doctor_especialidad (
   id_doctor INT UNSIGNED NOT NULL,
   id_especialidad INT UNSIGNED NOT NULL,
@@ -125,12 +172,16 @@ CREATE TABLE doctor_especialidad (
   INDEX idx_de_especialidad (id_especialidad, id_doctor)
 ) ENGINE=InnoDB;
 
+
+-- diagnosticos: Diagnósticos
+-- Guarda el diagnóstico de una persona, la fecha, el médico y, si existe, su documento.
+-- El documento no debe quedar disponible para cualquier usuario.
 CREATE TABLE diagnosticos (
   id_diagnostico INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   nombre VARCHAR(100) NOT NULL,
   descripcion TEXT,
   fecha DATE NOT NULL,
-  documento VARCHAR(255) COMMENT 'Clave interna de archivo, nunca URL publica sin autorizacion',
+  documento VARCHAR(255) COMMENT 'Dónde está el documento. La aplicación debe comprobar quién puede verlo.',
   id_area INT UNSIGNED NOT NULL,
   id_estadoclini INT UNSIGNED NOT NULL,
   id_user INT UNSIGNED NOT NULL,
@@ -144,13 +195,16 @@ CREATE TABLE diagnosticos (
   INDEX idx_diag_user_fecha (id_user, fecha)
 ) ENGINE=InnoDB;
 
+
+-- citas_medicas: Citas médicas
+-- Guarda con qué médico es la cita, el lugar, la fecha, la hora y su situación.
 CREATE TABLE citas_medicas (
   id_cita INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   id_doctor INT UNSIGNED NOT NULL,
   id_location INT UNSIGNED NOT NULL,
   id_area INT UNSIGNED NOT NULL,
   id_estado INT UNSIGNED NOT NULL,
-  fecha DATETIME NOT NULL COMMENT 'Zona horaria definida en contrato API; persistir preferiblemente en UTC',
+  fecha DATETIME NOT NULL COMMENT 'La aplicación debe manejar bien las horas para que la cita aparezca correctamente.',
   descripcion TEXT,
   id_user INT UNSIGNED NOT NULL,
   CONSTRAINT uq_cita_user UNIQUE (id_cita, id_user),
@@ -163,6 +217,12 @@ CREATE TABLE citas_medicas (
   INDEX idx_cita_doctor_fecha (id_doctor, fecha)
 ) ENGINE=InnoDB;
 
+
+-- PARTE 4. MEDICAMENTOS Y SUS TOMAS
+-- Permite guardar un tratamiento y llevar el control de cuándo se debe tomar.
+--
+-- medicamento: Medicamentos registrados
+-- Guarda qué medicamento usa una persona, la cantidad indicada y las fechas del tratamiento.
 CREATE TABLE medicamento (
   id_medicamento INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   nombre VARCHAR(100) NOT NULL,
@@ -176,7 +236,7 @@ CREATE TABLE medicamento (
   tratamiento VARCHAR(100),
   fecha_inicio DATE,
   fecha_fin DATE,
-  id_horario INT UNSIGNED NOT NULL COMMENT 'Horario principal legado; usar medicamento_horario para multiples',
+  id_horario INT UNSIGNED NOT NULL COMMENT 'Hora principal. Las otras horas se guardan en medicamento_horario.',
   id_user INT UNSIGNED NOT NULL,
   CONSTRAINT uq_med_usuario UNIQUE (id_medicamento, id_user),
   CONSTRAINT chk_med_cantidad CHECK (cantidad > 0),
@@ -189,6 +249,10 @@ CREATE TABLE medicamento (
   INDEX idx_med_user_estado (id_user, id_estado)
 ) ENGINE=InnoDB;
 
+
+-- medicamento_horario: Horarios para tomar medicamentos
+-- Permite indicar varias horas para un mismo medicamento.
+-- Ejemplo: una pastilla a las 08:00 y otra a las 20:00.
 CREATE TABLE medicamento_horario (
   id_med_horario INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   id_medicamento INT UNSIGNED NOT NULL,
@@ -206,6 +270,10 @@ CREATE TABLE medicamento_horario (
   INDEX idx_mh_user_activo (id_user, activo, fecha_inicio, fecha_fin)
 ) ENGINE=InnoDB;
 
+
+-- toma_medicamento: Registro de cada toma
+-- Guarda si una toma estaba pendiente, si se realizó o si se omitió.
+-- También puede anotar a qué hora se tomó realmente.
 CREATE TABLE toma_medicamento (
   id_toma BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   id_med_horario INT UNSIGNED NOT NULL,
@@ -225,12 +293,18 @@ CREATE TABLE toma_medicamento (
   INDEX idx_toma_user_estado (id_user, estado_toma, fecha_hora_programada)
 ) ENGINE=InnoDB;
 
+
+-- PARTE 5. RECORDATORIOS
+-- Sirve para programar avisos de citas, medicamentos u otras actividades.
+--
+-- recordatorios: Avisos que quiere recibir el usuario
+-- Guarda el mensaje y la fecha del aviso. Puede ser sobre una cita o un medicamento.
 CREATE TABLE recordatorios (
   id_recordatorio INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   id_user INT UNSIGNED NOT NULL,
   id_cita INT UNSIGNED,
   id_med_horario INT UNSIGNED,
-  id_horario INT UNSIGNED COMMENT 'Compatibilidad legado',
+  id_horario INT UNSIGNED COMMENT 'Se mantiene para que siga funcionando el código de versiones anteriores.',
   tipo VARCHAR(20) NOT NULL DEFAULT 'general',
   contenido TEXT NOT NULL,
   id_estado INT UNSIGNED NOT NULL,
@@ -251,7 +325,12 @@ CREATE TABLE recordatorios (
   INDEX idx_rec_estado_fecha (id_estado, fecha)
 ) ENGINE=InnoDB;
 
--- Jerarquia emocional coherente, incluida su validacion transnivel.
+
+-- PARTE 6. EMOCIONES
+-- Organiza la rueda de emociones y guarda cómo se ha sentido cada persona.
+--
+-- emocion_central: Emociones generales
+-- Guarda el primer nivel de la rueda, por ejemplo, alegría o tristeza.
 CREATE TABLE emocion_central (
   id_emo_cen INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   nombre VARCHAR(50) NOT NULL UNIQUE,
@@ -260,6 +339,9 @@ CREATE TABLE emocion_central (
   CONSTRAINT fk_ec_int FOREIGN KEY (id_intensidad) REFERENCES intensidad(id_intensidad) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
+
+-- emocion_media: Emociones más detalladas
+-- Guarda el segundo nivel de la rueda, dentro de una emoción general.
 CREATE TABLE emocion_media (
   id_emo_media INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   nombre VARCHAR(50) NOT NULL,
@@ -272,6 +354,9 @@ CREATE TABLE emocion_media (
   CONSTRAINT fk_em_cen FOREIGN KEY (id_emo_cen) REFERENCES emocion_central(id_emo_cen) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
+
+-- emocion_especifica: Emociones muy concretas
+-- Guarda el tercer nivel para elegir con mayor detalle cómo se siente la persona.
 CREATE TABLE emocion_especifica (
   id_emo_espe INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   nombre VARCHAR(50) NOT NULL,
@@ -284,6 +369,9 @@ CREATE TABLE emocion_especifica (
   CONSTRAINT fk_ee_media FOREIGN KEY (id_emo_media) REFERENCES emocion_media(id_emo_media) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
+
+-- emocion_conjunto: Conexión entre los niveles de la rueda
+-- Une las emociones generales, detalladas y concretas que pertenecen a la misma opción.
 CREATE TABLE emocion_conjunto (
   id_emocion_conjun INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   id_emo_espe INT UNSIGNED NOT NULL,
@@ -296,6 +384,10 @@ CREATE TABLE emocion_conjunto (
     REFERENCES emocion_media(id_emo_media, id_emo_cen) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
+
+-- trackeo_emo: Diario de emociones
+-- Guarda qué emoción eligió la persona, cuándo la sintió y lo que quiso escribir.
+-- Estos datos son privados y no deben mostrarse a otras personas sin permiso.
 CREATE TABLE trackeo_emo (
   id_trackeo INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   fecha DATE NOT NULL,
@@ -312,7 +404,13 @@ CREATE TABLE trackeo_emo (
   INDEX idx_track_emo_fecha (id_emo_conjunto, fecha)
 ) ENGINE=InnoDB;
 
--- Cola de entrega: sin incluir PHI en logs; idempotencia contra duplicados.
+
+-- PARTE 7. AVISOS Y PROTECCIÓN DE DATOS
+-- Organiza los avisos y registra algunos aspectos importantes de la seguridad.
+--
+-- notificaciones: Envío de notificaciones
+-- Guarda qué aviso debe enviarse, por dónde y si ya se envió.
+-- También ayuda a evitar que el mismo aviso se mande dos veces.
 CREATE TABLE notificaciones (
   id_notificacion BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   id_user INT UNSIGNED NOT NULL,
@@ -334,7 +432,9 @@ CREATE TABLE notificaciones (
   INDEX idx_notif_worker (estado_envio,programada_at)
 ) ENGINE=InnoDB;
 
--- Auditable consent records; clinical sharing requires explicit authorization in API.
+
+-- consentimientos: Permisos que acepta cada usuario
+-- Guarda qué autorización aceptó la persona y si después decidió retirarla.
 CREATE TABLE consentimientos (
   id_consentimiento BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   id_user INT UNSIGNED NOT NULL,
@@ -347,7 +447,10 @@ CREATE TABLE consentimientos (
   INDEX idx_consent_user_tipo (id_user,tipo,aceptado_at)
 ) ENGINE=InnoDB;
 
--- Token hashes only, never JWT/refresh tokens in raw form.
+
+-- api_tokens: Sesiones iniciadas
+-- Ayuda a reconocer una sesión sin guardar directamente su clave de acceso.
+-- Permite que la aplicación cierre o deje de aceptar una sesión.
 CREATE TABLE api_tokens (
   id_token BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   id_user INT UNSIGNED NOT NULL,
@@ -361,7 +464,10 @@ CREATE TABLE api_tokens (
   INDEX idx_token_user_expira (id_user,expira_at)
 ) ENGINE=InnoDB;
 
--- Append-only at privilege layer. Do not store symptoms, passwords or tokens in details.
+
+-- auditoria_eventos: Registro de acciones importantes
+-- Anota acciones como cambios o accesos rechazados, para revisar problemas.
+-- No debe guardar contraseñas ni información médica privada.
 CREATE TABLE auditoria_eventos (
   id_evento BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   actor_id_user INT UNSIGNED,
@@ -377,5 +483,7 @@ CREATE TABLE auditoria_eventos (
   INDEX idx_audit_recurso (recurso,creado_at)
 ) ENGINE=InnoDB;
 
+-- FIN DE LA INSTALACIÓN
+-- Guarda la fecha y la versión de esta base de datos.
 INSERT INTO schema_migrations (version,description)
-VALUES ('2026-11-09-v2-clean','Compatible schema for frontend, Moodsitto PHP backend, and future APIcore adapter');
+VALUES ('2026-11-09-v2-clean','Compatible con frontend, Moodsitto PHP backend, y adaptador de APIcore');
