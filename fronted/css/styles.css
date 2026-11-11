@@ -1,22 +1,33 @@
-
 /*colores principales de moodsitto*/
 :root {
-    --fondo: #faf9f6;
+    --fondo: #f2e9e4;
     --blanco: #ffffff;
-    --verde: #8fa99b;
-    --verde-oscuro: #526f63;
-    --texto: #454545;
-    --suave: #737b76;
-    --borde: #dce5df;
+    --verde: #9a8c98;
+    --verde-oscuro: #4a4e69;
+    --texto: #22223b;
+    --suave: #4a4e69;
+    --borde: #c9ada7;
 }
+/* fuente de moodsitto */
+@font-face {
+    font-family: 'Cute Cat';
+    src: url('../fonts/CuteCat.ttf') format('truetype');
+}
+/* general */
 * {
     box-sizing: border-box;
 }
 body {
     margin: 0;
-    font-family: Arial, sans-serif;
     background: var(--fondo);
     color: var(--texto);
+    font-family: 'Cute Cat', cursive;
+}
+input,
+button,
+select,
+textarea {
+    font-family: inherit;
 }
 a {
     color: var(--verde-oscuro);
@@ -33,10 +44,23 @@ a {
     border-bottom: 1px solid var(--borde);
 }
 .marca {
+    display: flex;
+    align-items: center;
+    gap: 5px;
     color: var(--verde-oscuro);
     font-size: 27px;
     font-weight: bold;
     text-decoration: none;
+}
+.icono-marca {
+    width: 38px;
+    height: 38px;
+    object-fit: contain;
+}
+.logo {
+    width: 170px;
+    height: 55px;
+    object-fit: contain;
 }
 nav {
     display: flex;
@@ -52,7 +76,6 @@ nav a:hover,
 nav a.activo {
     color: var(--verde-oscuro);
     text-decoration: underline;
-    text-underline-offset: 6px;
 }
 /*pagina de inicio*/
 .bienvenida {
@@ -138,7 +161,7 @@ input:focus {
 .columnas {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    column-gap: 16px;
+    gap: 0 16px;
 }
 .ancho {
     width: 100%;
@@ -161,7 +184,120 @@ footer {
     color: var(--suave);
     font-size: 13px;
 }
-/*adaptacion a celular*/
+/* dashboard mood */
+/* pagi principal */
+.inicio-app {
+    min-height: 100vh;
+    background: var(--fondo);
+}
+/* encabezado */
+.saludo {
+    position: relative;
+    height: 220px;
+    padding: 30px 20px 0;
+    background: var(--borde);
+    text-align: center;
+    overflow: hidden;
+}
+/* logo principal */
+.logo-principal {
+    display: block;
+    width: 250px;
+    max-width: 90%;
+    max-height: 95px;
+    object-fit: contain;
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
+}
+/* olita de moodsitto uwu */
+.ola {
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    width: 100%;
+    height: 110px;
+}
+/* saluditto del usuario */
+.bienvenido {
+    padding: 14px 25px 6px;
+}
+.bienvenido h2 {
+    font-size: 30px;
+    font-weight: normal;
+    color: var(--texto);
+    margin: 0 0 3px;
+}
+.bienvenido p {
+    font-size: 19px;
+    color: var(--suave);
+    margin: 0;
+}
+/* calendario semanal */
+.calendario {
+    padding: 5px 25px 20px;
+}
+.calendario h3 {
+    font-size: 22px;
+    color: var(--texto);
+    margin: 0 0 10px;
+}
+/* dias */
+.semana {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 5px;
+}
+.dia {
+    background: var(--blanco);
+    border: 1px solid var(--borde);
+    border-radius: 9px;
+    padding: 8px 2px;
+    text-align: center;
+}
+.dia span {
+    display: block;
+    color: var(--suave);
+    font-size: 14px;
+}
+.dia strong {
+    display: block;
+    color: var(--texto);
+    font-size: 18px;
+    margin-top: 3px;
+}
+/* recordatorios del dashboard */
+.recordatorios {
+    margin: 15px 25px;
+    padding: 18px;
+    background: var(--blanco);
+    border: 1px solid var(--borde);
+    border-radius: 10px;
+}
+.recordatorios h3 {
+    font-size: 23px;
+    color: var(--texto);
+    margin: 0 0 15px;
+}
+.recordatorio {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--fondo);
+}
+.recordatorio:last-child {
+    border-bottom: none;
+}
+.recordatorio input {
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    accent-color: var(--verde);
+    flex-shrink: 0;
+}
+/*adaptacion a celular en caso de 
 @media (max-width: 560px) {
     .encabezado {
         padding: 18px 6%;
@@ -178,14 +314,53 @@ footer {
     .columnas {
         grid-template-columns: 1fr;
     }
+    .bienvenido,
+    .calendario {
+        padding-left: 15px;
+        padding-right: 15px;
+    }
+    .recordatorios {
+        margin: 15px;
+    }
+    .semana {
+        gap: 3px;
+    }
 }
-.marca {
-    display: flex;
-    align-items: center;
-    gap: 5px;
+*/
+/* dia seleccionado */
+.dia {
+    cursor: pointer;
 }
-.icono-marca {
-    width: 38px;
-    height: 38px;
-    object-fit: contain;
+.dia.seleccionado {
+    background: #c9ada7;
+    border-color: #9a8c98;
+}
+
+/* boton para agregar recordatorios */
+.agregar-recordatorio {
+    display: block;
+    position: relative;
+    z-index: 1;
+    margin: -18px auto -18px;
+    width: 36px;
+    height: 36px;
+    border: 1px solid #4a4e69;
+    border-radius: 50%;
+    background: #f2e9e4;
+    color: #22223b;
+    font-size: 25px;
+    cursor: pointer;
+}
+/* barra inferior */
+.barra-recordatorio {
+    height: 35px;
+    margin: 0 25px 20px;
+    border: 1px solid #c9ada7;
+    background: #ffffff;
+}
+/* icono de cita medica */
+.icono-cita {
+    font-size: 25px;
+    color: var(--texto);
+    margin-right: 5px;
 }
