@@ -8,6 +8,7 @@
     --suave: #4a4e69;
     --borde: #c9ada7;
 }
+
 /* fuente de moodsitto */
 @font-face {
     font-family: 'Cute Cat';
@@ -17,22 +18,26 @@
 * {
     box-sizing: border-box;
 }
+
 body {
     margin: 0;
     background: var(--fondo);
     color: var(--texto);
     font-family: 'Cute Cat', cursive;
 }
+
 input,
 button,
 select,
 textarea {
     font-family: inherit;
 }
+
 a {
     color: var(--verde-oscuro);
 }
-/*encabezado */
+
+/* encabezado */
 .encabezado {
     background: var(--blanco);
     padding: 22px 8%;
@@ -43,6 +48,7 @@ a {
     gap: 20px;
     border-bottom: 1px solid var(--borde);
 }
+
 .marca {
     display: flex;
     align-items: center;
@@ -52,56 +58,66 @@ a {
     font-weight: bold;
     text-decoration: none;
 }
+
 .icono-marca {
     width: 38px;
     height: 38px;
     object-fit: contain;
 }
+
 .logo {
     width: 170px;
     height: 55px;
     object-fit: contain;
 }
+
 nav {
     display: flex;
     gap: 24px;
     flex-wrap: wrap;
 }
+
 nav a {
     color: var(--texto);
     text-decoration: none;
     font-size: 15px;
 }
+
 nav a:hover,
 nav a.activo {
     color: var(--verde-oscuro);
     text-decoration: underline;
 }
-/*pagina de inicio*/
+
+/* pagina de inicio */
 .bienvenida {
     max-width: 750px;
     margin: 110px auto 125px;
     padding: 0 24px;
     text-align: center;
 }
+
 .etiqueta {
     font-size: 12px;
     font-weight: bold;
     letter-spacing: 2px;
     color: var(--verde-oscuro);
 }
+
 h1 {
     color: var(--verde-oscuro);
     font-size: 36px;
     margin: 14px 0 20px;
 }
+
 .descripcion {
     font-size: 17px;
     line-height: 1.8;
     max-width: 620px;
     margin: 0 auto 30px;
 }
-/*botones*/
+
+/* botones */
 .boton {
     display: inline-block;
     background: var(--verde);
@@ -113,13 +129,16 @@ h1 {
     text-decoration: none;
     cursor: pointer;
 }
+
 .boton:hover {
     background: var(--verde-oscuro);
 }
-/*formularios*/
+
+/* formularios */
 .pagina-formulario {
     padding: 50px 20px 65px;
 }
+
 .formulario {
     background: var(--blanco);
     max-width: 440px;
@@ -128,24 +147,29 @@ h1 {
     border: 1px solid var(--borde);
     border-radius: 12px;
 }
+
 .formulario-amplio {
     max-width: 620px;
 }
+
 .formulario h1 {
     font-size: 29px;
     margin-bottom: 10px;
 }
+
 .texto-suave,
 .pie-formulario {
     color: var(--suave);
     line-height: 1.6;
 }
+
 label {
     display: block;
     font-size: 14px;
     font-weight: 600;
     margin: 16px 0 7px;
 }
+
 input {
     width: 100%;
     padding: 12px;
@@ -154,42 +178,51 @@ input {
     font: inherit;
     background: white;
 }
+
 input:focus {
     outline: 2px solid var(--verde);
     outline-offset: 1px;
 }
+
 .columnas {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 0 16px;
 }
+
 .ancho {
     width: 100%;
     margin-top: 24px;
 }
+
 .mensaje {
     color: var(--verde-oscuro);
     font-size: 14px;
     line-height: 1.5;
 }
+
 .pie-formulario {
     text-align: center;
     margin-top: 22px;
     font-size: 14px;
 }
-/*pie de pagina*/
+
+/* pie de pagina */
 footer {
     text-align: center;
     padding: 26px 15px;
     color: var(--suave);
     font-size: 13px;
 }
+
 /* dashboard mood */
+
 /* pagi principal */
 .inicio-app {
     min-height: 100vh;
     background: var(--fondo);
 }
+
 /* encabezado */
 .saludo {
     position: relative;
@@ -199,6 +232,7 @@ footer {
     text-align: center;
     overflow: hidden;
 }
+
 /* logo principal */
 .logo-principal {
     display: block;
@@ -210,6 +244,7 @@ footer {
     position: relative;
     z-index: 1;
 }
+
 /* olita de moodsitto uwu */
 .ola {
     position: absolute;
@@ -218,149 +253,387 @@ footer {
     width: 100%;
     height: 110px;
 }
+
 /* saluditto del usuario */
 .bienvenido {
     padding: 14px 25px 6px;
 }
+
 .bienvenido h2 {
     font-size: 30px;
     font-weight: normal;
     color: var(--texto);
     margin: 0 0 3px;
 }
+
 .bienvenido p {
     font-size: 19px;
     color: var(--suave);
     margin: 0;
 }
+
 /* calendario semanal */
 .calendario {
     padding: 5px 25px 20px;
 }
+
 .calendario h3 {
     font-size: 22px;
     color: var(--texto);
     margin: 0 0 10px;
 }
+
 /* dias */
 .semana {
     display: grid;
     grid-template-columns: repeat(7, minmax(0, 1fr));
     gap: 5px;
 }
+
 .dia {
+    position: relative;
     background: var(--blanco);
     border: 1px solid var(--borde);
     border-radius: 9px;
     padding: 8px 2px;
     text-align: center;
+    cursor: pointer;
 }
+
 .dia span {
     display: block;
     color: var(--suave);
     font-size: 14px;
 }
+
 .dia strong {
     display: block;
     color: var(--texto);
     font-size: 18px;
     margin-top: 3px;
 }
+
+/* dia seleccionado */
+.dia.seleccionado {
+    background: var(--borde);
+    border-color: var(--verde);
+}
+
+.dia:focus-visible {
+    outline: 2px solid var(--verde-oscuro);
+    outline-offset: 2px;
+}
+
+/* indicador de cita en calendario */
+.dia.con-cita::after {
+    content: "";
+    position: absolute;
+    top: 3px;
+    right: 4px;
+    width: 13px;
+    height: 13px;
+    background-image: url('../img/icono-cita.svg');
+    background-size: contain;
+    background-repeat: no-repeat;
+}
+
 /* recordatorios del dashboard */
 .recordatorios {
-    margin: 15px 25px;
-    padding: 18px;
+    margin: 15px 25px 20px;
+    padding: 18px 22px;
     background: var(--blanco);
     border: 1px solid var(--borde);
     border-radius: 10px;
 }
+
 .recordatorios h3 {
     font-size: 23px;
     color: var(--texto);
     margin: 0 0 15px;
 }
+
 .recordatorio {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(85px, 0.7fr) auto;
     align-items: center;
-    justify-content: space-between;
     gap: 10px;
     padding: 12px 0;
     border-bottom: 1px solid var(--fondo);
 }
-.recordatorio:last-child {
+
+.recordatorio:last-of-type {
     border-bottom: none;
 }
-.recordatorio input {
+
+.recordatorio[hidden] {
+    display: none;
+}
+
+/* botones de recordatorios */
+.acciones-recordatorio {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.acciones-recordatorio button {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    background: var(--blanco);
+    border: 1px solid var(--verde);
+    border-radius: 4px;
+    color: var(--texto);
+    font-size: 17px;
+    cursor: pointer;
+}
+
+.acciones-recordatorio button:hover {
+    background: var(--fondo);
+}
+
+/* recordatorio completado */
+.recordatorio.completado > span:first-child {
+    text-decoration: line-through;
+    opacity: 0.6;
+}
+
+.recordatorio.completado .completar {
+    background: var(--borde);
+}
+
+/* texto con icono */
+.texto-con-icono {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* imagen del icono de cita */
+.icono-cita-img {
     width: 18px;
     height: 18px;
-    padding: 0;
-    accent-color: var(--verde);
+    object-fit: contain;
     flex-shrink: 0;
 }
-/*adaptacion a celular en caso de 
+
+/* mensaje sin recordatorios */
+.sin-recordatorios {
+    color: var(--suave);
+    font-size: 16px;
+    margin: 10px 0;
+}
+
+/* zona para agregar recordatorios */
+.zona-agregar {
+    position: relative;
+    margin: 0 25px 25px;
+}
+
+/* boton para agregar recordatorios */
+.agregar-recordatorio {
+    position: absolute;
+    z-index: 1;
+    top: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--verde-oscuro);
+    border-radius: 50%;
+    background: var(--fondo);
+    color: var(--texto);
+    font-size: 26px;
+    cursor: pointer;
+}
+
+/* barra inferior */
+.barra-recordatorio {
+    min-height: 35px;
+    border: 1px solid var(--borde);
+    background: var(--blanco);
+}
+
+/* formulario de recordatorios */
+#form-recordatorio {
+    display: grid;
+    grid-template-columns: 1.1fr 1.4fr 1.1fr auto;
+    align-items: center;
+    gap: 10px;
+    padding: 30px 15px 15px;
+}
+
+#form-recordatorio input,
+#form-recordatorio select {
+    width: 100%;
+    min-width: 0;
+    height: 44px;
+    padding: 10px;
+    border: 1px solid var(--borde);
+    border-radius: 9px;
+    background: var(--blanco);
+    color: var(--texto);
+    font-size: 15px;
+}
+
+#form-recordatorio button[type="submit"] {
+    height: 44px;
+    padding: 0 20px;
+    background: var(--borde);
+    color: var(--texto);
+    border: none;
+    border-radius: 9px;
+    cursor: pointer;
+}
+
+#form-recordatorio button[type="submit"]:hover {
+    background: var(--verde);
+}
+
+/* adaptacion a celular */
+@media (max-width: 700px) {
+    #form-recordatorio {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    #form-recordatorio button[type="submit"] {
+        width: 100%;
+    }
+}
+
 @media (max-width: 560px) {
     .encabezado {
         padding: 18px 6%;
     }
+
     nav {
         gap: 14px;
     }
+
     .bienvenida {
         margin: 85px auto;
     }
+
     .formulario {
         padding: 24px;
     }
+
     .columnas {
         grid-template-columns: 1fr;
     }
+
     .bienvenido,
     .calendario {
         padding-left: 15px;
         padding-right: 15px;
     }
+
     .recordatorios {
-        margin: 15px;
+        margin-left: 15px;
+        margin-right: 15px;
+        padding: 15px;
     }
+
+    .zona-agregar {
+        margin-left: 15px;
+        margin-right: 15px;
+    }
+
     .semana {
         gap: 3px;
     }
-}
-*/
-/* dia seleccionado */
-.dia {
-    cursor: pointer;
-}
-.dia.seleccionado {
-    background: #c9ada7;
-    border-color: #9a8c98;
+
+    .recordatorio {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .recordatorio > span:nth-child(2) {
+        text-align: right;
+    }
+
+    .recordatorio .acciones-recordatorio {
+        grid-column: 1 / -1;
+        justify-content: flex-end;
+    }
 }
 
-/* boton para agregar recordatorios */
-.agregar-recordatorio {
-    display: block;
+@media (max-width: 420px) {
+    #form-recordatorio {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* pagina de perfil */
+.pagina-perfil {
+    min-height: 100vh;
+    background: var(--fondo);
+}
+
+/* encabezado del perfil */
+.encabezado-perfil {
+    height: 200px;
+    background: var(--borde);
+    border-radius: 0 0 45% 45% / 0 0 25% 25%;
+}
+
+/* contenido del perfil */
+.contenido-perfil {
+    max-width: 550px;
+    margin: -65px auto 0;
+    padding: 0 25px 40px;
+    text-align: center;
     position: relative;
-    z-index: 1;
-    margin: -18px auto -18px;
-    width: 36px;
-    height: 36px;
-    border: 1px solid #4a4e69;
+}
+
+/* foto del usuario */
+.foto-perfil {
+    width: 150px;
+    height: 150px;
+    margin: 0 auto 20px;
+    border: 3px solid var(--verde);
     border-radius: 50%;
-    background: #f2e9e4;
-    color: #22223b;
-    font-size: 25px;
-    cursor: pointer;
+    background: var(--blanco);
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
-/* barra inferior */
-.barra-recordatorio {
-    height: 35px;
-    margin: 0 25px 20px;
-    border: 1px solid #c9ada7;
-    background: #ffffff;
+
+.foto-perfil span {
+    color: var(--suave);
+    font-size: 20px;
 }
-/* icono de cita medica */
-.icono-cita {
-    font-size: 25px;
+
+/* titulo del perfil */
+.titulo-perfil {
+    display: inline-block;
+    padding: 10px 45px;
+    border: 1px solid var(--borde);
+    border-radius: 30px;
+    background: var(--blanco);
     color: var(--texto);
-    margin-right: 5px;
+    font-size: 28px;
+    font-weight: normal;
+    margin: 0 0 30px;
+}
+
+/* datos del usuario */
+.datos-perfil {
+    text-align: left;
+}
+
+.campo-perfil {
+    margin-bottom: 18px;
+}
+
+.campo-perfil label {
+    font-size: 17px;
+    margin: 0 0 7px;
+}
+
+.campo-perfil input {
+    background: var(--blanco);
+    border: 1px solid var(--borde);
+    border-radius: 9px;
+    padding: 14px;
+    font-size: 17px;
 }
