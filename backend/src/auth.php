@@ -96,7 +96,7 @@ function perfil_actual(PDO $bd): void
     if (!is_int($id)) {
         responder(401, ['error' => 'Inicia sesion primero']);
     }
-    $st = $bd->prepare('SELECT id_user, name, lastname1, lastname2, mail FROM users WHERE id_user = :id');
+    $st = $bd->prepare('SELECT id_user, name, lastname1, lastname2, mail, phone, date_b FROM users WHERE id_user = :id');
     $st->execute([':id' => $id]);
     $usuario = $st->fetch();
     if (!$usuario) {

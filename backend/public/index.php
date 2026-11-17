@@ -5,6 +5,7 @@ require __DIR__ . '/../src/helpers.php';
 require __DIR__ . '/../src/db.php';
 require __DIR__ . '/../src/seguridad.php';
 require __DIR__ . '/../src/auth.php';
+require __DIR__ . '/../src/recordatorios.php';
 
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY');
@@ -45,6 +46,24 @@ try {
     }
     if ($metodo === 'POST' && $ruta === '/api/logout') {
         cerrar_sesion();
+    }
+    if ($ruta === '/api/recordatorios') {
+        if ($metodo === 'GET') {
+            listar_recordatorios(conectar_bd());
+        }
+        if ($metodo === 'POST') {
+            crear_recordatorio(conectar_bd(), leer_entrada());
+        }
+        responder(405, ['error' => 'Metodo no permitido']);
+    }
+    if (preg_match('#^/api/recordatorios/([0-9]{1,10})$#', $ruta, $m)) {
+        if ($metodo === 'PATCH') {
+            marcar_recordatorio(conectar_bd(), (int) $m[1], leer_entrada());
+        }
+        if ($metodo === 'DELETE') {
+            eliminar_recordatorio(conectar_bd(), (int) $m[1]);
+        }
+        responder(405, ['error' => 'Metodo no permitido']);
     }
     responder(404, ['error' => 'Ruta no encontrada']);
 } catch (Throwable $e) {
