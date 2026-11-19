@@ -1,4 +1,4 @@
-# HP Ubuntu: réplica ligera. Cargar desde /etc/mysql/mariadb.conf.d/60-moodsitto-replica.cnf
+# Esta es la configuración ligera que usamos en la HP. Se instala en /etc/mysql/mariadb.conf.d/60-moodsitto-replica.cnf
 [mariadb]
 bind-address=127.0.0.1,100.112.196.81
 port=3306

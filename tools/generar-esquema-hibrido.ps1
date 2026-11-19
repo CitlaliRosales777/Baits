@@ -10,9 +10,9 @@ $skip = $false
 foreach ($line in $lines) {
     if ($line -eq '-- PARTE 6. EMOCIONES') {
         $skip = $true
-        $result.Add('-- PARTE 6. EMOCIONES: almacenadas en MongoDB')
-        $result.Add('-- Las colecciones se crean con mongodb/colecciones/01-modelo-hibrido.js.')
-        $result.Add('-- users.id_user se conserva como referencia lógica, sin FK entre motores.')
+        $result.Add('-- PARTE 6. EMOCIONES: ESTA INFORMACIÓN LA GUARDAMOS EN MONGODB')
+        $result.Add('-- Las colecciones se preparan con mongodb/colecciones/01-modelo-hibrido.js.')
+        $result.Add('-- Conservamos users.id_user para relacionar los datos, aunque MariaDB y MongoDB no pueden compartir una llave foránea.')
         $result.Add('')
         continue
     }
@@ -24,7 +24,7 @@ foreach ($line in $lines) {
     }
 }
 
-$result[0] = '-- MOODSITTO v3 HÍBRIDO | MariaDB 11.4+ | INSTALACIÓN LIMPIA ÚNICAMENTE'
+$result[0] = '-- Esquema híbrido de Moodsitto v3 para MariaDB 11.4 o una versión posterior.'
 New-Item -ItemType Directory -Path $TargetDir -Force | Out-Null
 [IO.File]::WriteAllLines($Target, $result, [Text.UTF8Encoding]::new($false))
 Write-Output $Target

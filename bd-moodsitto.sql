@@ -1,8 +1,8 @@
--- MOODSITTO v2 | MariaDB 11.4+ | INSTALACION LIMPIA UNICAMENTE
--- Compatible con backend-moodsitto: users(name,lastname1,lastname2,date_b,phone,emer_phone,mail,passw).
--- NO ejecutar en una BD preexistente: este script usa CREATE TABLE sin alterar datos historicos.
--- Seguridad real tambien requiere autorizar cada solicitud en APIcore y hardening del servidor.
--- NO incluye usuarios, contrasenas, datos reales ni secretos.
+-- Esquema de Moodsitto v2 para MariaDB 11.4 o una versión posterior.
+-- Mantuvimos los nombres de las columnas que ya usa el backend para no romper la integración.
+-- Este archivo es para una instalación nueva. No se debe ejecutar sobre una base que ya tenga información.
+-- La base ayuda con la seguridad, pero el backend también debe revisar los permisos de cada solicitud.
+-- Aquí no incluimos usuarios reales, contraseñas ni otros secretos.
 
 CREATE DATABASE IF NOT EXISTS moodsitto
   CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -10,10 +10,10 @@ USE moodsitto;
 
 
 -- PARTE 1. INFORMACIÓN SOBRE LA INSTALACIÓN
--- Guarda un registro para saber qué versión de la base de datos se instaló.
+-- Primero dejamos registrado qué versión del esquema instalamos.
 --
 -- schema_migrations: Versiones de la base de datos
--- Anota qué cambios se han instalado, para que el equipo sepa qué versión está usando.
+-- Esta tabla nos ayuda a saber qué cambios ya se instalaron en cada equipo.
 CREATE TABLE schema_migrations (
   version VARCHAR(64) NOT NULL PRIMARY KEY,
   description VARCHAR(255) NOT NULL,
@@ -22,10 +22,10 @@ CREATE TABLE schema_migrations (
 
 
 -- PARTE 2. DATOS QUE SE USAN EN VARIAS PANTALLAS
--- Aquí van opciones que pueden repetirse, como direcciones, especialidades y horarios.
+-- Aquí reunimos las opciones que se vuelven a usar, como direcciones, especialidades y horarios.
 --
 -- location: Direcciones
--- Guarda direcciones de usuarios, consultorios u otros lugares de atención.
+-- Aquí guardamos direcciones de usuarios, consultorios y otros lugares de atención.
 CREATE TABLE location (
   id_location INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   calle VARCHAR(100) NOT NULL,
@@ -35,7 +35,7 @@ CREATE TABLE location (
 
 
 -- area: Áreas de atención
--- Guarda nombres de áreas, como medicina general o psicología, para elegirlas después.
+-- Aquí dejamos áreas como medicina general o psicología para poder seleccionarlas después.
 CREATE TABLE area (
   id_area INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   nombre_area VARCHAR(100) NOT NULL UNIQUE,
@@ -44,7 +44,7 @@ CREATE TABLE area (
 
 
 -- especialidad: Especialidades médicas
--- Guarda especialidades que pueden tener los médicos, como pediatría o psiquiatría.
+-- Aquí guardamos especialidades que pueden tener los médicos, como pediatría o psiquiatría.
 CREATE TABLE especialidad (
   id_especialidad INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   especialidad VARCHAR(50) NOT NULL UNIQUE,
@@ -53,7 +53,7 @@ CREATE TABLE especialidad (
 
 
 -- estados_clinicos: Estado de un diagnóstico
--- Indica en qué situación se encuentra un diagnóstico. Los nombres concretos los define el equipo.
+-- Nos permite indicar en qué situación está un diagnóstico. El equipo puede definir los nombres que necesite.
 CREATE TABLE estados_clinicos (
   id_estadoclini INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   estado_c VARCHAR(50) NOT NULL UNIQUE,
@@ -62,7 +62,7 @@ CREATE TABLE estados_clinicos (
 
 
 -- estado: Situación de un registro
--- Permite marcar en qué estado está una cita, un medicamento o un recordatorio.
+-- Nos sirve para marcar el estado de una cita, un medicamento o un recordatorio.
 CREATE TABLE estado (
   id_estado INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   estado VARCHAR(50) NOT NULL UNIQUE,
@@ -71,7 +71,7 @@ CREATE TABLE estado (
 
 
 -- compuesto: Contenido principal del medicamento
--- Guarda el nombre de la sustancia del medicamento y cómo se administra.
+-- Aquí anotamos la sustancia principal del medicamento y la forma en que se administra.
 CREATE TABLE compuesto (
   id_compuesto INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   compuesto VARCHAR(100) NOT NULL,
@@ -82,7 +82,7 @@ CREATE TABLE compuesto (
 
 
 -- dosis: Dosis
--- Guarda las dosis que se pueden seleccionar al registrar un medicamento.
+-- Aquí dejamos las dosis que se pueden elegir al registrar un medicamento.
 CREATE TABLE dosis (
   id_dosis INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   dosis VARCHAR(50) NOT NULL UNIQUE,
@@ -91,7 +91,7 @@ CREATE TABLE dosis (
 
 
 -- horarios: Horas
--- Guarda horas, como 08:00 o 20:00, para organizar medicamentos y avisos.
+-- Aquí guardamos horas, por ejemplo 08:00 o 20:00, para organizar medicamentos y avisos.
 CREATE TABLE horarios (
   id_horario INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   horario TIME NOT NULL UNIQUE,
@@ -100,7 +100,7 @@ CREATE TABLE horarios (
 
 
 -- intensidad: Qué tan fuerte se siente algo
--- Guarda valores del 1 al 10 para indicar intensidad, con un color opcional.
+-- Usamos valores del 1 al 10 para representar la intensidad y podemos agregar un color.
 CREATE TABLE intensidad (
   id_intensidad INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   valor TINYINT UNSIGNED NOT NULL UNIQUE,
@@ -112,11 +112,11 @@ CREATE TABLE intensidad (
 
 
 -- PARTE 3. PERSONAS, MÉDICOS Y CITAS
--- Guarda quién usa la aplicación y la información relacionada con su atención médica.
+-- En esta parte guardamos a las personas que usan la aplicación y los datos relacionados con su atención.
 --
 -- users: Cuentas de las personas
--- Guarda nombre, correo, teléfonos y datos necesarios para iniciar sesión.
--- La contraseña real NO se guarda aquí; se guarda una versión protegida.
+-- Aquí van el nombre, correo, teléfonos y los datos necesarios para iniciar sesión.
+-- Nunca guardamos la contraseña tal como la escribe el usuario; solo conservamos su hash.
 CREATE TABLE users (
   id_user INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
@@ -142,7 +142,7 @@ CREATE TABLE users (
 
 
 -- doctors: Médicos y especialistas
--- Guarda nombre, teléfono, especialidad y lugar de atención de cada profesional.
+-- Aquí guardamos el nombre, teléfono, especialidad y lugar de atención de cada profesional.
 CREATE TABLE doctors (
   id_doctor INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   id_area INT UNSIGNED NOT NULL,
@@ -161,7 +161,7 @@ CREATE TABLE doctors (
 
 
 -- doctor_especialidad: Un médico con varias especialidades
--- Permite que un mismo médico aparezca con más de una especialidad.
+-- Esta relación nos deja asignar más de una especialidad al mismo médico.
 CREATE TABLE doctor_especialidad (
   id_doctor INT UNSIGNED NOT NULL,
   id_especialidad INT UNSIGNED NOT NULL,
@@ -174,8 +174,8 @@ CREATE TABLE doctor_especialidad (
 
 
 -- diagnosticos: Diagnósticos
--- Guarda el diagnóstico de una persona, la fecha, el médico y, si existe, su documento.
--- El documento no debe quedar disponible para cualquier usuario.
+-- Aquí registramos el diagnóstico, la fecha, el médico y el documento cuando exista.
+-- Como puede ser información sensible, el documento no debe quedar disponible para cualquier usuario.
 CREATE TABLE diagnosticos (
   id_diagnostico INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   nombre VARCHAR(100) NOT NULL,
@@ -197,7 +197,7 @@ CREATE TABLE diagnosticos (
 
 
 -- citas_medicas: Citas médicas
--- Guarda con qué médico es la cita, el lugar, la fecha, la hora y su situación.
+-- Aquí anotamos el médico, el lugar, la fecha, la hora y el estado de cada cita.
 CREATE TABLE citas_medicas (
   id_cita INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   id_doctor INT UNSIGNED NOT NULL,
@@ -219,10 +219,10 @@ CREATE TABLE citas_medicas (
 
 
 -- PARTE 4. MEDICAMENTOS Y SUS TOMAS
--- Permite guardar un tratamiento y llevar el control de cuándo se debe tomar.
+-- En esta parte registramos los tratamientos y llevamos el control de sus tomas.
 --
 -- medicamento: Medicamentos registrados
--- Guarda qué medicamento usa una persona, la cantidad indicada y las fechas del tratamiento.
+-- Aquí anotamos el medicamento, la cantidad indicada y las fechas del tratamiento.
 CREATE TABLE medicamento (
   id_medicamento INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   nombre VARCHAR(100) NOT NULL,
@@ -251,7 +251,7 @@ CREATE TABLE medicamento (
 
 
 -- medicamento_horario: Horarios para tomar medicamentos
--- Permite indicar varias horas para un mismo medicamento.
+-- Esta tabla nos deja asignar varias horas al mismo medicamento.
 -- Ejemplo: una pastilla a las 08:00 y otra a las 20:00.
 CREATE TABLE medicamento_horario (
   id_med_horario INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -272,8 +272,8 @@ CREATE TABLE medicamento_horario (
 
 
 -- toma_medicamento: Registro de cada toma
--- Guarda si una toma estaba pendiente, si se realizó o si se omitió.
--- También puede anotar a qué hora se tomó realmente.
+-- Aquí registramos si una toma quedó pendiente, se realizó o se omitió.
+-- También podemos anotar la hora en que realmente se tomó.
 CREATE TABLE toma_medicamento (
   id_toma BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   id_med_horario INT UNSIGNED NOT NULL,
@@ -295,10 +295,10 @@ CREATE TABLE toma_medicamento (
 
 
 -- PARTE 5. RECORDATORIOS
--- Sirve para programar avisos de citas, medicamentos u otras actividades.
+-- Esta parte nos sirve para programar avisos de citas, medicamentos y otras actividades.
 --
 -- recordatorios: Avisos que quiere recibir el usuario
--- Guarda el mensaje y la fecha del aviso. Puede ser sobre una cita o un medicamento.
+-- Aquí guardamos el mensaje y la fecha del aviso, que puede estar relacionado con una cita o un medicamento.
 CREATE TABLE recordatorios (
   id_recordatorio INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   id_user INT UNSIGNED NOT NULL,
@@ -327,10 +327,10 @@ CREATE TABLE recordatorios (
 
 
 -- PARTE 6. EMOCIONES
--- Organiza la rueda de emociones y guarda cómo se ha sentido cada persona.
+-- Aquí organizamos la rueda de emociones y registramos cómo se ha sentido cada persona.
 --
 -- emocion_central: Emociones generales
--- Guarda el primer nivel de la rueda, por ejemplo, alegría o tristeza.
+-- Este es el primer nivel de la rueda, con emociones generales como alegría o tristeza.
 CREATE TABLE emocion_central (
   id_emo_cen INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   nombre VARCHAR(50) NOT NULL UNIQUE,
@@ -341,7 +341,7 @@ CREATE TABLE emocion_central (
 
 
 -- emocion_media: Emociones más detalladas
--- Guarda el segundo nivel de la rueda, dentro de una emoción general.
+-- Este es el segundo nivel y nos ayuda a detallar mejor una emoción general.
 CREATE TABLE emocion_media (
   id_emo_media INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   nombre VARCHAR(50) NOT NULL,
@@ -356,7 +356,7 @@ CREATE TABLE emocion_media (
 
 
 -- emocion_especifica: Emociones muy concretas
--- Guarda el tercer nivel para elegir con mayor detalle cómo se siente la persona.
+-- Este tercer nivel permite que la persona describa con más precisión cómo se siente.
 CREATE TABLE emocion_especifica (
   id_emo_espe INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   nombre VARCHAR(50) NOT NULL,
@@ -371,7 +371,7 @@ CREATE TABLE emocion_especifica (
 
 
 -- emocion_conjunto: Conexión entre los niveles de la rueda
--- Une las emociones generales, detalladas y concretas que pertenecen a la misma opción.
+-- Aquí relacionamos los tres niveles que forman una misma opción de la rueda.
 CREATE TABLE emocion_conjunto (
   id_emocion_conjun INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   id_emo_espe INT UNSIGNED NOT NULL,
@@ -386,8 +386,8 @@ CREATE TABLE emocion_conjunto (
 
 
 -- trackeo_emo: Diario de emociones
--- Guarda qué emoción eligió la persona, cuándo la sintió y lo que quiso escribir.
--- Estos datos son privados y no deben mostrarse a otras personas sin permiso.
+-- Aquí registramos la emoción elegida, cuándo se sintió y la nota que escribió la persona.
+-- Estos datos son privados y solo se pueden mostrar cuando la persona tenga permiso para verlos.
 CREATE TABLE trackeo_emo (
   id_trackeo INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   fecha DATE NOT NULL,
@@ -406,11 +406,11 @@ CREATE TABLE trackeo_emo (
 
 
 -- PARTE 7. AVISOS Y PROTECCIÓN DE DATOS
--- Organiza los avisos y registra algunos aspectos importantes de la seguridad.
+-- En esta última parte organizamos los avisos y algunas medidas de seguridad.
 --
 -- notificaciones: Envío de notificaciones
--- Guarda qué aviso debe enviarse, por dónde y si ya se envió.
--- También ayuda a evitar que el mismo aviso se mande dos veces.
+-- Aquí anotamos qué aviso se debe enviar, por qué medio y si ya fue enviado.
+-- También evitamos que el mismo aviso se mande dos veces.
 CREATE TABLE notificaciones (
   id_notificacion BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   id_user INT UNSIGNED NOT NULL,
@@ -434,7 +434,7 @@ CREATE TABLE notificaciones (
 
 
 -- consentimientos: Permisos que acepta cada usuario
--- Guarda qué autorización aceptó la persona y si después decidió retirarla.
+-- Aquí registramos qué autorización aceptó la persona y si después decidió retirarla.
 CREATE TABLE consentimientos (
   id_consentimiento BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   id_user INT UNSIGNED NOT NULL,
@@ -449,8 +449,8 @@ CREATE TABLE consentimientos (
 
 
 -- api_tokens: Sesiones iniciadas
--- Ayuda a reconocer una sesión sin guardar directamente su clave de acceso.
--- Permite que la aplicación cierre o deje de aceptar una sesión.
+-- Esta tabla ayuda a reconocer una sesión sin guardar directamente su clave de acceso.
+-- También permite que la aplicación cierre una sesión o deje de aceptarla.
 CREATE TABLE api_tokens (
   id_token BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   id_user INT UNSIGNED NOT NULL,
@@ -466,8 +466,8 @@ CREATE TABLE api_tokens (
 
 
 -- auditoria_eventos: Registro de acciones importantes
--- Anota acciones como cambios o accesos rechazados, para revisar problemas.
--- No debe guardar contraseñas ni información médica privada.
+-- Aquí anotamos acciones importantes, como cambios o accesos rechazados, para poder revisar problemas.
+-- En la auditoría no debemos guardar contraseñas ni información médica privada.
 CREATE TABLE auditoria_eventos (
   id_evento BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   actor_id_user INT UNSIGNED,
@@ -484,6 +484,6 @@ CREATE TABLE auditoria_eventos (
 ) ENGINE=InnoDB;
 
 -- FIN DE LA INSTALACIÓN
--- Guarda la fecha y la versión de esta base de datos.
+-- Al final guardamos la fecha y la versión del esquema que acabamos de instalar.
 INSERT INTO schema_migrations (version,description)
 VALUES ('2026-11-09-v2-clean','Compatible con frontend, Moodsitto PHP backend, y adaptador de APIcore');

@@ -1,4 +1,4 @@
-/* Ejecutar autenticado contra la base moodsitto. Idempotente. */
+/* Este archivo se ejecuta con un usuario autenticado en moodsitto. Se puede correr varias veces sin duplicar las colecciones. */
 const target = db.getSiblingDB("moodsitto");
 
 function ensureCollection(name, validator) {
