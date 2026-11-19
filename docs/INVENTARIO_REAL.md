@@ -28,7 +28,7 @@ También aparecieron un Android y un iPhone desconectados; quedan fuera de alcan
 
 | Equipo | Tailscale | SSH/WinRM | Bases de datos | Resultado |
 |---|---|---|---|---|
-| `desktop-0ddrldi` | APROBADO | SMB/RPC sin credencial aceptada; SSH/WinRM cerrados | MongoDB pendiente | instalación local requerida |
+| `desktop-0ddrldi` | APROBADO | administración remota cerrada; instalación local ejecutada | MongoDB 8.0.23 SECONDARY prioridad 0 | APROBADO |
 | `lvltechmx` | APROBADO | SSH `root` autorizado | MongoDB 8.0.38 activo en 27017 Tailscale | APROBADO |
 | `ubuntu-hp` | APROBADO | SSH `fredy` y sudo temporal | MariaDB 11.8.6 activo en 3306 Tailscale | APROBADO |
 
@@ -42,7 +42,7 @@ El acceso inicial falló con el usuario supuesto; después se localizaron identi
 
 ## Bloqueos y siguiente acción segura
 
-1. Ejecutar `despliegue/windows-fijo/conectar-replica-hp.ps1` localmente para transmitir la contraseña de replicación por SSH.
-2. Ejecutar el instalador preparado en la laptop y agregarla al replica set con prioridad 0.
-3. Cambiar la contraseña débil de `fredy`, expuesta durante la sesión, y retirar `/etc/sudoers.d/moodsitodb-deploy` al finalizar.
+1. Cambiar la contraseña débil de `fredy`, expuesta durante la sesión. El sudo temporal ya fue retirado.
+2. Entregar credenciales de aplicación mediante canal seguro y ejecutar el verificador backend desde el entorno del equipo.
+3. Implementar y comprobar una copia cifrada fuera del HP.
 

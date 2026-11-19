@@ -10,14 +10,18 @@ if($LASTEXITCODE -ne 0){throw 'Falló instalación MongoDB Server'}
 winget install --exact --id MongoDB.Shell --silent --accept-package-agreements --accept-source-agreements
 if($LASTEXITCODE -ne 0){throw 'Falló instalación mongosh'}
 
-$inbox=Join-Path $env:TEMP 'moodsitto-key-inbox'
-New-Item -ItemType Directory -Path $inbox -Force|Out-Null
-tailscale file get $inbox
-$received=Get-ChildItem $inbox -File | Where-Object Name -eq 'mongodb-keyfile' | Select-Object -First 1
+$received=Get-Item (Join-Path $PSScriptRoot 'mongodb-keyfile') -ErrorAction SilentlyContinue
+if(-not $received){
+    $inbox=Join-Path $env:TEMP 'moodsitto-key-inbox'
+    New-Item -ItemType Directory -Path $inbox -Force|Out-Null
+    tailscale file get $inbox
+    $received=Get-ChildItem $inbox -File | Where-Object Name -eq 'mongodb-keyfile' | Select-Object -First 1
+}
 if(-not $received){throw 'No llegó mongodb-keyfile por Tailscale File Transfer.'}
 
 $cfg='C:\Program Files\MongoDB\Server\8.0\bin\mongod.cfg'
-$cfgSource=Join-Path $Repo 'mongodb\configuracion\mongod-laptop.cfg'
+$cfgSource=Join-Path $PSScriptRoot 'mongod-laptop.cfg'
+if(-not(Test-Path $cfgSource)){$cfgSource=Join-Path $Repo 'mongodb\configuracion\mongod-laptop.cfg'}
 if(-not(Test-Path "$cfg.pre-moodsitto")){Copy-Item $cfg "$cfg.pre-moodsitto"}
 Stop-Service MongoDB -Force
 $destDir='C:\ProgramData\Moodsitto'

@@ -6,9 +6,9 @@ Infraestructura híbrida de Moodsitto con MariaDB y MongoDB Community. Parte de 
 
 - **APROBADO:** MariaDB 11.4.3 principal en `desktop-smecf2n`; esquema híbrido de 23 tablas; usuarios mínimos y laboratorio validado.
 - **APROBADO:** MariaDB 11.8.6 ligera en HP; respaldo/restauración de 23 tablas y runners protegidos activos.
-- **PENDIENTE:** ejecutar localmente `conectar-replica-hp.ps1`; el seed GTID ya está cargado.
-- **APROBADO:** MongoDB 8.0 con VPS PRIMARY y Windows fijo SECONDARY; cuatro colecciones, escritura mayoritaria, réplica, respaldo y restauración comprobados.
-- **PENDIENTE:** instalar MongoDB en la laptop y agregarla con prioridad 0. El instalador y keyfile por Tailscale están preparados.
+- **APROBADO:** MariaDB replica por GTID hacia HP; hilos IO/SQL activos, retraso 0 y escritura/eliminación sintética verificadas.
+- **APROBADO:** MongoDB 8.0 con VPS PRIMARY prioridad 2, Windows fijo SECONDARY prioridad 1 y laptop SECONDARY prioridad 0; cuatro colecciones, escritura mayoritaria, réplica, respaldo y restauración comprobados.
+- **PENDIENTE:** prueba autenticada del asistente backend con credenciales entregadas al equipo y copia cifrada fuera del HP.
 
 Consulte [el inventario real](docs/INVENTARIO_REAL.md), [la arquitectura](docs/arquitectura/ARQUITECTURA.md), [el estado de aceptación](docs/pruebas/ESTADO_ACEPTACION.md) y [la guía de presentación](presentacion/GUIA_DEMO.md).
 
