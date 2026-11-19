@@ -1,0 +1,10 @@
+[Unit]
+Description=Respaldo MariaDB Moodsitto desde réplica HP
+After=mariadb.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/backup-moodsitto-mariadb
+User=root
+Group=root
+

@@ -1,0 +1,10 @@
+[Unit]
+Description=Respaldo MongoDB Moodsitto
+After=mongod.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/backup-moodsitto-mongodb
+User=root
+Group=root
+
