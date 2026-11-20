@@ -10,6 +10,7 @@
 *.jks
 keyfile*
 secrets/
+evidencias-locales/
 backups/
 evidencias-privadas/
 *.sql.gz

@@ -20,6 +20,7 @@ Consulte [el inventario real](docs/INVENTARIO_REAL.md), [la arquitectura](docs/a
 - `laboratorio/`: fragmentación separada de los datos operativos.
 - `monitoreo/`: diagnóstico ligero desde Windows.
 - `presentacion/`: preflight, demostración y contingencia.
+- `presentacion/interfaz-pruebas.ps1`: interfaz de Windows para ejecutar y documentar las pruebas de la exposición.
 - `backend-integracion/`: asistente guiado y verificadores para backend.
 - `tests/`: validaciones estáticas y pruebas no destructivas.
 

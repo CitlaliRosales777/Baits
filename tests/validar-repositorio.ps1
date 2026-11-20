@@ -6,7 +6,8 @@ $required=@(
  'backend-integracion\probar-conexiones.ps1','backend-integracion\probar-conexiones.sh',
  'backend-integracion\ERRORES_FRECUENTES.md','backend-integracion\INTEGRACION_BACKEND_MOODSITTO.md',
  'backend-integracion\CHECKLIST_BACKEND.md','backend-integracion\CONTRATO_DATOS_MOODSITTO.md',
- 'mariadb\estructura\01-esquema-hibrido.sql','mongodb\colecciones\01-modelo-hibrido.js'
+ 'mariadb\estructura\01-esquema-hibrido.sql','mongodb\colecciones\01-modelo-hibrido.js',
+ 'presentacion\interfaz-pruebas.ps1','presentacion\INICIAR-PRUEBAS.cmd'
 )
 foreach($f in $required){if(-not(Test-Path (Join-Path $Repo $f))){throw "Falta $f"}}
 $tables=(Select-String -LiteralPath (Join-Path $Repo 'mariadb\estructura\01-esquema-hibrido.sql') -Pattern '^CREATE TABLE').Count
