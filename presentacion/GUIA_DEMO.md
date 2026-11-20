@@ -4,7 +4,7 @@
 
 Desde la laptop, abre `presentacion\INICIAR-PRUEBAS.cmd`. También puedes ejecutar `presentacion\interfaz-pruebas.ps1` con PowerShell.
 
-1. Carga `backend-integracion\.env` o escribe las dos contraseñas de aplicación en los campos ocultos.
+1. La interfaz carga automáticamente las credenciales locales protegidas. No solicita ni muestra contraseñas.
 2. Presiona **Ejecutar todas las seguras** para revisar la infraestructura sin detener servicios.
 3. Ejecuta las dos restauraciones aisladas por separado; la interfaz pedirá confirmación.
 4. Exporta el reporte al terminar. Se guarda en `evidencias-locales/`, una carpeta ignorada por Git.

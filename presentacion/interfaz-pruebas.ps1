@@ -51,17 +51,27 @@ function Write-Log {
 function Require-Tool {
     param([string]$Name, [string]$Help)
     $tool = Get-Command $Name -ErrorAction SilentlyContinue
-    if (-not $tool) { throw "[BLOQUEADO] Falta $Name. $Help" }
-    $tool.Source
+    if ($tool) { return $tool.Source }
+    if ($Name -eq 'mariadb') {
+        $candidate = Get-ChildItem -Path "$env:ProgramFiles\MariaDB *\bin\mariadb.exe" -File -ErrorAction SilentlyContinue |
+            Sort-Object FullName -Descending | Select-Object -First 1
+        if ($candidate) { return $candidate.FullName }
+    }
+    if ($Name -eq 'mongosh') {
+        $candidate = Get-ChildItem -Path "$env:LOCALAPPDATA\Programs\mongosh\mongosh.exe","$env:ProgramFiles\MongoDB\mongosh\*\bin\mongosh.exe" -File -ErrorAction SilentlyContinue |
+            Select-Object -First 1
+        if ($candidate) { return $candidate.FullName }
+    }
+    throw "[BLOQUEADO] Falta $Name. $Help"
 }
 
 function Require-Credentials {
     param([ValidateSet('MariaDB','MongoDB')][string]$Engine)
     if ($Engine -eq 'MariaDB' -and [string]::IsNullOrWhiteSpace($script:Config.MariaPassword)) {
-        throw '[BLOQUEADO] Escribe la contraseña de aplicación de MariaDB o carga backend-integracion\.env.'
+        throw '[BLOQUEADO] No se pudo cargar automáticamente la credencial local de MariaDB.'
     }
     if ($Engine -eq 'MongoDB' -and [string]::IsNullOrWhiteSpace($script:Config.MongoPassword)) {
-        throw '[BLOQUEADO] Escribe la contraseña de aplicación de MongoDB o carga backend-integracion\.env.'
+        throw '[BLOQUEADO] No se pudo cargar automáticamente la credencial local de MongoDB.'
     }
 }
 
@@ -399,32 +409,50 @@ if (-not $IsWindows -and $PSVersionTable.PSVersion.Major -ge 6) {
     throw 'Esta interfaz usa Windows Forms y debe abrirse desde Windows.'
 }
 
-Add-Type -AssemblyName System.Windows.Forms
-Add-Type -AssemblyName System.Drawing
-[System.Windows.Forms.Application]::EnableVisualStyles()
-
-function Load-EnvIntoForm {
+function Import-EnvConfig {
     param([string]$Path)
-    if (-not (Test-Path $Path)) { throw "No existe $Path" }
+    if (-not (Test-Path $Path)) { return $false }
     $values = @{}
     Get-Content -LiteralPath $Path | ForEach-Object {
         if ($_ -match '^\s*([^#][^=]*)=(.*)$') { $values[$matches[1].Trim()] = $matches[2] }
     }
-    if ($values.DB_USER) { $script:MariaUserBox.Text = $values.DB_USER }
-    if ($values.DB_PASS) { $script:MariaPasswordBox.Text = $values.DB_PASS }
-    if ($values.MONGODB_USER) { $script:MongoUserBox.Text = $values.MONGODB_USER }
-    if ($values.MONGODB_PASSWORD) { $script:MongoPasswordBox.Text = $values.MONGODB_PASSWORD }
-    Write-Log 'Se cargó el archivo .env. Las contraseñas siguen ocultas en la interfaz.' 'OK'
+    if ($values.DB_USER) { $script:Config.MariaUser = $values.DB_USER }
+    if ($values.DB_PASS) { $script:Config.MariaPassword = $values.DB_PASS }
+    if ($values.MONGODB_USER) { $script:Config.MongoUser = $values.MONGODB_USER }
+    if ($values.MONGODB_PASSWORD) { $script:Config.MongoPassword = $values.MONGODB_PASSWORD }
+    return (-not [string]::IsNullOrWhiteSpace($script:Config.MariaPassword) -and -not [string]::IsNullOrWhiteSpace($script:Config.MongoPassword))
+}
+
+function Initialize-SecureConfig {
+    $envPath = Join-Path $script:Repo 'backend-integracion\.env'
+    if (Import-EnvConfig $envPath) { return 'Credenciales locales cargadas de forma segura' }
+
+    $mariaSecret = Join-Path $script:Repo 'secrets\windows-fixed.env'
+    if (Test-Path $mariaSecret) {
+        $line = Get-Content -LiteralPath $mariaSecret | Where-Object { $_ -match '^MARIADB_APP_PASSWORD=' } | Select-Object -First 1
+        if ($line) { $script:Config.MariaPassword = $line.Substring($line.IndexOf('=') + 1) }
+    }
+    try {
+        $mongoLine = & ssh -o BatchMode=yes -o ConnectTimeout=5 $script:Config.VpsSsh "grep '^MONGO_APP_PASS=' /root/.moodsitto-secrets.env" 2>$null | Select-Object -First 1
+        if ($LASTEXITCODE -eq 0 -and $mongoLine) { $script:Config.MongoPassword = $mongoLine.Substring($mongoLine.IndexOf('=') + 1) }
+    } catch { }
+
+    if (-not [string]::IsNullOrWhiteSpace($script:Config.MariaPassword) -and -not [string]::IsNullOrWhiteSpace($script:Config.MongoPassword)) {
+        return 'Credenciales seguras cargadas automáticamente'
+    }
+    return 'No se encontraron todas las credenciales; las pruebas autenticadas aparecerán BLOQUEADAS'
 }
 
 function Sync-FormConfig {
-    $script:Config.MariaUser = $script:MariaUserBox.Text.Trim()
-    $script:Config.MariaPassword = $script:MariaPasswordBox.Text
-    $script:Config.MongoUser = $script:MongoUserBox.Text.Trim()
-    $script:Config.MongoPassword = $script:MongoPasswordBox.Text
     $script:Config.HpSsh = $script:HpSshBox.Text.Trim()
     $script:Config.VpsSsh = $script:VpsSshBox.Text.Trim()
 }
+
+$script:CredentialStatus = Initialize-SecureConfig
+
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+[System.Windows.Forms.Application]::EnableVisualStyles()
 
 function Update-Summary {
     $counts = @{ APROBADO=0; PENDIENTE=0; BLOQUEADO=0; 'NO EJECUTADO'=0 }
@@ -553,9 +581,9 @@ $subtitle.Location = [Drawing.Point]::new(25, 47)
 $header.Controls.Add($subtitle)
 
 $settings = [Windows.Forms.GroupBox]::new()
-$settings.Text = 'Acceso para las pruebas'
+$settings.Text = 'Conexiones de la presentación'
 $settings.Dock = 'Top'
-$settings.Height = 115
+$settings.Height = 92
 $settings.Padding = [Windows.Forms.Padding]::new(12)
 $form.Controls.Add($settings)
 
@@ -575,28 +603,16 @@ function Add-Field {
     $box
 }
 
-$script:MariaUserBox = Add-Field $settings 'Usuario MariaDB' 18 24 140 $script:Config.MariaUser
-$script:MariaPasswordBox = Add-Field $settings 'Contraseña MariaDB' 172 24 170 '' -Password
-$script:MongoUserBox = Add-Field $settings 'Usuario MongoDB' 356 24 140 $script:Config.MongoUser
-$script:MongoPasswordBox = Add-Field $settings 'Contraseña MongoDB' 510 24 170 '' -Password
-$script:HpSshBox = Add-Field $settings 'SSH de HP' 694 24 190 $script:Config.HpSsh
-$script:VpsSshBox = Add-Field $settings 'SSH del VPS' 898 24 190 $script:Config.VpsSsh
+$script:HpSshBox = Add-Field $settings 'SSH de HP' 18 24 210 $script:Config.HpSsh
+$script:VpsSshBox = Add-Field $settings 'SSH del VPS' 244 24 210 $script:Config.VpsSsh
 
-$loadEnvButton = [Windows.Forms.Button]::new()
-$loadEnvButton.Text = 'Cargar .env'
-$loadEnvButton.Location = [Drawing.Point]::new(1104, 43)
-$loadEnvButton.Size = [Drawing.Size]::new(100, 30)
-$loadEnvButton.Add_Click({
-    try {
-        $default = Join-Path $script:Repo 'backend-integracion\.env'
-        if (Test-Path $default) { Load-EnvIntoForm $default; return }
-        $dialog = [Windows.Forms.OpenFileDialog]::new()
-        $dialog.Title = 'Selecciona el archivo .env local'
-        $dialog.Filter = 'Archivo .env|*.env|Todos los archivos|*.*'
-        if ($dialog.ShowDialog() -eq 'OK') { Load-EnvIntoForm $dialog.FileName }
-    } catch { [Windows.Forms.MessageBox]::Show($_.Exception.Message, 'No se pudo cargar .env', 'OK', 'Error') | Out-Null }
-})
-$settings.Controls.Add($loadEnvButton)
+$credentialLabel = [Windows.Forms.Label]::new()
+$credentialLabel.Text = $script:CredentialStatus
+$credentialLabel.AutoSize = $true
+$credentialLabel.Font = [Drawing.Font]::new('Segoe UI Semibold', 9)
+$credentialLabel.ForeColor = if ($script:CredentialStatus -like 'No se*') { [Drawing.Color]::FromArgb(185,28,28) } else { [Drawing.Color]::FromArgb(4,120,87) }
+$credentialLabel.Location = [Drawing.Point]::new(480, 46)
+$settings.Controls.Add($credentialLabel)
 
 $main = [Windows.Forms.SplitContainer]::new()
 $main.Dock = 'Fill'
@@ -718,7 +734,7 @@ $script:Grid.Add_SelectionChanged({
 })
 
 Update-Summary
-Write-Log 'Interfaz lista. Carga .env o escribe las credenciales de aplicación y ejecuta las pruebas seguras.' 'OK'
+Write-Log "Interfaz lista. $script:CredentialStatus." 'OK'
 Write-Log 'Las restauraciones se ejecutan una por una. La prueba de recuperación no detiene servicios.' 'INFO'
 if ($UiSmokeTest) {
     $timer = [Windows.Forms.Timer]::new()

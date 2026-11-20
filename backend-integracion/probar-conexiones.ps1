@@ -22,11 +22,16 @@ Ok 'Conectividad Tailscale'
 if (-not (Tcp $cfg.DB_HOST ([int]$cfg.DB_PORT))) { throw 'Servidor MariaDB no responde. Solicita autorización de tu IP Tailscale.' }
 Ok 'Servidor MariaDB accesible'
 $maria = Get-Command mariadb -ErrorAction SilentlyContinue
+if (-not $maria) {
+    $maria = Get-ChildItem -Path "$env:ProgramFiles\MariaDB *\bin\mariadb.exe" -File -ErrorAction SilentlyContinue |
+        Sort-Object FullName -Descending | Select-Object -First 1
+}
 if (-not $maria) { throw 'Falta el cliente mariadb; instala solo el cliente, no el servidor.' }
 $env:MYSQL_PWD = $cfg.DB_PASS
 $corr = [Guid]::NewGuid().ToString()
 $sql = "START TRANSACTION; INSERT INTO auditoria_eventos(actor_id_user,accion,recurso,resultado,correlacion_id) VALUES(NULL,'prueba_integracion','backend','ok','$corr'); SELECT COUNT(*) FROM auditoria_eventos WHERE correlacion_id='$corr'; ROLLBACK;"
-$result = & $maria.Source -h $cfg.DB_HOST -P $cfg.DB_PORT -u $cfg.DB_USER -D $cfg.DB_NAME -NBe $sql 2>&1
+$mariaPath = if ($maria.Source) { $maria.Source } else { $maria.FullName }
+$result = & $mariaPath -h $cfg.DB_HOST -P $cfg.DB_PORT -u $cfg.DB_USER -D $cfg.DB_NAME -NBe $sql 2>&1
 $code = $LASTEXITCODE
 Remove-Item Env:MYSQL_PWD
 if ($code -ne 0 -or $result[-1] -ne '1') { throw "Falló autenticación/prueba MariaDB: $result" }
