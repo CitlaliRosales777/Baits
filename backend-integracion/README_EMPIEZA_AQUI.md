@@ -1,5 +1,11 @@
 # Empieza aquí
 
+## Opción recomendada: API pública
+
+Para trabajar sin Tailscale ni contraseñas de base de datos, usa `https://api.lvltechmx.com` y ejecuta `probar-api-publica.ps1`. Consulta `USAR_API_PUBLICA.md` para ver las rutas disponibles.
+
+La configuración directa que aparece abajo queda reservada para DB Manager, diagnóstico o desarrollo que realmente necesite consultar los motores.
+
 No instales servidores de bases de datos. DB Manager los administra.
 
 ## Windows

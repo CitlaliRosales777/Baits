@@ -1,5 +1,9 @@
 # Checklist backend
 
+- [ ] Ejecuté `probar-api-publica.ps1` y recibí los tres resultados `[OK]`.
+- [ ] Mi código usa `https://api.lvltechmx.com` o rutas `/api` del mismo dominio.
+- [ ] No guardé contraseñas de MariaDB o MongoDB en el backend ni en el frontend.
+
 - [ ] Tailscale conectado y autorizado.
 - [ ] `.env` creado localmente y excluido de Git.
 - [ ] `probar-conexiones` termina con integración preparada.

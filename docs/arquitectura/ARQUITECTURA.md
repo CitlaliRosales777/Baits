@@ -24,3 +24,9 @@ MariaDB conserva identidad, sesiones/tokens, citas, medicamentos, recordatorios 
 
 La rama `backend-moodsitto` usa PHP/PDO MySQL, variables `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS`, sesiones HTTP y las tablas `users`, `recordatorios` y `estado`. Implementa registro, login, perfil y recordatorios; emociones, medicamentos y citas están pendientes. No usa MongoDB todavía. El paquete de integración añade variables MongoDB sin modificar esa rama.
 
+## Acceso sencillo para el equipo
+
+Una copia sin modificaciones de la rama backend está desplegada en `https://api.lvltechmx.com`. Nginx termina HTTPS y reenvía a dos contenedores internos en `127.0.0.1:18080`. La API usa `moodsitto_api`, autorizado únicamente desde la IP Tailscale del VPS y con permisos `SELECT`, `INSERT`, `UPDATE` y `DELETE` sobre `moodsitto`.
+
+Los compañeros consumen HTTPS y no necesitan Tailscale ni credenciales de los motores. Los puertos 3306 y 27017 permanecen cerrados a Internet. MongoDB no se expone y seguirá detrás de la API cuando el equipo implemente las rutas emocionales.
+

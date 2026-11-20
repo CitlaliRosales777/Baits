@@ -1,0 +1,31 @@
+services:
+  api:
+    build:
+      context: ./backend
+    environment:
+      DB_HOST: 100.89.172.17
+      DB_NAME: moodsitto
+      DB_USER: moodsitto_api
+      DB_PASS: ${DB_PASS:?Falta DB_PASS en el archivo .env local del VPS}
+    restart: unless-stopped
+    networks:
+      - interno
+
+  web:
+    image: nginx:1.27-alpine
+    depends_on:
+      - api
+    ports:
+      - "127.0.0.1:18080:80"
+    volumes:
+      - ./backend:/var/www/backend:ro
+      - ./fronted:/usr/share/nginx/html:ro
+      - ./nginx-interno.conf:/etc/nginx/conf.d/default.conf:ro
+    restart: unless-stopped
+    networks:
+      - interno
+
+networks:
+  interno:
+    driver: bridge
+

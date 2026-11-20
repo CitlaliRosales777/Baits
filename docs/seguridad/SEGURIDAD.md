@@ -5,6 +5,7 @@
 - Guardar secretos en `.env` local con ACL del usuario, no en argumentos, logs o Git.
 - MongoDB usa `authorization: enabled` y keyfile generado en cada servidor fuera del repositorio. Distribuirlo por canal seguro con permisos 600.
 - El backend jamás usa `root` ni un usuario MongoDB con `root`/`userAdminAnyDatabase`.
+- La API pública usa HTTPS y una cuenta MariaDB exclusiva para el VPS. Las bases de datos continúan disponibles solamente por localhost y Tailscale.
 - Mantener `password_hash`/`password_verify` del backend PHP y consultas preparadas.
 - Revisar `git grep` y `git diff` antes de cada push. Los respaldos y evidencias privadas están ignorados.
 
