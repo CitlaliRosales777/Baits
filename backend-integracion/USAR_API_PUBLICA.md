@@ -24,16 +24,19 @@ Rutas disponibles actualmente:
 - `PATCH /api/recordatorios/{id}`
 - `DELETE /api/recordatorios/{id}`
 
-Las sesiones usan una cookie segura. En JavaScript, cuando el frontend esté en el mismo dominio, se pueden llamar las rutas relativas:
+La web no se despliega en el VPS. Durante el desarrollo, levántala con un servidor local en `http://localhost` o `http://127.0.0.1`; no abras el HTML directamente con `file://`.
+
+Las sesiones usan una cookie segura. Para llamar la API desde el frontend local se debe usar la URL completa y `credentials: 'include'`:
 
 ```javascript
-const respuesta = await fetch('/api/login', {
+const respuesta = await fetch('https://api.lvltechmx.com/api/login', {
   method: 'POST',
+  credentials: 'include',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ mail: correo, passw: contrasena })
 });
 const datos = await respuesta.json();
 ```
 
-Las rutas de emociones, citas y medicamentos todavía no están completas en la rama backend. MongoDB sigue privado y no debe conectarse desde el navegador ni desde las computadoras del equipo.
+La API autoriza orígenes locales `localhost` y `127.0.0.1` para desarrollo. Las rutas de emociones, citas y medicamentos todavía no están completas en la rama backend. MongoDB sigue privado y no debe conectarse desde el navegador ni desde las computadoras del equipo.
 

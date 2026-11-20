@@ -16,7 +16,7 @@
 | Demostración | PENDIENTE | guion preparado; requiere infraestructura activa |
 | Paquete backend | APROBADO | guía, verificadores y API HTTPS probados realmente |
 | Asistente probado | APROBADO | API pública y verificador funcionan sin Tailscale ni credenciales DB |
-| API pública backend | APROBADO | HTTPS, healthcheck, registro, login, sesión, perfil y logout verificados; puertos DB cerrados |
+| API pública backend | APROBADO | API sin frontend; HTTPS, CORS local, registro, login, sesión, perfil y logout verificados; puertos DB cerrados |
 | Contratos/incompatibilidades | APROBADO | documentación basada en rama backend observada |
 
 Las filas PENDIENTE no se presentan como infraestructura funcional.
