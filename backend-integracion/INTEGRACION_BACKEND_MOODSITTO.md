@@ -16,7 +16,9 @@ PHP necesita `ext-mongodb` y una biblioteca mantenida como `mongodb/mongodb` par
 
 ## Responsabilidades
 
-DB Manager administra servidores, replica set, GTID, permisos, firewalls, respaldos y restauraciones. Backend administra endpoints, autorización por `id_user`, validación de entrada, idempotencia y manejo de errores parciales. Frontend nunca se conecta directamente a ningún motor.
+DB Manager administra servidores, replica set, GTID, permisos, firewalls, respaldos, restauraciones y parámetros de conexión. APIcore permanece antes del backend y administra el contrato de entrada que defina su equipo. Backend administra endpoints, autorización por `id_user`, validación de entrada, idempotencia y manejo de errores parciales. APIcore y frontend nunca se conectan directamente a ningún motor ni reciben contraseñas DB.
+
+Solo el host donde corre el backend necesita acceso Tailscale. Los integrantes que trabajen únicamente con APIcore o frontend consumen los endpoints acordados por sus equipos.
 
 ## Módulos
 

@@ -12,11 +12,10 @@
 | Fragmentación | APROBADO | horizontal 4/4 y vertical 2/2 reconstruidas |
 | Auditoría | APROBADO | tablas/colección y evento sintético replicado |
 | Respaldos/restauración | APROBADO | MongoDB 4 colecciones y MariaDB 23 tablas restauradas aisladamente; timers activos |
-| Monitoreo | APROBADO | cuatro nodos, MongoDB, MariaDB y los dos runners del HP verificados |
+| Monitoreo | APROBADO | script ejecutado; detecta correctamente laptop MongoDB pendiente |
 | Demostración | PENDIENTE | guion preparado; requiere infraestructura activa |
-| Paquete backend | APROBADO | guía, verificadores y API HTTPS probados realmente |
-| Asistente probado | APROBADO | API pública y verificador funcionan sin Tailscale ni credenciales DB |
-| API pública backend | APROBADO | API sin frontend; HTTPS, CORS local, registro, login, sesión, perfil y logout verificados; puertos DB cerrados |
+| Paquete backend | APROBADO (estático) | asistentes y verificadores presentes |
+| Asistente probado | PENDIENTE | sintaxis aprobada; ejecución desde laptop requiere motores/credenciales finales |
 | Contratos/incompatibilidades | APROBADO | documentación basada en rama backend observada |
 
 Las filas PENDIENTE no se presentan como infraestructura funcional.

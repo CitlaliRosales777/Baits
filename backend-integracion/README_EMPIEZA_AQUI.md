@@ -1,16 +1,12 @@
 # Empieza aquí
 
-## Opción recomendada: API pública
-
-Para trabajar sin Tailscale ni contraseñas de base de datos, usa `https://api.lvltechmx.com` y ejecuta `probar-api-publica.ps1`. Consulta `USAR_API_PUBLICA.md` para ver las rutas disponibles.
-
-La configuración directa que aparece abajo queda reservada para DB Manager, diagnóstico o desarrollo que realmente necesite consultar los motores.
-
 No instales servidores de bases de datos. DB Manager los administra.
+
+La arquitectura obligatoria es `cliente → APIcore → backend → bases de datos`. Lee primero `ARQUITECTURA_APICORE.md`. APIcore y frontend no reciben credenciales DB; únicamente el entorno donde se ejecuta el backend necesita esta configuración.
 
 ## Windows
 
-1. Conecta Tailscale con la cuenta autorizada.
+1. Si el backend se ejecutará en esta computadora, conecta Tailscale con la cuenta autorizada. Si solo trabajas en APIcore o frontend, no necesitas estos pasos.
 2. Abre PowerShell en esta carpeta.
 3. Ejecuta `Set-ExecutionPolicy -Scope Process Bypass`.
 4. Ejecuta `.\configurar.ps1` e introduce las dos contraseñas cuando las solicite. No aparecerán en pantalla.

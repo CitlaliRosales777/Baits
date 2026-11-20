@@ -1,9 +1,7 @@
 # Checklist backend
 
-- [ ] Ejecuté `probar-api-publica.ps1` y recibí los tres resultados `[OK]`.
-- [ ] Mi código usa `https://api.lvltechmx.com` o rutas `/api` del mismo dominio.
-- [ ] No guardé contraseñas de MariaDB o MongoDB en el backend ni en el frontend.
-
+- [ ] APIcore llama al backend; APIcore y frontend no se conectan directamente a las bases.
+- [ ] Las credenciales DB existen únicamente en el entorno donde corre el backend.
 - [ ] Tailscale conectado y autorizado.
 - [ ] `.env` creado localmente y excluido de Git.
 - [ ] `probar-conexiones` termina con integración preparada.
@@ -15,4 +13,5 @@
 - [ ] Contraseñas de usuarios finales usan `password_hash`/`password_verify`.
 - [ ] Reintentos entre motores usan una clave de idempotencia.
 - [ ] No se usan cuentas administrativas desde la aplicación.
+- [ ] El equipo responsable confirmó el contrato de tokens, cabeceras y rutas de APIcore.
 

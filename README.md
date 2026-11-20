@@ -22,7 +22,6 @@ Consulte [el inventario real](docs/INVENTARIO_REAL.md), [la arquitectura](docs/a
 - `presentacion/`: preflight, demostración y contingencia.
 - `presentacion/interfaz-pruebas.ps1`: interfaz de Windows para ejecutar y documentar las pruebas de la exposición.
 - `backend-integracion/`: asistente guiado y verificadores para backend.
-- API pública para el equipo: `https://api.lvltechmx.com` (sin acceso directo a los motores).
 - `tests/`: validaciones estáticas y pruebas no destructivas.
 
 ## Seguridad

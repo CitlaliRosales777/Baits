@@ -348,16 +348,14 @@ function Test-Monitoring {
 }
 
 function Test-BackendPackage {
-    $required = @('README_EMPIEZA_AQUI.md','.env.example','configurar.ps1','configurar.sh','probar-conexiones.ps1','probar-conexiones.sh','probar-api-publica.ps1','probar-api-publica.sh','USAR_API_PUBLICA.md','ERRORES_FRECUENTES.md','INTEGRACION_BACKEND_MOODSITTO.md','CHECKLIST_BACKEND.md','CONTRATO_DATOS_MOODSITTO.md')
+    $required = @('README_EMPIEZA_AQUI.md','.env.example','configurar.ps1','configurar.sh','probar-conexiones.ps1','probar-conexiones.sh','ERRORES_FRECUENTES.md','INTEGRACION_BACKEND_MOODSITTO.md','CHECKLIST_BACKEND.md','CONTRATO_DATOS_MOODSITTO.md')
     $missing = $required | Where-Object { -not (Test-Path (Join-Path $script:Repo "backend-integracion\$_")) }
     if ($missing) { return New-Result PENDIENTE 'El paquete para backend está incompleto.' ($missing -join ', ') }
-    try {
-        $response = Invoke-RestMethod -Uri 'https://api.lvltechmx.com/api/healthcheck' -Method Get -TimeoutSec 15
-    } catch {
-        return New-Result PENDIENTE 'El paquete existe, pero la API pública no respondió correctamente.' $_.Exception.Message
-    }
-    if ($response.status -ne 'ok') { return New-Result PENDIENTE 'La API pública respondió con un estado inesperado.' ($response | ConvertTo-Json -Compress) }
-    New-Result APROBADO 'El paquete para backend está completo y la API HTTPS funciona sin Tailscale ni contraseñas de base de datos.' 'URL comprobada: https://api.lvltechmx.com/api/healthcheck'
+    if (-not $script:Config.MariaPassword -or -not $script:Config.MongoPassword) { return New-Result BLOQUEADO 'El paquete está completo, pero faltan credenciales para ejecutar la prueba real de integración.' }
+    $maria = Test-MariaPrimary
+    $mongo = Test-MongoReplication
+    if ($maria.Status -ne 'APROBADO' -or $mongo.Status -ne 'APROBADO') { return New-Result PENDIENTE 'El paquete existe, pero alguna conexión real del backend falló.' ("MariaDB: $($maria.Summary)`nMongoDB: $($mongo.Summary)") }
+    New-Result APROBADO 'El paquete sencillo para backend está completo y las conexiones reales de aplicación funcionan.' 'Se comprobaron archivos, autenticación, lectura y escritura sintética en ambos motores.'
 }
 
 function Test-Security {
