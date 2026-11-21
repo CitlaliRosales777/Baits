@@ -4,6 +4,17 @@ No instales servidores de bases de datos. DB Manager los administra.
 
 La arquitectura obligatoria es `cliente → APIcore → backend → bases de datos`. Lee primero `ARQUITECTURA_APICORE.md`. APIcore y frontend no reciben credenciales DB; únicamente el entorno donde se ejecuta el backend necesita esta configuración.
 
+## Qué contraseñas solicita el asistente
+
+El asistente pide dos credenciales que debe entregar DB Manager por un canal privado:
+
+1. La contraseña del usuario de aplicación `moodsitto_app` de MariaDB.
+2. La contraseña del usuario de aplicación `moodsitto_app` de MongoDB.
+
+No son contraseñas personales, de APIcore, del frontend ni de los usuarios finales. Tampoco se deben inventar. Los valores reales no aparecen en este README porque el archivo se publica en GitHub.
+
+Después de recibirlas, el asistente las guarda en `backend-integracion\.env` únicamente en el equipo donde se ejecutará el backend. Ese archivo está excluido de Git y no debe enviarse por chat, correo ni capturas de pantalla.
+
 ## Windows
 
 1. Si el backend se ejecutará en esta computadora, conecta Tailscale con la cuenta autorizada. Si solo trabajas en APIcore o frontend, no necesitas estos pasos.
