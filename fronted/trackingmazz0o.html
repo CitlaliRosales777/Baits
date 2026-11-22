@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tracking Mazzo</title>
+    <style>
+        /* fuente de moodsitto */
+        @font-face {
+            font-family: 'Cute Cat';
+            src: url('fonts/CuteCat.ttf') format('truetype');
+        }
+        :root {
+           --tabla: #f2e9e4;
+           --tabla2: #ffffff;
+           --on-tabla: #4a4e69;
+           --papoi: #4a4e69;
+           --carta: #0a0a0a;
+           --tinta: #f2e9e4;
+           --borde: #c9ada7;
+           --nojao: #d6453d;
+           --miedo: #7a5aa8;
+           --alegria: #eda921;
+           --troste: #3d77b6;
+           --powers: #e2742a;
+           --paz: #33a07a;
+
+           --serif: 'Cute Cat', cursive;
+           --sans: 'Cute Cat', cursive;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: var(--tabla);
+            color: var(--on-tabla);
+            font-family: var(--sans);
+            line-height: 1.5;
+        }
+
+        /* encabezado de emociones */
+        .saludo {
+            position: relative;
+            height: 220px;
+            padding: 30px 20px 0;
+            background: var(--borde);
+            text-align: center;
+            overflow: hidden;
+        }
+
+        .titulo-emociones {
+            position: relative;
+            z-index: 1;
+            color: var(--on-tabla);
+            font-weight: normal;
+            margin: 25px 0 0;
+        }
+
+        /* olita de moodsitto uwu */
+        .ola {
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            width: 100%;
+            height: 110px;
+        }
+
+        main {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 28px 18px 60px;
+        }
+
+        h1 {
+            font-family: var(--serif);
+            font-weight: 700;
+            font-size: clamp(1.8rem, 5vw, 2.8rem);
+        }
+
+        .sub {
+            color: var(--papoi);
+            margin: 0 0 26px;
+            max-width: 46ch;
+        }
+
+        button {
+            font: inherit;
+            cursor: pointer;
+        }
+
+        /*carta*/
+        .carta {
+            position: relative;
+            background: var(--carta);
+            color: var(--tinta);
+            border: 0;
+            border-radius: 16px;
+            box-shadow: 0 1px 0 #fff8 inset, 0 10px 24px #0005;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            transition: transform 0.50s, box-shadow 0.50s;
+        }
+
+        .carta::before {
+            content: "";
+            position: absolute;
+            inset: 7px;
+            border: 2px solid var(--c);
+            border-radius: 9px;
+            opacity: 0.55;
+            pointer-events: none;
+        }
+
+        .carta .nombre {
+            font-family: var(--serif);
+            font-weight: 700;
+            color: var(--c);
+            line-height: 1.05;
+            padding: 0 12px;
+        }
+
+        .carta .simbolo {
+            position: absolute;
+            left: 11px;
+            top: 9px;
+            font-size: 0.95rem;
+            color: var(--c);
+            font-weight: 600;
+        }
+
+        .carta .simbolo.abajo {
+            left: auto;
+            top: auto;
+            right: 11px;
+            bottom: 9px;
+            transform: rotate(180deg);
+        }
+
+        /*  carta principal  */
+        #mazo {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 14px;
+            padding: 30px 0 20px;
+        }
+
+        .principal {
+           width: clamp(104px, 20vw, 150px);
+           aspect-ratio: 5/7;
+        }
+
+        .principal .nombre {
+            font-size: clamp(1.15rem, 3.4vw, 1.5rem);
+        }
+
+        .principal:hover {
+            transform: translateY(-14px);
+            z-index: 3;
+        }
+
+        /* chequeo de detalle  */
+        #detalle {
+            display: none;
+            grid-template-columns: minmax(150px, 200px) 1fr;
+            gap: 26px;
+            align-items: start;
+        }
+
+        #detalle.visible {
+            display: grid;
+        }
+
+        .grande {
+            width: 100%;
+            aspect-ratio: 5/7;
+            transform: rotate(-3deg);
+        }
+
+        .grande .nombre {
+            font-size: 2rem;
+        }
+
+        .derecha h2 {
+            font-family: var(--serif);
+            font-size: 1.35rem;
+            margin: 0 0 4px;
+        }
+
+        .pista {
+            color: var(--papoi);
+            font-size: 0.95rem;
+            margin: 0 0 14px;
+        }
+
+        #secundarias {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            min-height: 210px;
+            margin-bottom: 12px;
+        }
+
+        .secundaria {
+            aspect-ratio: 5/7;
+        }
+
+        .secundaria .nombre {
+            font-size: clamp(0.9rem, 2.6vw, 1.15rem);
+        }
+
+        .secundaria:hover {
+            transform: translateY(-6px);
+        }
+
+        .secundaria[aria-pressed="true"] {
+            transform: translateY(-10px) scale(1.04);
+            box-shadow: 0 0 0 3px var(--c), 0 14px 26px #0006;
+        }
+
+        .secundaria[aria-pressed="true"]::after {
+            content: "✓";
+            position: absolute;
+            right: 9px;
+            top: 7px;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: var(--c);
+            color: #fff;
+            font-size: 0.8rem;
+            display: grid;
+            place-items: center;
+        }
+
+        /*  terciaria  */
+        #terciarias {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 0 0 20px;
+        }
+
+        .chip {
+            border: 1.5px solid var(--c);
+            background: transparent;
+            color: var(--on-tabla);
+            border-radius: 999px;
+            padding: 5px 14px;
+            font-size: 0.9rem;
+        }
+
+        .chip[aria-pressed="true"] {
+            background: var(--c);
+            color: #fff;
+        }
+
+        /*  form  */
+        .campo {
+            margin-bottom: 18px;
+        }
+
+        label, .etiqueta {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 84px;
+            resize: vertical;
+            border-radius: 12px;
+            border: 1.5px solid var(--papoi);
+            background: #ffffff14;
+            color: var(--on-tabla);
+            font: inherit;
+            padding: 12px;
+        }
+
+        .escala {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        input[type=range] {
+            flex: 1;
+            accent-color: var(--c);
+            height: 28px;
+        }
+
+        #valor {
+            font-family: var(--serif);
+            font-size: 2rem;
+            font-weight: 700;
+            min-width: 2.2ch;
+            text-align: center;
+            color: var(--c);
+        }
+
+        .extremos {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: var(--papoi);
+        }
+
+        .acciones {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+           border-radius: 100px;
+           padding: 50px 5px;
+           font-weight: 100;
+           color: var(--on-tabla);
+           background: transparent;
+           border: 2px solid var(--on-tabla);
+        }
+
+        .btn.principal {
+            border-radius: 100px;
+            padding: 50px 5px;
+            font-weight: 100;
+            color: var(--);
+            background: var(--c);
+            border-color: var(--c);
+            color: #fff;
+        }
+
+        .btn:disabled {
+            opacity: 0.80;
+            cursor: not-allowed;
+        }
+
+        .volver {
+            background: none;
+            border: 0;
+            color: var(--papoi);
+            padding: 0 0 14px;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        /*  emociones elegidas  */
+        #agregadas {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            min-height: 34px;
+        }
+
+        .etiqueta-emocion {
+            background: var(--c);
+            color: #fff;
+            border-radius: 8px;
+            padding: 4px 12px;
+            font-size: 0.88rem;
+        }
+
+        /*  historial (revisar si se debe de quitar al conectar base de datos) ===== */
+        #historial {
+            margin-top: 50px;
+        }
+
+        #historial h2 {
+            font-family: var(--serif);
+            font-size: 1.4rem;
+            margin: 0 0 12px;
+        }
+
+        .entrada {
+            border-left: 5px solid var(--c);
+            background: #ffffff12;
+            border-radius: 0 12px 12px 0;
+            padding: 12px 16px;
+            margin-bottom: 12px;
+        }
+
+        .entrada small {
+            color: var(--papoi);
+        }
+
+        .entrada p {
+            margin: 6px 0 0;
+        }
+
+        .vacio {
+            color: var(--papoi);
+        }
+
+        /*  quemao  */
+        .quemao {
+            position: fixed;
+            left: 50%;
+            bottom: 30px;
+            transform: translate(-50%, 40px);
+            background: var(--carta);
+            color: var(--tinta);
+            padding: 10px 20px;
+            border-radius: 999px;
+            opacity: 0;
+            transition: 0.5s;
+            font-weight: 600;
+            z-index: 100;
+        }
+
+        .quemao.visible {
+            opacity: 1;
+            transform: translate(-50%, 0);
+        }
+
+        /* regresar al inicio */
+        .navegacion-trackeo {
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        .navegacion-trackeo a {
+            color: var(--on-tabla);
+        }
+
+        [hidden] {
+            display: none !important;
+        }
+
+        @media (max-width: 640px) {
+            #detalle.visible {
+                grid-template-columns: 1fr;
+            }
+            .grande {
+                max-width: 130px;
+                margin: 0 auto;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- encabezado de emociones -->
+    <section class="saludo">
+        <h1 class="titulo-emociones">Emociones</h1>
+
+        <!-- olita de moodsitto uwu -->
+        <svg class="ola"
+             viewBox="0 0 600 120"
+             preserveAspectRatio="none"
+             aria-hidden="true">
+            <path d="M0 0
+                     C30 95, 90 75, 155 65
+                     C235 35, 310 80, 395 105
+                     C475 125, 535 80, 600 20
+                     L600 120 L0 120 Z"
+                  fill="#F2E9E4"/>
+        </svg>
+    </section>
+
+    <main>
+        <p class="sub">Elige una carta, abre sus matices y anota qué tan fuerte es lo que sientes y el porqué</p>
+
+        <!-- chequeo de emociones -->
+        <section id="rueda">
+            <div id="agregadas"></div>
+            <div id="mazo"></div>
+        </section>
+
+        <!-- detalle al escoger emoción -->
+        <section id="detalle">
+            <div>
+                <div id="carta-grande" class="carta grande"></div>
+            </div>
+
+            <div class="derecha">
+                <button class="volver" id="btn-volver">Volver a las Cartas</button>
+
+                <h2 id="pregunta">¿A cuál de estas se acerca más?</h2>
+                <p class="pista">Puedes escoger más de 1 carta</p>
+
+                <div id="secundarias"></div>
+                <div id="terciarias"></div>
+
+                <div class="campo">
+                    <label for="nota">¿Qué la provocó?</label>
+                    <textarea id="nota" placeholder="Escribe lo que pasó o lo que pensabas..."></textarea>
+                </div>
+
+                <div class="campo">
+                    <span class="etiqueta">Intensidad</span>
+                    <div class="escala">
+                        <input type="range" id="intensidad" min="1" max="10" value="5">
+                        <span id="valor">5</span>
+                    </div>
+                    <div class="extremos">
+                        <span>1 siendo muy poco</span>
+                        <span>10 siendo muy fuerte</span>
+                    </div>
+                </div>
+
+                <div class="acciones">
+                    <button class="btn principal" id="btn-guardar" disabled>Guardar Registro</button>
+                    <button class="btn" id="btn-otra" disabled>Agregar una emoción más</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- historial (revisar si se debe quitar al conectar base de datos) -->
+        <section id="historial">
+            <h2>Tus Registros</h2>
+            <div id="entradas">
+                <p class="vacio">Aún no hay registros, presiona una carta para hacer uno</p>
+            </div>
+        </section>
+
+        <!-- regresar al inicio -->
+        <div class="navegacion-trackeo">
+            <a href="dashboard.html">Volver al inicio</a>
+        </div>
+    </main>
+
+    <div class="quemao" id="quemao"></div>
+
+    <script>
+
+        // DATOS DE EMOCIONES
+        const emociones = {
+            Miedo: {
+                color: "--miedo",
+                simbolo: "つ﹏⊂ ",
+                significado: "Sensación de amenaza, peligro o inseguridad",
+                secundarias: {
+                    debil: ["Insignificante", "Sin valor"],
+                    inseguro: ["Inadecuado", "Inferior"],
+                    ansioso: ["Abrumado", "Preocupado"],
+                    confundido: ["Perdido", "Desorientado"],
+                    rechazado: ["Excluido", "Perseguido"],
+                    amenazado: ["Nervioso", "Expuesto"]
+                }
+            },
+
+            Enojao: {
+                color: "--nojao",
+                simbolo: "(* ￣︿￣)",
+                significado: "Reacción de molestia, indignación o frustración",
+                secundarias: {
+                    critico: ["Escéptico", "Sarcástico"],
+                    distante: ["Retraído", "Insensible"],
+                    frustrado: ["Molesto", "Irritado"],
+                    agresivo: ["Provocado", "Hostil"],
+                    furioso: ["Celoso", "Resentido"],
+                    humillado: ["Irrespetado", "Ridiculizado"]
+                }
+            },
+
+            Troste: {
+                color: "--troste",
+                simbolo: "(；′⌒`)",
+                significado: "Sentimiento de pérdida, desánimo o dolor emocional",
+                secundarias: {
+                    solo: ["Aislado", "Abandonado"],
+                    vulnerable: ["Frágil", "Expuesto"],
+                    desesperado: ["Deprimido", "Indefenso"],
+                    culpable: ["Avergonzado", "Arrepentido"],
+                    abatido: ["Decaído", "Apagado"],
+                    herido: ["Dolido", "Decepcionado"]
+                }
+            },
+
+            Alegría: {
+                color: "--alegria",
+                simbolo: "uwu",
+                significado: "Sensación de felicidad, bienestar y energía positiva",
+                secundarias: {
+                    Emocionado: ["Enérgico", "Asombrado"],
+                    Juguetón: ["Travieso", "Bromista"],
+                    Creativo: ["Inventivo", "Original"],
+                    Orgulloso: ["Exitoso", "Valioso"],
+                    Optimista: ["Esperanzado", "Inspirado"],
+                    Agradecido: ["Satisfecho", "Pleno"]
+                }
+            },
+
+            Poder: {
+                color: "--powers",
+                simbolo: "( •̀ ω •́ )✧",
+                significado: "Sentimiento de fuerza, control y capacidad",
+                secundarias: {
+                    Valiente: ["Audaz", "Atrevido"],
+                    Respetado: ["Valorado", "Reconocido"],
+                    Seguro: ["Confiado", "Firme"],
+                    Decidido: ["Resuelto", "Determinado"],
+                    Fiel: ["Leal", "Comprometido"],
+                    Importante: ["Apreciado", "Necesitado"]
+                }
+            },
+
+            Paz: {
+                color: "--paz",
+                simbolo: "(●'◡'●)",
+                significado: "Estado de calma, serenidad y equilibrio interior",
+                secundarias: {
+                    Tranquilo: ["Relajado", "Calmado"],
+                    Amoroso: ["Tierno", "Compasivo"],
+                    Pensativo: ["Reflexivo", "Contemplativo"],
+                    Íntimo: ["Cercano", "Conectado"],
+                    Sereno: ["Apacible", "En calma"],
+                    Satisfecho: ["Pleno", "Contento"]
+                }
+            }
+        };
+
+        // VARIABLES DE ESTADO
+        let emocionActual = null;
+        let secundariasElegidas = [];
+        let terciariasElegidas = [];
+        let grupoActual = [];
+        let historial = [];
+
+        // carga historial si existe   REVISAR SI SE DEBE DE QUITAR CON LA BD CONECTADA
+        try {
+            const guardado = localStorage.getItem("emociones-log");
+            if (guardado) {
+                historial = JSON.parse(guardado);
+            }
+        } catch (error) {
+            historial = [];
+        }
+
+        // FUNCIONES AUXILIARES
+        function $(id) {
+            return document.getElementById(id);
+        }
+
+        function obtenerColor(nombre) {
+            return "var(" + emociones[nombre].color + ")";
+        }
+
+        // CREAR CARTA
+        function crearCarta(nombre, simbolo, color, clase, significado) {
+            const boton = document.createElement("button");
+            boton.className = "carta " + clase;
+            boton.style.setProperty("--c", color);
+            boton.title = significado;
+
+            boton.innerHTML = `
+                <span class="simbolo">${simbolo}</span>
+                <span class="nombre">${nombre}</span>
+                <span class="simbolo abajo">${simbolo}</span>
+            `;
+            return boton;
+        }
+
+        // DIBUJAR MAZO PRINCIPAL
+        function dibujarMazo() {
+            const contenedor = $("mazo");
+            contenedor.innerHTML = "";
+
+            for (const nombre in emociones) {
+                const datos = emociones[nombre];
+                const carta = crearCarta(
+                    nombre,
+                    datos.simbolo,
+                    obtenerColor(nombre),
+                    "principal",
+                    datos.significado
+                );
+
+                carta.onclick = function () {
+                    abrirEmocion(nombre);
+                };
+
+                contenedor.appendChild(carta);
+            }
+        }
+
+        // ABRIR EMOCIÓN
+        function abrirEmocion(nombre) {
+            emocionActual = nombre;
+            secundariasElegidas = [];
+            terciariasElegidas = [];
+
+            $("rueda").hidden = true;
+            $("detalle").classList.add("visible");
+
+            const cartaGrande = $("carta-grande");
+            const datos = emociones[nombre];
+
+            cartaGrande.style.setProperty("--c", obtenerColor(nombre));
+            cartaGrande.innerHTML = `
+                <span class="simbolo">${datos.simbolo}</span>
+                <span class="nombre">${nombre}</span>
+                <span class="simbolo abajo">${datos.simbolo}</span>
+            `;
+            cartaGrande.title = datos.significado;
+
+            $("pregunta").textContent = "¿Cómo se siente ese " + nombre.toLowerCase() + "?";
+            $("nota").value = "";
+            $("intensidad").value = 5;
+            $("valor").textContent = 5;
+            $("detalle").style.setProperty("--c", obtenerColor(nombre));
+
+            dibujarSecundarias();
+            dibujarTerciarias();
+            actualizarBotones();
+        }
+
+        // DIBUJAR SECUNDARIAS
+        function dibujarSecundarias() {
+            const contenedor = $("secundarias");
+            contenedor.innerHTML = "";
+
+            const listaSecundarias = emociones[emocionActual].secundarias;
+
+            for (const nombre in listaSecundarias) {
+                const carta = crearCarta(
+                    nombre,
+                    emociones[emocionActual].simbolo,
+                    obtenerColor(emocionActual),
+                    "secundaria",
+                    "Matiz de " + emocionActual + ": " + nombre
+                );
+
+                carta.setAttribute("aria-pressed", "false");
+
+                carta.onclick = function () {
+                    const estaElegida = secundariasElegidas.includes(nombre);
+
+                    if (estaElegida) {
+                        secundariasElegidas = secundariasElegidas.filter(function (item) {
+                            return item !== nombre;
+                        });
+                    } else {
+                        secundariasElegidas.push(nombre);
+                    }
+
+                    carta.setAttribute("aria-pressed", !estaElegida);
+                    dibujarTerciarias();
+                    actualizarBotones();
+                };
+
+                contenedor.appendChild(carta);
+            }
+        }
+
+        // DIBUJAR TERCIARIAS
+        function dibujarTerciarias() {
+            const contenedor = $("terciarias");
+            contenedor.innerHTML = "";
+
+            let todasLasTerciarias = [];
+
+            for (let i = 0; i < secundariasElegidas.length; i++) {
+                const nombreSec = secundariasElegidas[i];
+                const lista = emociones[emocionActual].secundarias[nombreSec];
+                todasLasTerciarias = todasLasTerciarias.concat(lista);
+            }
+
+            for (let i = 0; i < todasLasTerciarias.length; i++) {
+                const nombre = todasLasTerciarias[i];
+                const chip = document.createElement("button");
+                chip.className = "chip";
+                chip.style.setProperty("--c", obtenerColor(emocionActual));
+                chip.textContent = nombre;
+                chip.title = "Matiz más fino: " + nombre;
+
+                const estaElegida = terciariasElegidas.includes(nombre);
+                chip.setAttribute("aria-pressed", estaElegida);
+
+                chip.onclick = function () {
+                    if (terciariasElegidas.includes(nombre)) {
+                        terciariasElegidas = terciariasElegidas.filter(function (item) {
+                            return item !== nombre;
+                        });
+                    } else {
+                        terciariasElegidas.push(nombre);
+                    }
+                    chip.setAttribute("aria-pressed", !estaElegida);
+                };
+
+                contenedor.appendChild(chip);
+            }
+        }
+
+        // ACTUALIZAR BOTONES
+        function actualizarBotones() {
+            const haySecundarias = secundariasElegidas.length > 0;
+            const hayGrupo = grupoActual.length > 0;
+
+            $("btn-guardar").disabled = !(haySecundarias || hayGrupo);
+            $("btn-otra").disabled = !haySecundarias;
+        }
+
+        // GUARDAR EN EL GRUPO
+        function guardarEnGrupo() {
+            if (secundariasElegidas.length === 0) return;
+
+            grupoActual.push({
+                core: emocionActual,
+                subs: secundariasElegidas.slice(),
+                fine: terciariasElegidas.slice(),
+                note: $("nota").value.trim(),
+                intensity: Number($("intensidad").value)
+            });
+        }
+
+        // VOLVER AL MAZO
+        function volverAlMazo() {
+            $("detalle").classList.remove("visible");
+            $("rueda").hidden = false;
+
+            dibujarMazo();
+
+            let htmlChips = "";
+            for (let i = 0; i < grupoActual.length; i++) {
+                const g = grupoActual[i];
+                htmlChips += `
+                    <span class="etiqueta-emocion" style="--c:${obtenerColor(g.core)}">
+                        ${g.core}: ${g.subs.join(", ")} · ${g.intensity}/10
+                    </span>
+                `;
+            }
+            $("agregadas").innerHTML = htmlChips;
+        }
+
+        // EVENTOS
+        $("intensidad").oninput = function () {
+            $("valor").textContent = this.value;
+        };
+
+        $("btn-otra").onclick = function () {
+            guardarEnGrupo();
+            volverAlMazo();
+        };
+
+        $("btn-volver").onclick = function () {
+            volverAlMazo();
+        };
+
+        $("btn-guardar").onclick = function () {
+            guardarEnGrupo();
+
+            historial.unshift({
+                t: Date.now(),
+                group: grupoActual
+            });
+
+            grupoActual = [];
+
+            try {
+                localStorage.setItem("emociones-log", JSON.stringify(historial));
+            } catch (error) {}
+
+            mostrarHistorial();
+            mostrarToast("Registro guardado");
+            volverAlMazo();
+            $("agregadas").innerHTML = "";
+        };
+
+        // MOSTRAR HISTORIAL
+        function mostrarHistorial() {
+            const contenedor = $("entradas");
+
+            if (historial.length === 0) {
+                contenedor.innerHTML = '<p class="vacio">Aún no hay registros, presiona una carta para hacer uno</p>';
+                return;
+            }
+
+            let html = "";
+
+            for (let i = 0; i < historial.length; i++) {
+                const entrada = historial[i];
+                const color = obtenerColor(entrada.group[0].core);
+                const fecha = new Date(entrada.t).toLocaleString("es-MX", {
+                    dateStyle: "medium",
+                    timeStyle: "short"
+                });
+
+                let contenido = "";
+                for (let j = 0; j < entrada.group.length; j++) {
+                    const g = entrada.group[j];
+                    const listaEmociones = g.subs.concat(g.fine).join(", ");
+                    const nota = g.note
+                        ? '<br><span class="vacio">' + g.note.replace(/</g, "&lt;") + "</span>"
+                        : "";
+
+                    contenido += `
+                        <p>
+                            <strong style="color:${obtenerColor(g.core)}">${g.core}</strong>
+                            — ${listaEmociones} · intensidad ${g.intensity}/10${nota}
+                        </p>
+                    `;
+                }
+
+                html += `
+                    <article class="entrada" style="--c:${color}">
+                        <small>${fecha}</small>
+                        ${contenido}
+                    </article>
+                `;
+            }
+
+            contenedor.innerHTML = html;
+        }
+
+        // QUEMAO
+        function mostrarToast(mensaje) {
+            const toast = $("quemao");
+            toast.textContent = mensaje;
+            toast.classList.add("visible");
+
+            setTimeout(function () {
+                toast.classList.remove("visible");
+            }, 1800);
+        }
+
+        // INICIAR
+        dibujarMazo();
+        mostrarHistorial();
+    </script>
+</body>
+</html>
