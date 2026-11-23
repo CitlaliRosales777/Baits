@@ -1,0 +1,11 @@
+# Manda todas las direcciones a index.php (Apache / hosting compartido)
+Options -Indexes
+RewriteEngine On
+
+# Apache a veces no pasa la cabecera Authorization a PHP; esto la conserva.
+RewriteCond %{HTTP:Authorization} ^(.+)$
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%1]
+
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [L]

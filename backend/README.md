@@ -1,54 +1,144 @@
-# Backend Moodsitto (API en PHP)
+# Backend de Moodsitto
 
-Todas las rutas responden JSON. La sesion va en una cookie (HttpOnly, SameSite=Lax), asi que el frontend y la API deben salir de la misma direccion (con Docker: http://localhost:8080).
+API REST en PHP que atiende al frontend de Moodsitto (emociones, medicamentos, citas y recordatorios). Responde siempre JSON y no mezcla PHP con HTML: el frontend solo llama a las rutas de abajo. La estructura sigue la de `apicore` que dejó el profe (router, middlewares, controladores, modelos y schemas), pero en PHP y con las tablas del esquema del equipo.
 
-## Rutas
-| Metodo y ruta | Que hace | Datos que recibe |
-|---|---|---|
-| GET /api/healthcheck | Revisa que la API este viva | nada |
-| POST /api/register | Crea una cuenta | name, lastname1, lastname2 (opcional), date_b (YYYY-MM-DD), phone, emer_phone (opcional), mail, passw (8 a 72 caracteres) |
-| POST /api/login | Inicia sesion | mail, passw |
-| GET /api/me | Datos del usuario con sesion | nada. Devuelve id_user, name, lastname1, lastname2, mail, phone, date_b |
-| POST /api/logout | Cierra la sesion | nada |
-| GET /api/recordatorios | Lista los recordatorios del usuario | ?desde=YYYY-MM-DD&hasta=YYYY-MM-DD (maximo 62 dias) |
-| POST /api/recordatorios | Crea un recordatorio | contenido (maximo 200 caracteres), fecha (YYYY-MM-DD), hora (HH:MM) |
-| PATCH /api/recordatorios/{id} | Marca como completado o pendiente | {"completado": true} o {"completado": false} |
-| DELETE /api/recordatorios/{id} | Borra un recordatorio | nada |
+## Qué lleva hasta ahora
 
-## Codigos de respuesta
-- 200 o 201: bien.
-- 401: falta iniciar sesion, o correo o contrasena incorrectos.
-- 404: ruta o recordatorio que no existe (o que es de otra persona).
-- 409: el correo ya esta registrado.
-- 413: peticion demasiado grande.
-- 422: datos no validos.
-- 429: demasiados intentos de login (5 fallos bloquean 15 minutos).
-- 500: error interno (el detalle solo queda en el log del servidor).
+- Registro, login con token y logout
+- Perfil de usuario (ver, editar, borrar cuenta)
+- Recordatorios (crear, listar con filtro por fechas y paginación, editar, marcar como completado, borrar)
+- Estado del servicio (`/health`)
 
-## Ejemplo para conectar el frontend
-```js
-const r = await fetch("/api/login", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ mail: correo, passw: contrasena })
-});
-const datos = await r.json();
+Emociones, medicamentos y citas médicas todavía no tienen rutas.
+
+## Estructura
+
+```
+backend/
+├── public/          lo único que ve Internet (index.php y .htaccess)
+├── src/
+│   ├── arranque.php   carga de clases, configuración y zona horaria
+│   ├── core/          Config, Database, Request, Response, Router, Aplicacion
+│   ├── middlewares/   Cors, Error y Auth (se ejecutan antes del controlador)
+│   ├── routers/       rutas.php: todas las rutas en un solo lugar
+│   ├── controllers/   reciben la petición y arman la respuesta
+│   ├── schemas/       validan los datos de entrada
+│   ├── models/        el único lugar donde hay SQL
+│   └── services/      tokens y límite de intentos de login
+├── sql/extras.sql   tabla extra para el bloqueo de intentos
+├── tests/           pruebas.ps1
+└── .env.example
 ```
 
-## Decisiones que el equipo debe confirmar
-- Los recordatorios se guardan con tipo "general". La base exige que un recordatorio de tipo "cita" o "medicamento" este ligado a una cita (citas_medicas) o a un horario de medicamento (medicamento_horario), y esas pantallas todavia no existen. El selector "Medicamento / Cita medica" del dashboard no se puede guardar por ahora.
-- Los estados "pendiente" y "completado" se siembran en docker/db/02-catalogos.sql. El equipo debe acordar los estados definitivos.
-- La fecha y la hora se guardan tal como las manda el frontend, sin conversion de zona horaria. Falta acordar la zona horaria.
+Cada capa solo habla con la de al lado: los controladores no escriben SQL, los modelos no saben nada de HTTP y los schemas no tocan la base. El recorrido de una petición es:
 
-## Seguridad aplicada
-- Contrasenas con password_hash. Nunca en texto plano.
-- Consultas parametrizadas con PDO.
-- El id del usuario sale de la sesion, no de lo que manda el cliente. Cada persona solo ve y modifica lo suyo.
-- Los errores de SQL no se muestran al usuario.
-- Mensaje de login igual si falla el correo o la contrasena.
-- Limite de intentos de login, sesion que expira a los 30 minutos y cabeceras de seguridad.
-- La API se conecta con un usuario de permisos minimos, no con root.
+`index.php` → Cors → Error → (Auth, si la ruta es protegida) → controlador → schema (valida) → modelo (SQL) → respuesta JSON
 
-## Pendiente
-- Rutas de emociones, medicamentos y citas.
-- Conectar los formularios del frontend.
+Para agregar una entidad nueva hacen falta un modelo, un schema, un controlador y sus líneas en `routers/rutas.php`. No hay que tocar el núcleo.
+
+## Rutas
+
+| Método | Ruta | Acceso | Qué hace |
+| --- | --- | --- | --- |
+| GET | `/health` | público | 200 si la API y la base responden, 503 si no |
+| POST | `/users` | público | Registro. Devuelve 201 con `Location` |
+| POST | `/auth/login` | público | Recibe `mail` y `passw`, devuelve un token |
+| POST | `/auth/logout` | token | Revoca el token que se usó |
+| GET | `/users/{id}` | token, solo el propio | Ver perfil |
+| PUT | `/users/{id}` | token, solo el propio | Reemplaza el perfil |
+| PATCH | `/users/{id}` | token, solo el propio | Cambia solo los campos enviados |
+| DELETE | `/users/{id}` | token, solo el propio | Desactiva la cuenta y revoca sus tokens |
+| GET | `/recordatorios` | token | Lista los propios (`desde`, `hasta`, `page`, `size`) |
+| POST | `/recordatorios` | token | Crea (`contenido`, `fecha`) |
+| GET | `/recordatorios/{id}` | token | Ver uno |
+| PUT | `/recordatorios/{id}` | token | Reemplaza `contenido` y `fecha` |
+| PATCH | `/recordatorios/{id}` | token | Cambia `contenido`, `fecha` o `completado` |
+| DELETE | `/recordatorios/{id}` | token | Borra |
+
+Todas las rutas aceptan `OPTIONS` (204 con la cabecera `Allow`) y las de lectura aceptan `HEAD`.
+
+### Autenticación
+
+El login devuelve un token y el frontend lo manda en cada petición:
+
+```
+Authorization: Bearer <token>
+```
+
+El token vive 60 minutos (`TOKEN_LIFETIME_MINUTES`). En la base solo se guarda su hash SHA-256 (tabla `api_tokens`), así que aunque alguien vea la base no puede usarlo. Cerrar sesión lo marca como revocado.
+
+### Formato de las respuestas
+
+```json
+{"status": "ok", "data": {...}}
+{"status": "ok", "data": [...], "meta": {"page": 1, "size": 50, "total": 7}}
+{"status": "ok", "ID": 12}
+{"status": "ok", "message": "Sesión cerrada"}
+{"error": "Token inválido o vencido"}
+```
+
+Códigos: 200, 201 (creado), 204 (OPTIONS), 400 (datos inválidos), 401 (sin token o token inválido), 403 (no es tu recurso), 404, 405, 409 (correo repetido), 413 (cuerpo mayor a 20000 bytes), 429 (demasiados intentos de login), 500 y 503.
+
+### Ejemplo
+
+```
+POST /users
+{"name": "Ana", "lastname1": "López", "date_b": "2000-05-17", "phone": "6641234567",
+ "mail": "ana@ejemplo.com", "passw": "Clave-Segura-123"}
+
+POST /auth/login
+{"mail": "ana@ejemplo.com", "passw": "Clave-Segura-123"}
+```
+
+## Configuración
+
+Se copia `.env.example` como `.env` y se llenan los datos de la base. El `.env` está en `.gitignore` y nunca se sube. Si el servidor tiene variables de entorno con los mismos nombres, esas tienen prioridad sobre el archivo.
+
+| Variable | Por defecto | Uso |
+| --- | --- | --- |
+| `DB_HOST` | `127.0.0.1` | Servidor MySQL |
+| `DB_PORT` | `3306` | Puerto |
+| `DB_NAME`, `DB_USER`, `DB_PASS` | obligatorias | Datos de la base |
+| `APP_TIMEZONE` | `America/Tijuana` | Zona horaria de PHP y de MySQL |
+| `CORS_ALLOW_ORIGIN` | `*` | Origen permitido del frontend. Puede ser una lista separada por comas |
+| `TOKEN_LIFETIME_MINUTES` | `60` | Vida del token |
+| `LOGIN_MAX_ATTEMPTS` | `5` | Intentos fallidos antes de bloquear |
+| `LOGIN_BLOCK_MINUTES` | `15` | Minutos de bloqueo |
+
+## Base de datos
+
+Usa el esquema del equipo (`bd-moodsitto.sql` de la rama `db-manager`). Además hace falta una tabla que no está en ese esquema, `login_intentos`, para el bloqueo de intentos. Está en `sql/extras.sql` y se corre una sola vez con una cuenta que pueda crear tablas. La cuenta de la API solo necesita `SELECT`, `INSERT`, `UPDATE` y `DELETE`.
+
+## Cómo correrlo en la laptop
+
+Con el `.env` listo, desde la carpeta del proyecto:
+
+```
+php -S localhost:8000 -t backend/public
+```
+
+Y en otra terminal:
+
+```
+powershell -ExecutionPolicy Bypass -File backend\tests\pruebas.ps1
+```
+
+## Seguridad
+
+- Contraseñas con `password_hash` (bcrypt). Nunca salen en ninguna respuesta.
+- Todas las consultas son preparadas (PDO), sin concatenar datos del usuario.
+- Cada consulta de recordatorios filtra por el usuario del token. Pedir un recurso de otra persona da 404, para no revelar si existe.
+- El mensaje de login es el mismo si el correo no existe o la clave está mal, y se compara contra un hash falso para que tarde igual.
+- Los errores internos se guardan en el registro del servidor y al cliente solo le llega "Error interno del servidor".
+- Cabeceras `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Content-Security-Policy` y `Cache-Control: no-store` en todas las respuestas.
+- Los textos se guardan tal cual llegan. El frontend debe mostrarlos con `textContent`, no con `innerHTML`.
+- La IP del bloqueo de intentos es la que ve el servidor (`REMOTE_ADDR`). Si el hosting usa un proxy habrá que revisarlo.
+
+## Pendiente de acordar con el equipo
+
+- Los recordatorios son de tipo `general`. Los tipos `medicamento` y `cita` se agregan cuando existan esas rutas.
+- Los estados usados son `pendiente` y `completado` (tabla `estado`).
+- Borrar una cuenta es borrado lógico: queda desactivada, con su historial, y el correo no se puede volver a usar.
+- Cambiar correo o contraseña no está hecho todavía.
+- La zona horaria es America/Tijuana.
+- La tabla `login_intentos` hay que avisársela a quien lleva la base de datos.
