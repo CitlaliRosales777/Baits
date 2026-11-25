@@ -52,6 +52,13 @@ abstract class BaseSchema
             return $valor;
         }
 
+        if ($tipo === 'id') {      // identificador de otra tabla: entero positivo (5, no "5")
+            if (!is_int($valor) || $valor < 1) {
+                throw self::fallo("El campo '$campo' debe ser un número entero mayor a 0");
+            }
+            return $valor;
+        }
+
         if (!is_string($valor)) {
             throw self::fallo("El campo '$campo' debe enviarse como texto");
         }

@@ -4,20 +4,6 @@ class RecordatorioModel extends BaseModel
     private const SELECCION = 'SELECT r.id_recordatorio, r.tipo, r.contenido, r.fecha, r.created_at, e.estado
                                  FROM recordatorios r
                                  JOIN estado e ON e.id_estado = r.id_estado';
-    private array $estados = [];
-
-    /** Busca el id de un estado ('pendiente', 'completado') en el catálogo. */
-    public function idEstado(string $nombre): int
-    {
-        if (!isset($this->estados[$nombre])) {
-            $fila = $this->uno('SELECT id_estado FROM estado WHERE estado = :nombre', ['nombre' => $nombre]);
-            if ($fila === null) {
-                throw new RuntimeException("Falta el estado '$nombre' en la tabla estado");
-            }
-            $this->estados[$nombre] = (int) $fila['id_estado'];
-        }
-        return $this->estados[$nombre];
-    }
 
     public function crear(int $idUser, string $tipo, string $contenido, string $fecha, int $idEstado): int
     {

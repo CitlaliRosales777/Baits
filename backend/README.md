@@ -7,9 +7,10 @@ API REST en PHP que atiende al frontend de Moodsitto (emociones, medicamentos, c
 - Registro, login con token y logout
 - Perfil de usuario (ver, editar, borrar cuenta)
 - Recordatorios (crear, listar con filtro por fechas y paginación, editar, marcar como completado, borrar)
+- Citas médicas (lo mismo que recordatorios) y los catálogos de médicos, áreas y lugares para el formulario
 - Estado del servicio (`/health`)
 
-Emociones, medicamentos y citas médicas todavía no tienen rutas.
+Emociones y medicamentos todavía no tienen rutas.
 
 ## Estructura
 
@@ -25,8 +26,10 @@ backend/
 │   ├── schemas/       validan los datos de entrada
 │   ├── models/        el único lugar donde hay SQL
 │   └── services/      tokens y límite de intentos de login
-├── sql/extras.sql   tabla extra para el bloqueo de intentos
-├── tests/           pruebas.ps1
+├── sql/
+│   ├── extras.sql            tabla extra para el bloqueo de intentos
+│   └── catalogos-prueba.sql  médicos, áreas y lugares de ejemplo (solo para la laptop)
+├── tests/           pruebas.ps1 y pruebas-citas.ps1
 └── .env.example
 ```
 
@@ -54,6 +57,15 @@ Para agregar una entidad nueva hacen falta un modelo, un schema, un controlador 
 | PUT | `/recordatorios/{id}` | token | Reemplaza `contenido` y `fecha` |
 | PATCH | `/recordatorios/{id}` | token | Cambia `contenido`, `fecha` o `completado` |
 | DELETE | `/recordatorios/{id}` | token | Borra |
+| GET | `/citas` | token | Lista las propias (`desde`, `hasta`, `page`, `size`) |
+| POST | `/citas` | token | Crea (`id_doctor`, `id_location`, `id_area`, `fecha`, `descripcion` opcional). Empieza `pendiente` |
+| GET | `/citas/{id}` | token | Ver una, con el nombre del médico, el área y la dirección |
+| PUT | `/citas/{id}` | token | Reemplaza todo; si no mandas `descripcion`, se borra |
+| PATCH | `/citas/{id}` | token | Cambia los campos enviados, o `completado` |
+| DELETE | `/citas/{id}` | token | Borra (409 si la cita tiene recordatorios) |
+| GET | `/doctores` | token | Catálogo de médicos, para el `<select>` de citas |
+| GET | `/areas` | token | Catálogo de áreas |
+| GET | `/lugares` | token | Catálogo de lugares (direcciones) |
 
 Todas las rutas aceptan `OPTIONS` (204 con la cabecera `Allow`) y las de lectura aceptan `HEAD`.
 
@@ -88,6 +100,15 @@ POST /users
 
 POST /auth/login
 {"mail": "ana@ejemplo.com", "passw": "Clave-Segura-123"}
+
+POST /citas        (los ids salen de GET /doctores, /lugares y /areas; van como número, no como texto)
+{"id_doctor": 1, "id_location": 1, "id_area": 1, "fecha": "2026-12-01 10:30",
+ "descripcion": "Primera consulta"}
+
+GET /citas/7  →
+{"status": "ok", "data": {"id_cita": 7, "fecha": "2026-12-01 10:30:00", "descripcion": "Primera consulta",
+ "doctor": {"id": 1, "nombre": "Laura Méndez Ruiz"}, "area": {"id": 1, "nombre": "Psicología"},
+ "lugar": {"id": 1, "direccion": "Av. Ejemplo 100, Centro"}, "estado": "pendiente", "completado": false}}
 ```
 
 ## Configuración
@@ -123,11 +144,17 @@ Y en otra terminal:
 powershell -ExecutionPolicy Bypass -File backend\tests\pruebas.ps1
 ```
 
+Las pruebas de citas necesitan médicos, áreas y lugares en la base. En la laptop se cargan los de ejemplo una vez (con la misma cuenta que `extras.sql`) y luego se corre:
+
+```
+powershell -ExecutionPolicy Bypass -File backend\tests\pruebas-citas.ps1
+```
+
 ## Seguridad
 
 - Contraseñas con `password_hash` (bcrypt). Nunca salen en ninguna respuesta.
 - Todas las consultas son preparadas (PDO), sin concatenar datos del usuario.
-- Cada consulta de recordatorios filtra por el usuario del token. Pedir un recurso de otra persona da 404, para no revelar si existe.
+- Cada consulta de recordatorios y de citas filtra por el usuario del token. Pedir un recurso de otra persona da 404, para no revelar si existe.
 - El mensaje de login es el mismo si el correo no existe o la clave está mal, y se compara contra un hash falso para que tarde igual.
 - Los errores internos se guardan en el registro del servidor y al cliente solo le llega "Error interno del servidor".
 - Cabeceras `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Content-Security-Policy` y `Cache-Control: no-store` en todas las respuestas.
@@ -142,3 +169,4 @@ powershell -ExecutionPolicy Bypass -File backend\tests\pruebas.ps1
 - Cambiar correo o contraseña no está hecho todavía.
 - La zona horaria es America/Tijuana.
 - La tabla `login_intentos` hay que avisársela a quien lleva la base de datos.
+- Los catálogos `doctors`, `area` y `location` son compartidos y la API solo los lee. Falta decidir quién carga los médicos y lugares reales, y si el usuario podrá agregar los suyos.

@@ -26,4 +26,17 @@ return function (Router $r): void {
     $r->agregar('PUT',    '/recordatorios/{id}', RecordatorioController::class, 'reemplazar');
     $r->agregar('PATCH',  '/recordatorios/{id}', RecordatorioController::class, 'actualizar');
     $r->agregar('DELETE', '/recordatorios/{id}', RecordatorioController::class, 'eliminar');
+
+    // Citas médicas
+    $r->agregar('GET',    '/citas',      CitaController::class, 'listar');
+    $r->agregar('POST',   '/citas',      CitaController::class, 'crear');
+    $r->agregar('GET',    '/citas/{id}', CitaController::class, 'ver');
+    $r->agregar('PUT',    '/citas/{id}', CitaController::class, 'reemplazar');
+    $r->agregar('PATCH',  '/citas/{id}', CitaController::class, 'actualizar');
+    $r->agregar('DELETE', '/citas/{id}', CitaController::class, 'eliminar');
+
+    // Catálogos para el formulario de citas (solo lectura)
+    $r->agregar('GET', '/doctores', CatalogoController::class, 'doctores');
+    $r->agregar('GET', '/areas',    CatalogoController::class, 'areas');
+    $r->agregar('GET', '/lugares',  CatalogoController::class, 'lugares');
 };

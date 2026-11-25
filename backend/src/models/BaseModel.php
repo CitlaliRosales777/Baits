@@ -3,10 +3,24 @@
 abstract class BaseModel
 {
     protected PDO $db;
+    private array $estados = [];
 
     public function __construct()
     {
         $this->db = Database::conexion();
+    }
+
+    /** Busca el id de un estado ('pendiente', 'completado') en el catálogo. */
+    public function idEstado(string $nombre): int
+    {
+        if (!isset($this->estados[$nombre])) {
+            $fila = $this->uno('SELECT id_estado FROM estado WHERE estado = :nombre', ['nombre' => $nombre]);
+            if ($fila === null) {
+                throw new RuntimeException("Falta el estado '$nombre' en la tabla estado");
+            }
+            $this->estados[$nombre] = (int) $fila['id_estado'];
+        }
+        return $this->estados[$nombre];
     }
 
     protected function ejecutar(string $sql, array $parametros = []): PDOStatement
