@@ -6,50 +6,50 @@
     <title>Mi perfil | Moodsitto</title>
     <link rel="stylesheet" href="css/styles.css">
 </head>
-<body>
-
-<main class="pagina-perfil">
-
-    <!-- encabezado del perfil -->
-    <section class="encabezado-perfil"></section>
+<body class="pagina-perfil">
+    <!-- encabezado -->
+    <header class="encabezado">
+        <a href="dashboard.html" class="marca" aria-label="Moodsitto, dashboard">
+            <img src="img/Moodsitto_snFondo.png" alt="Moodsitto" class="logo">
+        </a>
+        <nav class="menu-principal" aria-label="Menu principal">
+            <a href="dashboard.html" class="menu-enlace">Mi inicio</a>
+            <a href="trackingmazz0o.html" class="menu-enlace">Mis emociones</a>
+            <a href="perfil.html" class="menu-enlace destacado activo" aria-current="page">Mi perfil</a>
+        </nav>
+    </header>
 
     <!-- contenido del perfil -->
-    <section class="contenido-perfil">
-
-        <!-- foto del usuario -->
-        <div class="foto-perfil">
-            <span>foto</span>
-        </div>
-
-        <!-- nombre de la pantalla -->
-        <h1 class="titulo-perfil">mi perfil</h1>
-
-        <!-- datos del usuario -->
-        <div class="datos-perfil">
-
-            <div class="campo-perfil">
-                <label>nombre</label>
-                <input type="text" placeholder="nombre del usuario" readonly>
+    <main>
+        <section class="franja-perfil">
+            <h1>Mi perfil</h1>
+        </section>
+        <section class="contenido-perfil">
+            <div class="foto-perfil" aria-hidden="true">♡</div>
+            <h2>Información personal</h2>
+            <div class="datos-perfil">
+                <div class="campo-perfil">
+                    <label for="perfil-nombre">Nombre</label>
+                    <input type="text" id="perfil-nombre" placeholder="Sin datos por ahora" readonly>
+                </div>
+                <div class="campo-perfil">
+                    <label for="perfil-correo">Correo electrónico</label>
+                    <input type="email" id="perfil-correo" placeholder="Sin datos por ahora" readonly>
+                </div>
+                <div class="campo-perfil">
+                    <label for="perfil-telefono">Teléfono</label>
+                    <input type="tel" id="perfil-telefono" placeholder="Sin datos por ahora" readonly>
+                </div>
+                <div class="campo-perfil">
+                    <label for="perfil-nacimiento">Fecha de nacimiento</label>
+                    <input type="text" id="perfil-nacimiento" placeholder="Sin datos por ahora" readonly>
+                </div>
             </div>
 
-            <div class="campo-perfil">
-                <label>correo</label>
-                <input type="email" placeholder="correo del usuario" readonly>
-            </div>
+            <a href="dashboard.html" class="boton boton-secundario">Volver al inicio</a>
+        </section>
+    </main>
 
-            <div class="campo-perfil">
-                <label>telefono</label>
-                <input type="tel" placeholder="numero de telefono" readonly>
-            </div>
-
-            <div class="campo-perfil">
-                <label>fecha de nacimiento</label>
-                <input type="text" placeholder="dd/mm/aaaa" readonly>
-            </div>
-
-        </div>
-    </section>
-
-</main>
+    <footer>Moodsitto · 2026</footer>
 </body>
 </html>

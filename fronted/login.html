@@ -3,58 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Moodsitto | Iniciar sesión</title>
+    <title>Iniciar sesión | Moodsitto</title>
     <link rel="stylesheet" href="css/styles.css">
 </head>
-<body>
+<body class="pagina-acceso">
+    <!-- encabezado -->
     <header class="encabezado">
-        <a href="index.html" class="marca">Moodsitto</a>
-        <nav>
-            <a href="index.html">Inicio</a>
-            <a href="login.html" class="activo">Iniciar sesión</a>
-            <a href="registro.html">Registrarse</a>
+        <a href="index.html" class="marca" aria-label="Moodsitto, inicio">
+            <img src="img/Moodsitto_snFondo.png" alt="Moodsitto" class="logo">
+        </a>
+        <nav class="menu-principal" aria-label="Menu principal">
+            <a href="index.html" class="menu-enlace">Inicio</a>
+            <a href="login.html" class="menu-enlace activo" aria-current="page">Iniciar sesión</a>
+            <a href="registro.html" class="menu-enlace destacado">Crear cuenta</a>
         </nav>
     </header>
+
+    <!-- acceso del usuario -->
     <main class="pagina-formulario">
         <section class="formulario">
-            <p class="etiqueta">BIENVENIDO DE NUEVO</p>
-            <h1>Iniciar sesión</h1>
-            <p class="texto-suave">
-                Accede a tu espacio personal.
-            </p>
+            <h1>Bienvenida de nuevo</h1>
+            <p class="texto-suave">Ingresa a tu espacio personal.</p>
             <form id="login-form">
                 <label for="correo">Correo electrónico</label>
-                <input
-                    type="email"
-                    id="correo"
-                    name="mail"
-                    placeholder="tu@correo.com"
-                    autocomplete="email"
-                    required
-                >
+                <input type="email" id="correo" name="mail" placeholder="tu@correo.com" autocomplete="email" maxlength="150" required>
+
                 <label for="contrasena">Contraseña</label>
-                <input
-                    type="password"
-                    id="contrasena"
-                    name="passw"
-                    placeholder="Tu contraseña"
-                    autocomplete="current-password"
-                    required
-                >
-                <button type="submit" class="boton ancho">
-                    Ingresar
-                </button>
-                <p id="login-mensaje" class="mensaje"></p>
+                <input type="password" id="contrasena" name="passw" placeholder="Tu contraseña" autocomplete="current-password" required>
+
+                <button type="submit" class="boton ancho">Iniciar sesión</button>
+                <p id="login-mensaje" class="mensaje" role="status" aria-live="polite"></p>
             </form>
-            <p class="pie-formulario">
-                ¿No tienes una cuenta?
-                <a href="registro.html">Regístrate</a>
-            </p>
+            <p class="pie-formulario">¿Aún no tienes una cuenta? <a href="registro.html">Crear cuenta</a></p>
+            <div class="acceso-demo">
+                <a href="dashboard.html">Portal</a>
+            </div>
         </section>
     </main>
-    <footer>
-        Moodsitto · 2026
-    </footer>
+
+    <footer>Moodsitto · 2026</footer>
     <script src="js/main.js"></script>
 </body>
 </html>
