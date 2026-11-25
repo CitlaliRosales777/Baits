@@ -1,4 +1,7 @@
 """User controller: validation rules and password handling of the `users` entity."""
+import re
+import secrets
+
 from controllers.base_controller import BaseController
 from core.exceptions import ForbiddenError
 from core.security import hash_password
@@ -21,6 +24,20 @@ class UserController(BaseController):
     def _owns_record(self, record_id):
         """The caller's token `sub` matches the record id being accessed."""
         return str(record_id) == str((self.auth_user or {}).get('sub'))
+
+    def create(self, data):
+        """Self-registration may omit Username when it sends Email: one is derived from it."""
+        if isinstance(data, dict) and not data.get('Username') and isinstance(data.get('Email'), str):
+            data = {**data, 'Username': self._username_from_email(data['Email'])}
+        return super().create(data)
+
+    def _username_from_email(self, email):
+        """Build a free Username (16 chars max) from the part of the email before '@'."""
+        base = re.sub(r'[^A-Za-z0-9._-]', '', email.split('@')[0].lower())[:11] or 'user'
+        username = base
+        while self.model.get_by_username(username):
+            username = f'{base}{secrets.randbelow(100000):05d}'
+        return username
 
     def get_all(self, page=None, size=None):
         """The user list is restricted to Admin and God."""
@@ -80,6 +97,12 @@ class UserController(BaseController):
             existing = self.model.get_by_username(data['Username'])
             if existing and str(existing['UserId']) != str(record_id):
                 raise ValueError('Username already exists')
+        if 'Email' in data:
+            # An empty email is stored as NULL: '' would collide with the UNIQUE key
+            data['Email'] = data['Email'].strip().lower() if data['Email'] else None
+            existing = data['Email'] and self.model.get_by_email(data['Email'])
+            if existing and str(existing['UserId']) != str(record_id):
+                raise ValueError('Email already exists')
         role = data.get('UserRole')
         caller = (self.auth_user or {}).get('role')
         if role is not None and role != 'User':

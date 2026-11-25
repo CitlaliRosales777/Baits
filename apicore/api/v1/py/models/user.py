@@ -5,13 +5,27 @@ from models.base_model import BaseModel
 class User(BaseModel):
     TABLE_NAME = 'users'
     ID_COLUMN = 'UserId'
-    COLUMNS = ('Username', 'Password', 'Name', 'PaternalSurname', 'MaternalSurname', 'UserStatus', 'UserRole')
+    COLUMNS = ('Username', 'Password', 'Name', 'PaternalSurname', 'MaternalSurname',
+               'Email', 'BirthDate', 'Phone', 'EmergencyPhone', 'UserStatus', 'UserRole')
     HIDDEN_COLUMNS = ('Password',)
+
+    def _public(self, row):
+        """Hide the password and send BirthDate as 'YYYY-MM-DD'."""
+        row = super()._public(row)
+        if row is not None and row.get('BirthDate') is not None:
+            row['BirthDate'] = row['BirthDate'].isoformat()
+        return row
 
     def get_by_username(self, username):
         """Return the full row (including the password hash, for login) or None."""
         with self._cursor(dictionary=True) as cur:
             cur.execute(f"SELECT * FROM {self.TABLE_NAME} WHERE Username = %s", (username,))
+            return cur.fetchone()
+
+    def get_by_email(self, email):
+        """Return the full row (including the password hash, for login) or None."""
+        with self._cursor(dictionary=True) as cur:
+            cur.execute(f"SELECT * FROM {self.TABLE_NAME} WHERE Email = %s", (email,))
             return cur.fetchone()
 
     def count_by_role(self, role):

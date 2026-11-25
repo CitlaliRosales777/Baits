@@ -189,3 +189,9 @@ footer {
     height: 38px;
     object-fit: contain;
 }
+.mensaje.error {
+    color: #b3261e;
+}
+.saludo {
+    font-weight: 600;
+}

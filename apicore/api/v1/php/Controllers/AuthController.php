@@ -32,6 +32,7 @@ final class AuthController extends BaseController
     /**
      * Validate credentials and return a new token (a user may hold many at once).
      *
+     * `Username` may also be the account's email (or send it as `Email`).
      * `Persistent: true` issues a token without expiration ("keep me signed in");
      * it stays valid until it is revoked (logout) or the user is deleted.
      *
@@ -40,7 +41,8 @@ final class AuthController extends BaseController
      */
     public function login(array $data): array
     {
-        $username = $data['Username'] ?? null;
+        // Username accepts either the username or the email; Email is an alias of it
+        $username = ($data['Username'] ?? null) ?: ($data['Email'] ?? null);
         $password = $data['Password'] ?? null;
         if (!$username || !$password) {
             throw new ValueError('Username and Password are required');
@@ -56,7 +58,9 @@ final class AuthController extends BaseController
         $key = strtolower($username);
         $limiter = self::limiter();
         $limiter->check($key);
-        $user = $this->model->findByUsername($username);
+        $user = str_contains($username, '@')
+            ? $this->model->findByEmail(strtolower(trim($username)))
+            : $this->model->findByUsername($username);
         // Same error for unknown user / wrong password / inactive user: do not reveal which
         if ($user === null || $user['UserStatus'] !== 'Active'
             || !Security::verifyPassword($password, (string) $user['Password'])) {

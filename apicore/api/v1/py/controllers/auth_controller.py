@@ -20,10 +20,12 @@ class AuthController(BaseController):
     def login(self, data):
         """Validate credentials and return a new token (a user may hold many at once).
 
+        `Username` may also be the account's email (or send it as `Email`).
         `Persistent: true` issues a token without expiration ("keep me signed in");
         it stays valid until it is revoked (logout) or the user is deleted.
         """
-        username, password = data.get('Username'), data.get('Password')
+        # Username accepts either the username or the email; Email is an alias of it
+        username, password = data.get('Username') or data.get('Email'), data.get('Password')
         if not username or not password:
             raise ValueError('Username and Password are required')
         if not isinstance(username, str) or not isinstance(password, str):
@@ -33,7 +35,10 @@ class AuthController(BaseController):
             raise ValueError('Persistent must be a boolean')
         key = username.lower()
         self.limiter.check(key)
-        user = self.model.get_by_username(username)
+        if '@' in username:
+            user = self.model.get_by_email(username.strip().lower())
+        else:
+            user = self.model.get_by_username(username)
         # Same error for unknown user / wrong password / inactive user: do not reveal which
         if (user is None or user['UserStatus'] != 'Active'
                 or not verify_password(password, user['Password'])):

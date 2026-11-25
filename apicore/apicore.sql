@@ -104,6 +104,10 @@ CREATE TABLE `users` (
   `Name` varchar(45) NOT NULL,
   `PaternalSurname` varchar(25) NOT NULL,
   `MaternalSurname` varchar(25) DEFAULT NULL,
+  `Email` varchar(100) DEFAULT NULL,
+  `BirthDate` date DEFAULT NULL,
+  `Phone` varchar(15) DEFAULT NULL,
+  `EmergencyPhone` varchar(15) DEFAULT NULL,
   `UserStatus` enum('Active','Inactive') NOT NULL,
   `UserRole` enum('God','Admin','User','Other') NOT NULL DEFAULT 'User'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='API test users table';
@@ -159,7 +163,8 @@ ALTER TABLE `example`
 --
 ALTER TABLE `users`
   ADD PRIMARY KEY (`UserId`),
-  ADD UNIQUE KEY `Username` (`Username`);
+  ADD UNIQUE KEY `Username` (`Username`),
+  ADD UNIQUE KEY `Email` (`Email`);
 
 --
 -- Indexes for table `users_tokens`

@@ -39,6 +39,34 @@ final class UserController extends BaseController
     }
 
     /**
+     * Self-registration may omit Username when it sends Email: one is derived from it.
+     *
+     * @param array<string, mixed> $data
+     */
+    public function create(array $data): int
+    {
+        if (empty($data['Username']) && isset($data['Email']) && is_string($data['Email'])) {
+            $data['Username'] = $this->usernameFromEmail($data['Email']);
+        }
+        return parent::create($data);
+    }
+
+    /** Build a free Username (16 chars max) from the part of the email before '@'. */
+    private function usernameFromEmail(string $email): string
+    {
+        $local = strtolower(explode('@', $email)[0]);
+        $base = substr((string) preg_replace('/[^A-Za-z0-9._-]/', '', $local), 0, 11);
+        if ($base === '') {
+            $base = 'user';
+        }
+        $username = $base;
+        while ($this->model->findByUsername($username) !== null) {
+            $username = $base . sprintf('%05d', random_int(0, 99999));
+        }
+        return $username;
+    }
+
+    /**
      * The user list is restricted to Admin and God.
      *
      * @return list<array<string, mixed>>
@@ -111,7 +139,7 @@ final class UserController extends BaseController
     }
 
     /**
-     * Reject duplicated usernames, enforce role permissions and store the
+     * Reject duplicated usernames/emails, enforce role permissions and store the
      * password hashed.
      *
      * The password is required on create and optional on update (omitted =
@@ -130,6 +158,14 @@ final class UserController extends BaseController
             $existing = $this->model->findByUsername((string) $data['Username']);
             if ($existing !== null && (string) $existing['UserId'] !== (string) $recordId) {
                 throw new ValueError('Username already exists');
+            }
+        }
+        if (array_key_exists('Email', $data)) {
+            // An empty email is stored as NULL: '' would collide with the UNIQUE key
+            $data['Email'] = empty($data['Email']) ? null : strtolower(trim((string) $data['Email']));
+            $existing = $data['Email'] === null ? null : $this->model->findByEmail($data['Email']);
+            if ($existing !== null && (string) $existing['UserId'] !== (string) $recordId) {
+                throw new ValueError('Email already exists');
             }
         }
         $role = $data['UserRole'] ?? null;

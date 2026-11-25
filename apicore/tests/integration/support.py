@@ -133,15 +133,23 @@ def stop_server(process):
         return ''
     # php -S forks workers that inherit the stdout pipe: signal the whole group,
     # otherwise reading the pipe blocks forever waiting for the children.
-    try:
-        group = os.getpgid(process.pid)
-    except ProcessLookupError:
-        group = None
+    group = None
+    if hasattr(os, 'getpgid'):  # Windows has no process groups: terminate() below
+        try:
+            group = os.getpgid(process.pid)
+        except ProcessLookupError:
+            pass
     if group is not None:
         try:
             os.killpg(group, signal.SIGTERM)
         except ProcessLookupError:
             pass
+    elif os.name == 'nt':
+        # The python.exe of a venv is a launcher that spawns the real interpreter
+        # as a child: terminate() would kill only the launcher, the child keeps the
+        # port and the stdout pipe, and reading the pipe below would block forever.
+        subprocess.run(['taskkill', '/PID', str(process.pid), '/T', '/F'],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     else:
         process.terminate()
     try:

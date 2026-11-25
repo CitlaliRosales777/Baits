@@ -14,7 +14,8 @@ final class User extends BaseModel
     protected const TABLE_NAME = 'users';
     protected const ID_COLUMN = 'UserId';
     protected const COLUMNS = [
-        'Username', 'Password', 'Name', 'PaternalSurname', 'MaternalSurname', 'UserStatus', 'UserRole',
+        'Username', 'Password', 'Name', 'PaternalSurname', 'MaternalSurname',
+        'Email', 'BirthDate', 'Phone', 'EmergencyPhone', 'UserStatus', 'UserRole',
     ];
     protected const HIDDEN_COLUMNS = ['Password'];
 
@@ -27,6 +28,19 @@ final class User extends BaseModel
     {
         $statement = $this->pdo->prepare('SELECT * FROM ' . static::TABLE_NAME . ' WHERE Username = ?');
         $statement->execute([$username]);
+        $row = $statement->fetch();
+        return $row === false ? null : $row;
+    }
+
+    /**
+     * Return the full row (including the password hash, for login) or null.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function findByEmail(string $email): ?array
+    {
+        $statement = $this->pdo->prepare('SELECT * FROM ' . static::TABLE_NAME . ' WHERE Email = ?');
+        $statement->execute([$email]);
         $row = $statement->fetch();
         return $row === false ? null : $row;
     }
