@@ -1,0 +1,8 @@
+"""User routes: wires the `users` URLs to UserController.
+
+POST /users is public (self-registration); the rest require a token."""
+from controllers.user_controller import UserController
+
+
+def register_routes(router):
+    router.add_crud_routes('/users', UserController, 'User', public_methods=('POST',))

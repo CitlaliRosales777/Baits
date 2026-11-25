@@ -107,9 +107,7 @@ Se copia `.env.example` como `.env` y se llenan los datos de la base. El `.env` 
 
 ## Base de datos
 
-Usa el esquema [bd-moodsitto.sql](../Baits/bd-moodsitto.sql), que crea la base `moodsitto` e incluye las columnas y la tabla `api_tokens` requeridas por el backend, además de los estados `pendiente` y `completado`. Copia `.env.example` como `.env` y configura las credenciales de esa base.
-
-También hace falta crear la tabla `login_intentos`, usada para bloquear intentos de login. Ejecuta `sql/extras.sql` una sola vez con una cuenta que pueda crear tablas. La cuenta de la API solo necesita `SELECT`, `INSERT`, `UPDATE` y `DELETE`.
+Usa el esquema del equipo (`bd-moodsitto.sql` de la rama `db-manager`). Además hace falta una tabla que no está en ese esquema, `login_intentos`, para el bloqueo de intentos. Está en `sql/extras.sql` y se corre una sola vez con una cuenta que pueda crear tablas. La cuenta de la API solo necesita `SELECT`, `INSERT`, `UPDATE` y `DELETE`.
 
 ## Cómo correrlo en la laptop
 

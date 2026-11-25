@@ -1,0 +1,110 @@
+"""Security: password hashing and manual JWT (HS256) signing/verification.
+
+Layer: core (cross-cutting). Standard library only: pure crypto and payload
+handling, no database access here (token persistence lives in
+services/token_service.py).
+"""
+import base64
+import hashlib
+import hmac
+import json
+import secrets
+import time
+
+from core.exceptions import UnauthorizedError
+from core.settings import settings
+
+HASH_ALGORITHM = 'pbkdf2_sha256'
+HASH_ITERATIONS = 100000
+
+
+# --- Password hashing ---
+
+def hash_password(password: str) -> str:
+    """Return "algorithm$iterations$salt$hash" (self-contained, salt is random)."""
+    salt = secrets.token_hex(16)
+    digest = hashlib.pbkdf2_hmac('sha256', password.encode(), bytes.fromhex(salt), HASH_ITERATIONS)
+    return f'{HASH_ALGORITHM}${HASH_ITERATIONS}${salt}${digest.hex()}'
+
+
+def verify_password(password: str, stored_hash: str) -> bool:
+    """Check a password against a stored hash in constant time.
+
+    Also accepts the legacy "salt:hash" format (PBKDF2-SHA256, 100000 iterations)
+    used by the rows already present in the database.
+    """
+    try:
+        if '$' in stored_hash:
+            _, iterations, salt, expected = stored_hash.split('$')
+        else:
+            salt, expected = stored_hash.split(':')
+            iterations = HASH_ITERATIONS
+        digest = hashlib.pbkdf2_hmac('sha256', password.encode(), bytes.fromhex(salt), int(iterations))
+    except ValueError:
+        return False
+    return hmac.compare_digest(digest.hex(), expected)
+
+
+# --- Base64 URL encoding (JWT) ---
+
+def base64url_encode(data: bytes) -> str:
+    return base64.urlsafe_b64encode(data).rstrip(b'=').decode()
+
+
+def base64url_decode(data: str) -> bytes:
+    return base64.urlsafe_b64decode(data + '=' * (-len(data) % 4))
+
+
+# --- Tokens ---
+
+def _sign(signing_input: str) -> str:
+    """HMAC-SHA256 signature of "header.payload"."""
+    return base64url_encode(hmac.new(settings.JWT_SECRET.encode(), signing_input.encode(), hashlib.sha256).digest())
+
+
+def hash_token(token: str) -> str:
+    """SHA-256 of the raw token: this is what is stored and looked up in the DB."""
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def generate_payload(user_id: int, role: str, lifetime_minutes: int, min_remaining_minutes: int,
+                     persistent: bool = False) -> dict:
+    """Claims dict of a new token. lifetime_minutes is ignored when persistent=True
+    (no `exp` claim); min_remaining_minutes is only a claim for the client."""
+    now = int(time.time())
+    payload = {
+        'sub': user_id, 'role': role, 'iat': now, 'jti': secrets.token_hex(16),
+        'min_remaining_minutes': min_remaining_minutes,
+    }
+    if not persistent:
+        payload['exp'] = now + lifetime_minutes * 60
+    return payload
+
+
+def encode_token(payload: dict) -> str:
+    """Sign "header.payload" (HS256) and return the compact JWT."""
+    header = {'alg': settings.JWT_ALGORITHM, 'typ': 'JWT'}
+    signing_input = '.'.join(base64url_encode(json.dumps(part, separators=(',', ':')).encode())
+                             for part in (header, payload))
+    return f'{signing_input}.{_sign(signing_input)}'
+
+
+def verify_token(token: str) -> dict:
+    """Validate structure, algorithm, signature and expiration (no DB check).
+
+    Returns the payload. Raises UnauthorizedError on any failure.
+    """
+    try:
+        header_b64, payload_b64, signature = token.split('.')
+        header = json.loads(base64url_decode(header_b64))
+        payload = json.loads(base64url_decode(payload_b64))
+    except ValueError:
+        raise UnauthorizedError('Invalid token')
+
+    if header.get('alg') != settings.JWT_ALGORITHM:
+        raise UnauthorizedError('Invalid token')
+    if not hmac.compare_digest(_sign(f'{header_b64}.{payload_b64}'), signature):
+        raise UnauthorizedError('Invalid token')
+    if 'exp' in payload and payload['exp'] < time.time():
+        raise UnauthorizedError('Token expired')
+    return payload
