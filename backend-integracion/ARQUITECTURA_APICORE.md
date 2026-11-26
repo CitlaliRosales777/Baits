@@ -33,6 +33,16 @@ Si un compañero ejecuta el backend directamente en su computadora, esa computad
 
 ## Entrega de DB Manager
 
+### Preparar la base de APIcore
+
+1. En el principal de MariaDB, aplica [04-esquema-apicore.sql](../mariadb/estructura/04-esquema-apicore.sql) con la cuenta de migraciones. Está pensado para una instalación nueva y se puede volver a ejecutar. Para una base existente, revisa primero sus columnas e índices. Si corresponde a la versión anterior al registro de contacto, revisa `apicore/migrations/001_users_contacto.sql` de `api-citas`.
+2. Crea `apicore_app` para el origen privado del host de APIcore con una contraseña propia. Otorga `SELECT, INSERT, UPDATE, DELETE` exclusivamente sobre `apicore.*`. Ejecuta [verificar-apicore.sql](../mariadb/estructura/verificar-apicore.sql) conectado como esa cuenta a `apicore`. Su salida confirma el contrato de lectura.
+3. En el checkout de `api-citas`, copia [apicore.env.example](apicore.env.example) como `apicore/api/v1/php/.env` o `apicore/api/v1/py/.env`, según la implementación elegida. Usa la contraseña entregada por DB Manager en `DB_PASSWORD` y una clave de firma propia del entorno de APIcore en `JWT_SECRET`. El responsable de APIcore gestiona esa clave.
+
+El esquema crea `users`, `users_tokens`, `moods` y `example` vacías. El responsable de APIcore debe provisionar las cuentas iniciales y cargar los catálogos requeridos por su entorno. El volcado de referencia incluye borrados y cuentas de demostración, así que úsalo exclusivamente para un laboratorio descartable.
+
+### Conexión del backend Moodsitto
+
 - Direcciones privadas y nombres de las bases.
 - Usuario MariaDB `moodsitto_app` con permisos de aplicación.
 - Usuario MongoDB `moodsitto_app` con rol limitado a `moodsitto`.

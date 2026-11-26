@@ -37,3 +37,5 @@ Ambas ramas backend leen `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` y `DB_PASS`.
 
 El esquema híbrido base conserva 23 tablas. La [migración de intentos de login](../../mariadb/estructura/03-login-intentos.sql) añade la tabla complementaria que esperan ambos backends. MongoDB está previsto para el seguimiento emocional del modelo híbrido. El módulo `moods` de APIcore usa su propio SQL. La integración entre servicios, tokens e identidades se describe en [APIcore y Moodsitto](../../backend-integracion/ARQUITECTURA_APICORE.md).
 
+El [esquema independiente de APIcore](../../mariadb/estructura/04-esquema-apicore.sql) conserva sus cuatro tablas y se aprovisiona con una cuenta limitada a `apicore`. El esquema `moodsitto` sigue atendiendo al backend del proyecto.
+

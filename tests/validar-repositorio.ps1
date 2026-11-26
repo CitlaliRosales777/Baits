@@ -8,6 +8,8 @@ $required=@(
  'backend-integracion\CHECKLIST_BACKEND.md','backend-integracion\CONTRATO_DATOS_MOODSITTO.md',
  'backend-integracion\ARQUITECTURA_APICORE.md',
  'mariadb\estructura\03-login-intentos.sql',
+ 'mariadb\estructura\04-esquema-apicore.sql','mariadb\estructura\verificar-apicore.sql',
+ 'backend-integracion\apicore.env.example',
  'mariadb\estructura\01-esquema-hibrido.sql','mongodb\colecciones\01-modelo-hibrido.js',
  'presentacion\interfaz-pruebas.ps1','presentacion\INICIAR-PRUEBAS.cmd'
 )

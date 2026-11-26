@@ -4,6 +4,8 @@ No instales servidores de bases de datos. DB Manager los administra.
 
 El flujo acordado es `cliente → APIcore → backend → bases de datos`. Esta guía configura el acceso del backend a Moodsitto. APIcore tiene un esquema y una configuración propios en `api-citas`. Lee [APIcore y Moodsitto](ARQUITECTURA_APICORE.md) antes de integrar los servicios.
 
+Si vas a configurar APIcore, sigue la sección de preparación de su base en esa guía y usa [apicore.env.example](apicore.env.example).
+
 ## Qué contraseñas solicita el asistente
 
 El asistente pide dos credenciales que debe entregar DB Manager por un canal privado:
