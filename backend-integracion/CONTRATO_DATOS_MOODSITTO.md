@@ -6,7 +6,9 @@ La versión híbrida tiene 23 tablas. El backend existente usa:
 
 - `users`: registro, login y perfil. `passw` contiene hash, nunca texto plano.
 - `estado` y `recordatorios`: recordatorios generales, citas y medicamentos.
-- `citas_medicas`, `medicamento`, `medicamento_horario`, `toma_medicamento`: pendientes de endpoints.
+- `citas_medicas`, `doctors`, `area`, `location`, `especialidad` y `estado` respaldan citas y catálogos en `api-citas`.
+- `api_tokens` guarda hashes de tokens del backend. `login_intentos` se agrega con [la migración complementaria](../mariadb/estructura/03-login-intentos.sql).
+- `medicamento`, `medicamento_horario` y `toma_medicamento` quedan pendientes de endpoints.
 - `auditoria_eventos`: acciones relacionales sin secretos ni contenido clínico.
 
 El contrato PHP observado espera `users(name, lastname1, lastname2, date_b, phone, emer_phone, mail, passw)` y usa PDO MySQL con consultas preparadas.

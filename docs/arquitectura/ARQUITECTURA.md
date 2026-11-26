@@ -4,7 +4,7 @@
 
 | Nodo | Servicio | Rol |
 |---|---|---|
-| Windows fijo (por confirmar) | MariaDB | principal de escritura, `server_id=1` |
+| Windows fijo (`desktop-smecf2n`) | MariaDB | principal de escritura, `server_id=1` |
 | HP Ubuntu (`ubuntu-hp`) | MariaDB | réplica GTID, `read_only`, configuración de 3.3 GiB |
 | VPS (`lvltechmx`) | MongoDB | miembro preferido, prioridad 2 |
 | Windows fijo | MongoDB | secundario elegible, prioridad 1 |
@@ -22,5 +22,18 @@ MariaDB conserva identidad, sesiones/tokens, citas, medicamentos, recordatorios 
 
 ## Contrato backend observado
 
-La rama `backend-moodsitto` usa PHP/PDO MySQL, variables `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS`, sesiones HTTP y las tablas `users`, `recordatorios` y `estado`. Implementa registro, login, perfil y recordatorios; emociones, medicamentos y citas están pendientes. No usa MongoDB todavía. El paquete de integración añade variables MongoDB sin modificar esa rama.
+Revisión de las siete ramas remotas de `CitlaliRosales777/Baits`.
+
+| Rama revisada | Contenido relevante |
+|---|---|
+| `main` y `Pruebas` (`12f2f12`) | Mismo commit con el esquema SQL de referencia. |
+| `Fronted` (`fcfa904`) | Interfaz y JavaScript del cliente. El acceso a bases corresponde a los servicios del servidor. |
+| `Terre-Devo-front` (`35cb87c`) | Diseño y prototipo HTML de seguimiento. |
+| `backend-moodsitto` (`5fb72ca`) | PHP/PDO MySQL, perfil, recordatorios, login con Bearer y persistencia en `api_tokens` y `login_intentos`. |
+| `api-citas` (`1b2b419`) | Incorpora APIcore PHP/Python y amplía el backend Moodsitto con citas y catálogos. El cliente incluido usa el contrato de autenticación de APIcore. |
+| `db-manager` (`3c2eb2f`, base de esta revisión) | Esquema híbrido, catálogos de estados, configuración y operación de MariaDB y MongoDB. |
+
+Ambas ramas backend leen `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` y `DB_PASS`. El backend de citas consulta `citas_medicas`, `doctors`, `area`, `location`, `especialidad` y `estado`. Requiere catálogos poblados para crear citas. Los catálogos de ejemplo de esa rama son para pruebas.
+
+El esquema híbrido base conserva 23 tablas. La [migración de intentos de login](../../mariadb/estructura/03-login-intentos.sql) añade la tabla complementaria que esperan ambos backends. MongoDB está previsto para el seguimiento emocional del modelo híbrido. El módulo `moods` de APIcore usa su propio SQL. La integración entre servicios, tokens e identidades se describe en [APIcore y Moodsitto](../../backend-integracion/ARQUITECTURA_APICORE.md).
 

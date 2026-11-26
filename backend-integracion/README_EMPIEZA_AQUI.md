@@ -2,7 +2,7 @@
 
 No instales servidores de bases de datos. DB Manager los administra.
 
-La arquitectura obligatoria es `cliente → APIcore → backend → bases de datos`. Lee primero `ARQUITECTURA_APICORE.md`. APIcore y frontend no reciben credenciales DB; únicamente el entorno donde se ejecuta el backend necesita esta configuración.
+El flujo acordado es `cliente → APIcore → backend → bases de datos`. Esta guía configura el acceso del backend a Moodsitto. APIcore tiene un esquema y una configuración propios en `api-citas`. Lee [APIcore y Moodsitto](ARQUITECTURA_APICORE.md) antes de integrar los servicios.
 
 ## Qué contraseñas solicita el asistente
 
@@ -17,7 +17,7 @@ Después de recibirlas, el asistente las guarda en `backend-integracion\.env` ú
 
 ## Windows
 
-1. Si el backend se ejecutará en esta computadora, conecta Tailscale con la cuenta autorizada. Si solo trabajas en APIcore o frontend, no necesitas estos pasos.
+1. En el entorno que ejecutará el backend, conecta Tailscale con la cuenta autorizada.
 2. Abre PowerShell en esta carpeta.
 3. Ejecuta `Set-ExecutionPolicy -Scope Process Bypass`.
 4. Ejecuta `.\configurar.ps1` e introduce las dos contraseñas cuando las solicite. No aparecerán en pantalla.
@@ -33,5 +33,5 @@ Después de recibirlas, el asistente las guarda en `backend-integracion\.env` ú
 
 El asistente crea `.env` únicamente en tu computadora. Nunca lo envíes por chat ni lo subas a Git. Si falla algo, abre `ERRORES_FRECUENTES.md` y reporta a DB Manager el mensaje sin contraseñas.
 
-El backend PHP observado usa `DB_HOST`, `DB_NAME`, `DB_USER` y `DB_PASS`. MongoDB todavía requiere que el equipo backend agregue el controlador y las rutas emocionales; consulta la guía técnica.
+Configura el proceso PHP con `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` y `DB_PASS` del archivo generado. El código PHP lee `backend/.env` o las variables del proceso. El verificador lee el archivo de esta carpeta. MongoDB queda disponible para cuando el equipo backend integre el controlador y las rutas emocionales.
 

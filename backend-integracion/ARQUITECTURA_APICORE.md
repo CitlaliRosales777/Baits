@@ -1,6 +1,6 @@
-# Conexión correcta detrás de APIcore
+# APIcore y Moodsitto en Baits
 
-El flujo obligatorio del proyecto es:
+El flujo acordado por el equipo es:
 
 ```text
 Cliente o frontend
@@ -15,11 +15,19 @@ Backend Moodsitto
        +-- MongoDB
 ```
 
-DB Manager no implementa rutas, autenticación de APIcore ni lógica del backend. Su entrega termina en dejar los motores disponibles, crear usuarios de aplicación con permisos mínimos y proporcionar las variables de conexión.
+El flujo anterior es el objetivo de integración. En `api-citas`, APIcore incluye implementaciones PHP y Python con conexión SQL propia. El cliente de esa rama envía solicitudes al contrato de APIcore en `localhost:8000`. El backend de Moodsitto ofrece sus propias rutas y conexión SQL. La conexión APIcore → backend queda por definir y probar con el equipo responsable.
+
+| Componente | Contrato observado |
+|---|---|
+| Cliente de `api-citas` | Envía `Username` y `Password` al login y lee el campo `sub` de un JWT. |
+| APIcore PHP/Python | Usa la base `apicore`, con `users.UserId`, `users_tokens` y `moods`. Lee `DB_PASSWORD` y `JWT_SECRET`. |
+| Backend PHP Moodsitto | Usa la base `moodsitto`, con `users.id_user` y `api_tokens`. Lee `DB_PASS`, espera `mail` y `passw` en login y usa tokens opacos. |
+
+Cada componente que abra una conexión SQL necesita su propia configuración y cuenta autorizada. Para ejecutar APIcore como viene en la rama, su esquema y su cuenta deben aprovisionarse por separado en el entorno elegido. El equipo debe acordar qué servicio autentica, cómo se valida el token y cómo se resuelve la correspondencia entre `UserId` e `id_user`. Mantén separados los almacenes de identidad hasta definir esa correspondencia.
 
 ## Quién necesita Tailscale
 
-Solo el equipo donde se ejecute el proceso que realmente abre la conexión a MariaDB y MongoDB. Si el backend se despliega en un servidor conectado a Tailscale, los desarrolladores, APIcore, frontend y usuarios finales no necesitan conectarse a la red privada.
+Cada host que abra una conexión directa a las bases privadas de DB Manager necesita acceso Tailscale autorizado. El navegador usa la URL HTTP de su API. Si APIcore usa una base aislada en otro entorno, aplica la política de red de ese entorno.
 
 Si un compañero ejecuta el backend directamente en su computadora, esa computadora sí necesita Tailscale. Publicar los puertos 3306 o 27017 para evitarlo no es una opción segura y contradice la infraestructura solicitada.
 
@@ -33,11 +41,9 @@ Si un compañero ejecuta el backend directamente en su computadora, esa computad
 - Prueba automática de autenticación, lectura y escritura sintética.
 - Contrato de tablas, colecciones y relación por `id_user`.
 
-Las credenciales se entregan por un canal privado únicamente a la persona responsable de configurar el entorno donde corre el backend. No se colocan en APIcore, frontend, GitHub ni archivos compartidos.
+Las credenciales de `moodsitto` se entregan por un canal privado al responsable del backend. APIcore debe usar sus propias credenciales SQL cuando se ejecute con su esquema de referencia.
 
 ## Responsabilidad del equipo backend/APIcore
 
-El equipo debe conectar APIcore con sus rutas backend y decidir dónde desplegar ambos servicios. El backend debe leer las variables entregadas por DB Manager, validar el usuario autenticado por APIcore y aplicar autorización por `id_user` antes de consultar o modificar datos.
-
-El repositorio observado no contiene la implementación de APIcore, por lo que su contrato de cabeceras, tokens y rutas debe ser confirmado por el equipo responsable. DB Manager no lo inventa ni lo modifica.
+El equipo de APIcore y backend define el adaptador, la autenticación entre servicios y la autorización por `id_user`. DB Manager entrega esquemas, cuentas y parámetros de conexión. La comparación por rama está en [Arquitectura de DB Manager](../docs/arquitectura/ARQUITECTURA.md).
 
