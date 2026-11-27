@@ -78,7 +78,17 @@ Ejecuta las pruebas en orden y exporta el reporte a `evidencias-locales/`. El co
 
 Después de ejecutar una prueba, selecciónala en la tabla y abre **Comandos de la prueba**. Ahí se muestran las consultas SQL y de MongoDB, las llamadas por SSH o el script que se ejecutó, según la prueba. **Actividad** muestra los resultados y errores. El reporte incluye ambos y oculta las contraseñas.
 
+### Arrancar desde la ventana
+
+En **Inicio local**, revisa las rutas de los repositorios y de `php.exe`. Pulsa **Iniciar APIcore** para abrir la consola de PHP. Si solicita claves, escríbelas en esa consola. Pulsa **Iniciar frontend PHP** y después **Ver estado** para comprobar los módulos de XAMPP, `/health` en el puerto 8000 y el inicio de sesión en el puerto 5500. **Abrir sitio** abre el frontend local. Para cerrar un servidor local durante la presentación, usa **Ctrl+C** en su consola de arranque.
+
 ## 4. Explicar y verificar una falla
+
+En **Recuperación** puedes usar **Ver estado**, **Iniciar motor**, **Ensayar caída del motor** y **Reiniciar servidor** en el HP y el VPS. Si el HP pide autorización, el panel abre una terminal SSH para `sudo`. Las acciones de interrupción requieren confirmación durante la presentación.
+
+- **Ensayar caída del motor** programa el arranque del servicio en 45 segundos, lo detiene y comprueba qué ocurre mientras está fuera. MariaDB verifica una escritura en el principal mientras la réplica está detenida. MongoDB espera un principal y prueba una escritura con confirmación por mayoría. Al volver el servicio, el panel consulta nuevamente la topología y registra el tiempo.
+- **Reiniciar servidor** verifica que el motor se inicie con el sistema. Después compara el identificador de arranque y espera al servicio. El encendido de un equipo que quedó totalmente apagado requiere acceso físico o administración remota de hardware.
+- En **Actividad y comandos** puedes seguir la operación y copiar lo que ejecutó. Exporta el reporte desde **Pruebas** para conservar esa evidencia.
 
 - **MariaDB.** Si cae el HP, el principal puede seguir escribiendo. Si cae el principal, las escrituras esperan su recuperación o una promoción manual tras revisar GTID. La réplica asíncrona podría quedar por detrás. Para comprobar un registro creado por APIcore, compara en ambos nodos el `UserId` de la cuenta ficticia con una cuenta autorizada para leer `apicore`. La prueba automática de replicación del panel usa `moodsitto.auditoria_eventos`.
 - **MongoDB.** Dos votos de tres conservan la mayoría si queda un nodo elegible. Con un solo miembro, se pierde el principal para escrituras. En una prueba autorizada, captura roles y salud antes de la caída, durante la elección y al volver a conectar el miembro.

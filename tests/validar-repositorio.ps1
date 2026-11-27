@@ -12,7 +12,8 @@ $required=@(
  'mariadb\estructura\04-esquema-apicore.sql','mariadb\estructura\verificar-apicore.sql',
  'backend-integracion\apicore.env.example',
  'mariadb\estructura\01-esquema-hibrido.sql','mongodb\colecciones\01-modelo-hibrido.js',
- 'presentacion\interfaz-pruebas.ps1','presentacion\INICIAR-PRUEBAS.cmd','presentacion\GUIA_DEMO.md'
+ 'presentacion\interfaz-pruebas.ps1','presentacion\operaciones-panel.ps1',
+ 'presentacion\INICIAR-PRUEBAS.cmd','presentacion\GUIA_DEMO.md'
 )
 foreach($f in $required){if(-not(Test-Path (Join-Path $Repo $f))){throw "Falta $f"}}
 $tables=(Select-String -LiteralPath (Join-Path $Repo 'mariadb\estructura\01-esquema-hibrido.sql') -Pattern '^CREATE TABLE').Count

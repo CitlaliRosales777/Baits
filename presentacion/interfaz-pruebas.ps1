@@ -29,6 +29,10 @@ $script:SummaryLabel = $null
 $script:Running = $false
 $script:CommandBox = $null
 $script:ActiveCommands = $null
+$script:OperationLogBox = $null
+$script:RunningOperation = $false
+$script:OperationHistory = [Collections.Generic.List[string]]::new()
+. (Join-Path $PSScriptRoot 'operaciones-panel.ps1')
 
 # Cada prueba devuelve el mismo formato para la tabla y el reporte.
 function New-Result {
@@ -76,6 +80,11 @@ function Write-Log {
         $script:LogBox.AppendText($line + [Environment]::NewLine)
         $script:LogBox.SelectionStart = $script:LogBox.TextLength
         $script:LogBox.ScrollToCaret()
+        if ($script:RunningOperation -and $script:OperationLogBox) {
+            $script:OperationLogBox.AppendText($line + [Environment]::NewLine)
+            $script:OperationLogBox.SelectionStart = $script:OperationLogBox.TextLength
+            $script:OperationLogBox.ScrollToCaret()
+        }
         [System.Windows.Forms.Application]::DoEvents()
     } else {
         Write-Output $line
@@ -174,7 +183,7 @@ function Invoke-MongoEval {
 function Invoke-SshCommand {
     param([string]$Target, [string]$Command, [switch]$AllowFailure)
     $ssh = Require-Tool 'ssh' 'Activa el cliente OpenSSH de Windows.'
-    $sshArgs = @('-o', 'BatchMode=yes', '-o', 'ConnectTimeout=7', '-o', 'ServerAliveInterval=3', $Target, $Command)
+    $sshArgs = @('-o', 'BatchMode=yes', '-o', 'ConnectTimeout=7', '-o', 'ServerAliveInterval=3', '--', $Target, $Command)
     Register-TestCommand $ssh $sshArgs
     $output = & $ssh @sshArgs 2>&1
     $code = $LASTEXITCODE
@@ -190,7 +199,7 @@ function Invoke-RemoteScript {
     $content = [IO.File]::ReadAllText($LocalScript).Replace("`r`n", "`n")
     $encoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($content))
     $remote = "set -eo pipefail; printf %s '$encoded' | base64 -d | $runner"
-    $sshArgs = @('-o', 'BatchMode=yes', '-o', 'ConnectTimeout=7', $Target)
+    $sshArgs = @('-o', 'BatchMode=yes', '-o', 'ConnectTimeout=7', '--', $Target)
     Register-TestCommand $ssh ($sshArgs + @($runner)) "Envía por SSH el contenido de $LocalScript al Bash remoto."
     $output = & $ssh @sshArgs $remote 2>&1
     $code = $LASTEXITCODE
@@ -507,6 +516,10 @@ if ($SelfTest) {
     if ($script:ActiveCommands[0] -ne "& 'mongosh' '--eval' 'print(''prueba'')' '[OCULTO]'") {
         throw 'El registro de comandos debe conservar las comillas y ocultar la contraseña.'
     }
+    if ((Get-RecoveryTargets).Unit -join ',' -ne 'mariadb,mongod' -or
+        (Get-RecoveryCommand Ensayar mongod 'moodsitto-recuperar-123456789abc') -notmatch '--on-active=45s .* start mongod && .* stop mongod') {
+        throw 'La recuperación debe programar el arranque del motor antes de detenerlo.'
+    }
     Write-Output "[OK] Interfaz válida: $($script:Tests.Count) pruebas registradas."
     exit 0
 }
@@ -681,46 +694,71 @@ function Export-Report {
             }
         }
     }
+    if ($script:OperationHistory.Count -gt 0) {
+        $lines.Add('')
+        $lines.Add('## Operaciones de esta sesión')
+        $lines.Add('```text')
+        $lines.Add(($script:OperationHistory.ToArray() -join "`n`n"))
+        $lines.Add('```')
+    }
     [IO.File]::WriteAllLines($file, $lines, [Text.UTF8Encoding]::new($false))
     Write-Log "Reporte guardado en $file" 'OK'
     [Windows.Forms.MessageBox]::Show("Reporte guardado en:`n$file", 'Reporte listo', 'OK', 'Information') | Out-Null
 }
 
 $form = [Windows.Forms.Form]::new()
-$form.Text = 'Moodsitto DB Manager | Pruebas para la presentación'
+$form.Text = 'Moodsitto DB Manager | Operación y pruebas'
 $form.StartPosition = 'CenterScreen'
 $form.Size = [Drawing.Size]::new(1320, 860)
 $form.MinimumSize = [Drawing.Size]::new(1100, 720)
-$form.BackColor = [Drawing.Color]::FromArgb(245,247,250)
-$form.Font = [Drawing.Font]::new('Segoe UI', 9)
+$form.BackColor = [Drawing.ColorTranslator]::FromHtml('#F8FAFC')
+$form.Font = [Drawing.Font]::new('Segoe UI', 10)
+$form.AutoScaleMode = 'Dpi'
+$blue = [Drawing.ColorTranslator]::FromHtml('#1D4ED8')
+$ink = [Drawing.ColorTranslator]::FromHtml('#1E293B')
+$slate = [Drawing.ColorTranslator]::FromHtml('#475569')
+$green = [Drawing.ColorTranslator]::FromHtml('#047857')
+$red = [Drawing.ColorTranslator]::FromHtml('#B91C1C')
 
 $header = [Windows.Forms.Panel]::new()
 $header.Dock = 'Top'
-$header.Height = 74
-$header.BackColor = [Drawing.Color]::FromArgb(30,41,59)
+$header.Height = 86
+$header.BackColor = $ink
 $form.Controls.Add($header)
 
 $title = [Windows.Forms.Label]::new()
-$title.Text = 'Moodsitto | Centro de pruebas DB Manager'
+$title.Text = 'Moodsitto DB Manager'
 $title.ForeColor = [Drawing.Color]::White
-$title.Font = [Drawing.Font]::new('Segoe UI Semibold', 18)
+$title.Font = [Drawing.Font]::new('Segoe UI Semibold', 23)
 $title.AutoSize = $true
 $title.Location = [Drawing.Point]::new(22, 12)
 $header.Controls.Add($title)
 
 $subtitle = [Windows.Forms.Label]::new()
-$subtitle.Text = 'Selecciona una prueba para ver sus comandos. La pestaña Actividad muestra el resultado.'
+$subtitle.Text = 'Pruebas y operación de la infraestructura'
 $subtitle.ForeColor = [Drawing.Color]::FromArgb(203,213,225)
 $subtitle.AutoSize = $true
-$subtitle.Location = [Drawing.Point]::new(25, 47)
+$subtitle.Location = [Drawing.Point]::new(25, 55)
 $header.Controls.Add($subtitle)
 
 $settings = [Windows.Forms.GroupBox]::new()
 $settings.Text = 'Conexiones de la presentación'
 $settings.Dock = 'Top'
-$settings.Height = 92
+$settings.Height = 82
 $settings.Padding = [Windows.Forms.Padding]::new(12)
 $form.Controls.Add($settings)
+
+$navigation = [Windows.Forms.TabControl]::new()
+$navigation.Dock = 'Fill'
+$navigation.ItemSize = [Drawing.Size]::new(177, 38)
+$navigation.SizeMode = 'Fixed'
+$form.Controls.Add($navigation)
+$navigation.BringToFront()
+$header.SendToBack()
+$testPage = [Windows.Forms.TabPage]::new('Pruebas')
+$localPage = [Windows.Forms.TabPage]::new('Inicio local')
+$recoveryPage = [Windows.Forms.TabPage]::new('Recuperación')
+$navigation.TabPages.AddRange(@($testPage, $localPage, $recoveryPage))
 
 function Add-Field {
     param($Parent, [string]$Label, [int]$X, [int]$Y, [int]$Width, [string]$Value, [switch]$Password)
@@ -733,6 +771,7 @@ function Add-Field {
     $box.Location = [Drawing.Point]::new($X, $Y + 20)
     $box.Width = $Width
     $box.Text = $Value
+    $box.AccessibleName = $Label
     if ($Password) { $box.UseSystemPasswordChar = $true }
     $Parent.Controls.Add($box)
     $box
@@ -755,38 +794,41 @@ $main.Orientation = 'Horizontal'
 $main.SplitterDistance = 390
 $main.Panel1MinSize = 260
 $main.Panel2MinSize = 140
-$form.Controls.Add($main)
+$testPage.Controls.Add($main)
 $main.BringToFront()
 
 $toolbar = [Windows.Forms.FlowLayoutPanel]::new()
 $toolbar.Dock = 'Top'
-$toolbar.Height = 48
+$toolbar.Height = 92
 $toolbar.Padding = [Windows.Forms.Padding]::new(8,8,0,0)
 $main.Panel1.Controls.Add($toolbar)
 
-function New-ToolbarButton {
-    param([string]$Text, [int]$Width, [Drawing.Color]$Color)
+function New-PanelButton {
+    param($Parent, [string]$Text, [int]$Width, [Drawing.Color]$Color)
     $button = [Windows.Forms.Button]::new()
     $button.Text = $Text
     $button.Width = $Width
-    $button.Height = 30
+    $button.Height = 40
+    $button.Margin = [Windows.Forms.Padding]::new(4, 2, 8, 4)
+    $button.Cursor = [Windows.Forms.Cursors]::Hand
     $button.FlatStyle = 'Flat'
     $button.BackColor = $Color
     $button.ForeColor = [Drawing.Color]::White
     $button.FlatAppearance.BorderSize = 0
-    $toolbar.Controls.Add($button)
+    $Parent.Controls.Add($button)
     $button
 }
 
-$runSelectedButton = New-ToolbarButton 'Ejecutar seleccionada' 160 ([Drawing.Color]::FromArgb(37,99,235))
-$runSafeButton = New-ToolbarButton 'Ejecutar todas las seguras' 190 ([Drawing.Color]::FromArgb(5,150,105))
-$exportButton = New-ToolbarButton 'Exportar reporte' 130 ([Drawing.Color]::FromArgb(79,70,229))
-$guideButton = New-ToolbarButton 'Abrir guía' 100 ([Drawing.Color]::FromArgb(71,85,105))
+$runSelectedButton = New-PanelButton $toolbar 'Ejecutar seleccionada' 182 $blue
+$runSafeButton = New-PanelButton $toolbar 'Ejecutar todas las seguras' 204 $green
+$exportButton = New-PanelButton $toolbar 'Exportar reporte' 138 $slate
+$guideButton = New-PanelButton $toolbar 'Abrir guía' 108 $slate
 
 $script:SummaryLabel = [Windows.Forms.Label]::new()
 $script:SummaryLabel.AutoSize = $true
-$script:SummaryLabel.Margin = [Windows.Forms.Padding]::new(18,8,0,0)
-$script:SummaryLabel.Font = [Drawing.Font]::new('Segoe UI Semibold', 9)
+$script:SummaryLabel.Margin = [Windows.Forms.Padding]::new(7,8,0,0)
+$script:SummaryLabel.Font = [Drawing.Font]::new('Segoe UI Semibold', 10)
+$toolbar.SetFlowBreak($guideButton, $true)
 $toolbar.Controls.Add($script:SummaryLabel)
 
 $script:Grid = [Windows.Forms.DataGridView]::new()
@@ -801,19 +843,25 @@ $script:Grid.RowHeadersVisible = $false
 $script:Grid.AutoSizeRowsMode = 'AllCells'
 $script:Grid.BackgroundColor = [Drawing.Color]::White
 $script:Grid.BorderStyle = 'None'
+$script:Grid.GridColor = [Drawing.ColorTranslator]::FromHtml('#E2E8F0')
+$script:Grid.DefaultCellStyle.Padding = [Windows.Forms.Padding]::new(6,5,6,5)
+$script:Grid.DefaultCellStyle.WrapMode = 'True'
+$script:Grid.DefaultCellStyle.ForeColor = $ink
+$script:Grid.ColumnHeadersHeight = 36
+$script:Grid.ColumnHeadersHeightSizeMode = 'DisableResizing'
 $script:Grid.ColumnHeadersDefaultCellStyle.BackColor = [Drawing.Color]::FromArgb(226,232,240)
 $script:Grid.EnableHeadersVisualStyles = $false
 $script:Grid.Columns.Add('Estado','Estado') | Out-Null
 $script:Grid.Columns.Add('Prueba','Prueba') | Out-Null
 $script:Grid.Columns.Add('Objetivo','Qué comprueba') | Out-Null
 $script:Grid.Columns.Add('Resultado','Resultado') | Out-Null
-$script:Grid.Columns['Estado'].Width = 105
-$script:Grid.Columns['Prueba'].Width = 260
-$script:Grid.Columns['Objetivo'].Width = 310
+$script:Grid.Columns['Estado'].Width = 126
+$script:Grid.Columns['Prueba'].Width = 280
+$script:Grid.Columns['Objetivo'].Width = 280
 $script:Grid.Columns['Resultado'].AutoSizeMode = 'Fill'
 foreach ($test in $script:Tests) {
     $index = $script:Grid.Rows.Add('NO EJECUTADO', $test.Name, $test.Objective, '—')
-    $script:Grid.Rows[$index].DefaultCellStyle.BackColor = [Drawing.Color]::White
+    $script:Grid.Rows[$index].DefaultCellStyle.BackColor = if ($index % 2) { [Drawing.ColorTranslator]::FromHtml('#F1F5F9') } else { [Drawing.Color]::White }
 }
 $main.Panel1.Controls.Add($script:Grid)
 $script:Grid.BringToFront()
@@ -842,6 +890,212 @@ $script:LogBox.ForeColor = [Drawing.Color]::FromArgb(226,232,240)
 $script:LogBox.Font = [Drawing.Font]::new('Cascadia Mono', 9)
 $script:LogBox.BorderStyle = 'None'
 $activityTab.Controls.Add($script:LogBox)
+
+function New-OperationPage {
+    param($Page, [string]$Title, [string]$Description, [int]$Height)
+    $Page.Padding = [Windows.Forms.Padding]::new(18, 14, 18, 16)
+    $Page.BackColor = $form.BackColor
+    $card = [Windows.Forms.Panel]::new()
+    $card.Dock = 'Top'
+    $card.Height = $Height
+    $card.BackColor = [Drawing.Color]::White
+    $Page.Controls.Add($card)
+    $heading = [Windows.Forms.Label]::new()
+    $heading.AutoSize = $true
+    $heading.Location = [Drawing.Point]::new(18, 14)
+    $heading.Font = [Drawing.Font]::new('Segoe UI Semibold', 16)
+    $heading.ForeColor = $ink
+    $heading.Text = $Title
+    $card.Controls.Add($heading)
+    $descriptionLabel = [Windows.Forms.Label]::new()
+    $descriptionLabel.AutoSize = $true
+    $descriptionLabel.Location = [Drawing.Point]::new(20, 50)
+    $descriptionLabel.ForeColor = $slate
+    $descriptionLabel.Text = $Description
+    $card.Controls.Add($descriptionLabel)
+
+    $evidence = [Windows.Forms.GroupBox]::new()
+    $evidence.Text = 'Actividad y comandos'
+    $evidence.Dock = 'Fill'
+    $evidence.Padding = [Windows.Forms.Padding]::new(8)
+    $Page.Controls.Add($evidence)
+    $evidence.BringToFront()
+    $outputBox = [Windows.Forms.TextBox]::new()
+    $outputBox.Dock = 'Fill'
+    $outputBox.Multiline = $true
+    $outputBox.ReadOnly = $true
+    $outputBox.ScrollBars = 'Both'
+    $outputBox.WordWrap = $false
+    $outputBox.Font = [Drawing.Font]::new('Consolas', 10)
+    $outputBox.BackColor = [Drawing.Color]::White
+    $evidence.Controls.Add($outputBox)
+    [pscustomobject]@{ Card = $card; Output = $outputBox }
+}
+
+function New-OperationButtons {
+    param($Card, [int]$Y)
+    $bar = [Windows.Forms.FlowLayoutPanel]::new()
+    $bar.Location = [Drawing.Point]::new(14, $Y)
+    $bar.Size = [Drawing.Size]::new(960, 50)
+    $Card.Controls.Add($bar)
+    $bar
+}
+
+function Invoke-PanelOperation {
+    param([string]$Title, $OutputBox, [scriptblock]$Operation)
+    if ($script:Running) { return }
+    $script:Running = $true
+    $script:RunningOperation = $true
+    $script:OperationLogBox = $OutputBox
+    $script:ActiveCommands = [Collections.Generic.List[string]]::new()
+    $OutputBox.Clear()
+    $form.UseWaitCursor = $true
+    try {
+        Sync-FormConfig
+        Write-Log $Title
+        & $Operation
+    } catch {
+        Write-Log $_.Exception.Message 'PENDIENTE'
+    } finally {
+        if ($script:ActiveCommands.Count) {
+            Write-Log ("`n" + ($script:ActiveCommands.ToArray() -join "`n`n")) 'COMANDOS'
+        }
+        $script:OperationHistory.Add($OutputBox.Text.Trim())
+        $script:ActiveCommands = $null
+        $script:OperationLogBox = $null
+        $script:RunningOperation = $false
+        $script:Running = $false
+        $form.UseWaitCursor = $false
+    }
+}
+
+$desktop = [Environment]::GetFolderPath('Desktop')
+$localUi = New-OperationPage $localPage 'Servicios de esta computadora' 'Arranca el API y el sitio en tu computadora para la presentación.' 288
+$apiPathBox = Add-Field $localUi.Card 'Carpeta del repositorio APIcore' 20 76 730 (Join-Path $desktop 'Baits-demo')
+$frontPathBox = Add-Field $localUi.Card 'Carpeta del repositorio Fronted' 20 128 730 (Join-Path $desktop 'Baits-frontend')
+$phpPathBox = Add-Field $localUi.Card 'Ruta de php.exe' 20 180 730 'C:\xampp\php\php.exe'
+foreach ($field in @(
+    @{ Box = $apiPathBox; Y = 91; Name = 'Buscar carpeta de APIcore' },
+    @{ Box = $frontPathBox; Y = 143; Name = 'Buscar carpeta de Fronted' },
+    @{ Box = $phpPathBox; Y = 195; Name = 'Buscar php.exe' }
+)) {
+    $browse = [Windows.Forms.Button]::new()
+    $browse.Text = 'Examinar…'
+    $browse.AccessibleName = $field.Name
+    $browse.Location = [Drawing.Point]::new(762, $field.Y)
+    $browse.Size = [Drawing.Size]::new(108, 32)
+    $browse.Tag = $field.Box
+    $browse.Add_Click({
+        param($sender, $eventArgs)
+        $box = $sender.Tag
+        if ($box -eq $phpPathBox) {
+            $picker = [Windows.Forms.OpenFileDialog]::new()
+            $picker.Filter = 'PHP (php.exe)|php.exe'
+            $picker.FileName = $box.Text
+        } else {
+            $picker = [Windows.Forms.FolderBrowserDialog]::new()
+            $picker.SelectedPath = $box.Text
+        }
+        try {
+            if ($picker.ShowDialog($form) -eq 'OK') {
+                $box.Text = if ($box -eq $phpPathBox) { $picker.FileName } else { $picker.SelectedPath }
+            }
+        } finally { $picker.Dispose() }
+    })
+    $localUi.Card.Controls.Add($browse)
+}
+$localButtons = New-OperationButtons $localUi.Card 232
+$startApiButton = New-PanelButton $localButtons 'Iniciar APIcore' 140 $blue
+$startFrontButton = New-PanelButton $localButtons 'Iniciar frontend PHP' 164 $blue
+$localStatusButton = New-PanelButton $localButtons 'Ver estado' 110 $slate
+$browserButton = New-PanelButton $localButtons 'Abrir sitio' 105 $slate
+
+$recoveryUi = New-OperationPage $recoveryPage 'Recuperación de servidores' 'Elige el equipo y revisa su estado antes de interrumpir el servicio.' 213
+$targetLabel = [Windows.Forms.Label]::new()
+$targetLabel.Location = [Drawing.Point]::new(20, 80)
+$targetLabel.AutoSize = $true
+$targetLabel.Text = 'Equipo y motor'
+$recoveryUi.Card.Controls.Add($targetLabel)
+$targetChoice = [Windows.Forms.ComboBox]::new()
+$targetChoice.DropDownStyle = 'DropDownList'
+$targetChoice.Location = [Drawing.Point]::new(20, 103)
+$targetChoice.Width = 310
+$targetChoice.AccessibleName = 'Equipo y motor'
+$targetChoice.Items.AddRange(@((Get-RecoveryTargets).Name))
+$targetChoice.SelectedIndex = 0
+$recoveryUi.Card.Controls.Add($targetChoice)
+$recoveryButtons = New-OperationButtons $recoveryUi.Card 153
+$statusButton = New-PanelButton $recoveryButtons 'Ver estado' 110 $slate
+$startMotorButton = New-PanelButton $recoveryButtons 'Iniciar motor' 120 $blue
+$outageButton = New-PanelButton $recoveryButtons 'Ensayar caída del motor' 194 $red
+$rebootButton = New-PanelButton $recoveryButtons 'Reiniciar servidor' 162 $red
+
+$startApiButton.Add_Click({
+    Invoke-PanelOperation 'Iniciar APIcore · localhost:8000' $localUi.Output {
+        Start-LocalDemoService APIcore $apiPathBox.Text.Trim() $phpPathBox.Text.Trim()
+    }
+})
+$startFrontButton.Add_Click({
+    Invoke-PanelOperation 'Iniciar frontend PHP · localhost:5500' $localUi.Output {
+        Start-LocalDemoService Frontend $frontPathBox.Text.Trim() $phpPathBox.Text.Trim()
+    }
+})
+$localStatusButton.Add_Click({
+    Invoke-PanelOperation 'Comprobar PHP y servicios locales' $localUi.Output {
+        $php = $phpPathBox.Text.Trim()
+        if (Test-Path -LiteralPath $php -PathType Leaf) {
+            Register-TestCommand $php @('-v')
+            Write-Log ((& $php -v | Select-Object -First 1) -join ' ')
+            Register-TestCommand $php @('-m')
+            $modules = & $php -m
+            $missing = @('pdo_mysql', 'mbstring', 'mongodb' | Where-Object { $_ -notin $modules })
+            if ($missing.Count) { Write-Log "Módulos PHP pendientes · $($missing -join ', ')" 'PENDIENTE' }
+            else { Write-Log 'Módulos PHP disponibles · pdo_mysql, mbstring y mongodb' 'OK' }
+        } else { Write-Log "No se encontró php.exe en $php." 'PENDIENTE' }
+        Register-TestCommand 'Get-Service' @('-Name', 'MongoDB', '-ErrorAction', 'SilentlyContinue') -PowerShell
+        $localMongo = Get-Service -Name MongoDB -ErrorAction SilentlyContinue
+        if ($localMongo) { Write-Log "MongoDB en esta computadora · $($localMongo.Status)" }
+        $result = Test-ApiCore
+        Write-Log "APIcore · $($result.Summary)" $result.Status
+        $url = 'http://localhost:5500/login.html'
+        Register-TestCommand 'Invoke-WebRequest' @('-Uri', $url, '-TimeoutSec', '4', '-UseBasicParsing') -PowerShell
+        try {
+            $page = Invoke-WebRequest -Uri $url -TimeoutSec 4 -UseBasicParsing
+            Write-Log "Frontend HTML · HTTP $($page.StatusCode)" 'OK'
+        } catch { Write-Log 'El frontend no respondió en localhost:5500.' 'PENDIENTE' }
+    }
+})
+$browserButton.Add_Click({ Start-Process 'http://localhost:5500/login.html' })
+
+$statusButton.Tag = 'Estado'
+$startMotorButton.Tag = 'Iniciar'
+$outageButton.Tag = 'Ensayar'
+$rebootButton.Tag = 'Reiniciar'
+foreach ($button in $statusButton, $startMotorButton, $outageButton, $rebootButton) {
+    $button.Add_Click({
+        param($sender, $eventArgs)
+        if ($script:Running) { return }
+        Sync-FormConfig
+        $target = (Get-RecoveryTargets)[$targetChoice.SelectedIndex]
+        $action = [string]$sender.Tag
+        if ($action -in 'Ensayar', 'Reiniciar') {
+            $description = if ($action -eq 'Ensayar') {
+                "Se detendrá $($target.Unit) en $($target.Name). El equipo programa el arranque del motor en 45 segundos."
+            } else {
+                "Se reiniciará todo el equipo $($target.Name). Se interrumpirán sus servicios y sesiones SSH."
+            }
+            $answer = [Windows.Forms.MessageBox]::Show($form, "$description`n`n¿Confirmas que hay autorización para hacerlo ahora?",
+                'Confirmar interrupción', 'YesNo', 'Warning', 'Button2')
+            if ($answer -ne 'Yes') { return }
+        }
+        Invoke-PanelOperation "$($sender.Text) · $($target.Name)" $recoveryUi.Output { Invoke-RecoveryAction $action $target }
+    })
+}
+
+$form.Add_FormClosing({
+    param($sender, $eventArgs)
+    if ($script:RunningOperation) { $eventArgs.Cancel = $true }
+})
 
 $runSelectedButton.Add_Click({
     if ($script:Running -or $script:Grid.SelectedRows.Count -eq 0) { return }
@@ -887,6 +1141,7 @@ $script:Grid.Add_SelectionChanged({
 
 Update-Summary
 Show-SelectedCommands
+$form.ActiveControl = $runSelectedButton
 Write-Log "Interfaz lista. $script:CredentialStatus." 'OK'
 Write-Log 'Las restauraciones se ejecutan una por una. La prueba de recuperación no detiene servicios.' 'INFO'
 if ($UiSmokeTest) {
@@ -897,12 +1152,29 @@ if ($UiSmokeTest) {
             $script:CommandBox.Text -notmatch 'validar-repositorio\.ps1') {
             $script:UiSmokeFailed = $true
         }
+        $navigation.SelectedTab = $localPage
+        $localStatusButton.PerformClick()
+        if ($localUi.Output.Text -notmatch 'Invoke-RestMethod' -or $localUi.Output.Text -notmatch 'localhost:5500') {
+            $script:UiSmokeFailed = $true
+        }
+        $navigation.SelectedTab = $recoveryPage
+        if ($targetChoice.Items.Count -ne 2 -or -not $rebootButton.Visible -or $recoveryUi.Output.Height -lt 100) {
+            $script:UiSmokeFailed = $true
+        }
+        # Comprueba el botón con una respuesta local para que la autoprueba funcione sin SSH.
+        function script:Invoke-RecoveryAction {
+            param($Mode, $SelectedTarget)
+            Write-Log "Control $Mode · $($SelectedTarget.Unit)"
+        }
+        $targetChoice.SelectedIndex = 1
+        $statusButton.PerformClick()
+        if ($recoveryUi.Output.Text -notmatch 'Control Estado.*mongod') { $script:UiSmokeFailed = $true }
         $form.Close()
     })
 }
 [void]$form.ShowDialog()
 if ($UiSmokeTest) {
     if ($script:UiSmokeFailed) { throw 'La ventana no mostró el comando de la prueba local.' }
-    Write-Output '[OK] Ventana abierta, prueba local ejecutada y comando visible.'
+    Write-Output '[OK] Tres secciones abiertas; prueba local, revisión de puertos y registro de comandos comprobados.'
 }
 
