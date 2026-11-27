@@ -177,14 +177,19 @@
         let terciariasElegidas = [];
         let grupoActual = [];
         let historial = [];
-        // El historial queda en este navegador, separado por cuenta.
-        const claveEmociones = claveLocalCuenta("emociones-log");
+        const rutaEmociones = "/tablero/emociones";
+        let guardandoEmocion = false;
+        let intentoEmocion = null;
 
-        try {
-            const datos = claveEmociones ? JSON.parse(localStorage.getItem(claveEmociones) || "[]") : [];
-            historial = Array.isArray(datos) ? datos : [];
-        } catch (error) {
-            historial = [];
+        // Consulta el historial del usuario en MongoDB a través de APIcore.
+        async function cargarHistorial() {
+            if (!sesion.token()) return;
+            try {
+                historial = (await api("GET", rutaEmociones)).data;
+                mostrarHistorial();
+            } catch (error) {
+                $("entradas").textContent = error.message;
+            }
         }
 
         // busca un elemento por su id
@@ -378,31 +383,35 @@
 
         $("btn-volver").addEventListener("click", volverAlMazo);
 
-        // guarda el registro en el navegador
-        $("btn-guardar").addEventListener("click", () => {
-            if (!claveEmociones) return;
+        // Conserva el grupo si la base rechaza el envío.
+        $("btn-guardar").addEventListener("click", async () => {
+            if (guardandoEmocion || !sesion.token()) return;
             const grupoAnterior = grupoActual.slice();
             guardarEnGrupo();
             if (!grupoActual.length) return;
 
-            const nuevo = {
-                t: Date.now(),
-                group: grupoActual.slice()
-            };
+            const grupo = grupoActual.slice();
+            const huella = JSON.stringify(grupo);
+            if (intentoEmocion?.huella !== huella) {
+                intentoEmocion = {huella, id: crypto.randomUUID()};
+            }
 
-            const nuevos = [nuevo, ...historial];
-
+            guardandoEmocion = true;
+            $("btn-guardar").disabled = true;
             try {
-                localStorage.setItem(claveEmociones, JSON.stringify(nuevos));
-                historial = nuevos;
+                await api("PUT", rutaEmociones + "/" + intentoEmocion.id, {group: grupo});
+                intentoEmocion = null;
                 grupoActual = [];
-                mostrarHistorial();
                 volverAlMazo();
-                mostrarAviso("Registro guardado en este navegador");
+                mostrarAviso("Registro guardado");
+                await cargarHistorial();
             } catch (error) {
                 // se conserva la seleccion si no se puede guardar
                 grupoActual = grupoAnterior;
-                mostrarAviso("No se pudo guardar el registro");
+                mostrarAviso(error.message);
+            } finally {
+                guardandoEmocion = false;
+                $("btn-guardar").disabled = false;
             }
         });
 
@@ -473,7 +482,7 @@
         }
 
         dibujarMazo();
-        mostrarHistorial();
+        cargarHistorial();
     </script>
 </body>
 </html>

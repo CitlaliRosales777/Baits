@@ -52,12 +52,6 @@ const sesion = {
     }
 };
 
-// Separa los datos del navegador por servicio y por cuenta.
-function claveLocalCuenta(nombre) {
-    const id = sesion.usuario()?.UserId;
-    return sesion.token() && id ? "apicore:" + id + ":" + nombre : null;
-}
-
 /* envia solicitudes al servidor */
 async function api(metodo, ruta, datos) {
     const opciones = {

@@ -5,24 +5,27 @@ const listaRecordatorios = document.querySelector(".recordatorios");
 const formRecordatorio = document.getElementById("form-recordatorio");
 const mensajeVacio = document.querySelector(".sin-recordatorios");
 
-// Los recordatorios de esta pantalla son locales y tienen una clave por cuenta.
-const claveRecordatorios = claveLocalCuenta("recordatorios_temporales");
+const rutaRecordatorios = "/tablero/recordatorios";
+const estadoRecordatorios = document.getElementById("estado-recordatorios");
 let recordatorios = [];
+let guardandoRecordatorio = false;
 
-// recupera los recordatorios temporales si el navegador los permite
-try {
-    const guardados = claveRecordatorios ? JSON.parse(sessionStorage.getItem(claveRecordatorios) || "[]") : [];
-    if (Array.isArray(guardados)) {
-        recordatorios = guardados.filter(r =>
-            r && typeof r.id === "string" && typeof r.nombre === "string" &&
-            leerFecha(r.inicio) && leerFecha(r.fin) && r.fin >= r.inicio &&
-            /^([01]\d|2[0-3]):[0-5]\d$/.test(r.hora || "") &&
-            ["una", "diaria", "semanal"].includes(r.repeticion)
-        );
+// Carga la lista privada desde APIcore antes de aceptar cambios.
+const cargaRecordatorios = (async () => {
+    if (!listaRecordatorios || !sesion.token()) return false;
+    estadoRecordatorios.textContent = "Cargando recordatorios…";
+    try {
+        const respuesta = await api("GET", rutaRecordatorios);
+        recordatorios = respuesta.data;
+        mostrarRecordatorios();
+        actualizarCitas();
+        estadoRecordatorios.textContent = "";
+        return true;
+    } catch (error) {
+        estadoRecordatorios.textContent = error.message;
+        return false;
     }
-} catch (error) {
-    recordatorios = [];
-}
+})();
 
 // formato de fecha
 function obtenerFecha(fecha) {
@@ -50,15 +53,21 @@ function mostrarHora(hora) {
     return `${hora12}:${String(m).padStart(2, "0")} ${periodo}`;
 }
 
-// guarda los cambios sin conectarse a la base de datos
-function guardarRecordatorios() {
-    if (!claveRecordatorios) return false;
+// Pide confirmación a APIcore antes de mostrar el cambio como guardado.
+async function guardarCambio(metodo, registro, aplicar) {
+    if (guardandoRecordatorio) return false;
+    guardandoRecordatorio = true;
     try {
-        sessionStorage.setItem(claveRecordatorios, JSON.stringify(recordatorios));
+        if (!(await cargaRecordatorios)) throw new Error("Recarga la lista antes de modificarla.");
+        await api(metodo, rutaRecordatorios + "/" + registro.id, metodo === "PUT" ? registro : undefined);
+        aplicar();
+        estadoRecordatorios.textContent = "";
         return true;
     } catch (error) {
-        alert("No se pudieron conservar los datos de esta sesión. Se perderán al actualizar la página.");
+        estadoRecordatorios.textContent = error.message;
         return false;
+    } finally {
+        guardandoRecordatorio = false;
     }
 }
 
@@ -232,7 +241,7 @@ if (dias.length > 0) {
 
 // botones de recordatorios
 if (listaRecordatorios) {
-    listaRecordatorios.addEventListener("click", (evento) => {
+    listaRecordatorios.addEventListener("click", async (evento) => {
         const boton = evento.target.closest("button");
         if (!boton) return;
         const recordatorio = boton.closest(".recordatorio");
@@ -243,17 +252,14 @@ if (listaRecordatorios) {
         // marcar como realizado
         if (boton.classList.contains("completar")) {
             const fecha = recordatorio.dataset.fecha;
-            registro.completados = Array.isArray(registro.completados)
-                ? registro.completados : [];
-            if (registro.completados.includes(fecha)) {
-                registro.completados = registro.completados.filter(d => d !== fecha);
-            } else {
-                registro.completados.push(fecha);
-            }
-            const realizado = registro.completados.includes(fecha);
-            recordatorio.classList.toggle("completado", realizado);
-            boton.setAttribute("aria-pressed", String(realizado));
-            guardarRecordatorios();
+            const completados = registro.completados.includes(fecha)
+                ? registro.completados.filter(d => d !== fecha)
+                : [...registro.completados, fecha];
+            await guardarCambio("PUT", {...registro, completados}, () => {
+                registro.completados = completados;
+                mostrarRecordatorios();
+                actualizarCitas();
+            });
         }
 
         // eliminar recordatorio
@@ -265,10 +271,11 @@ if (listaRecordatorios) {
                 );
                 if (!aceptar) return;
             }
-            recordatorios = recordatorios.filter(r => r.id !== registro.id);
-            guardarRecordatorios();
-            mostrarRecordatorios();
-            actualizarCitas();
+            await guardarCambio("DELETE", registro, () => {
+                recordatorios = recordatorios.filter(r => r.id !== registro.id);
+                mostrarRecordatorios();
+                actualizarCitas();
+            });
         }
     });
 }
@@ -309,7 +316,7 @@ if (formRecordatorio && listaRecordatorios) {
     fechaInicio?.addEventListener("change", actualizarOpciones);
     actualizarOpciones();
 
-    formRecordatorio.addEventListener("submit", (evento) => {
+    formRecordatorio.addEventListener("submit", async (evento) => {
         evento.preventDefault();
         const tipo = tipoRecordatorio.value;
         const nombre = document.getElementById("nombre-recordatorio").value.trim();
@@ -342,11 +349,15 @@ if (formRecordatorio && listaRecordatorios) {
             return;
         }
 
-        // crear nuevo recordatorio
+        // Reutiliza el identificador al reenviar los mismos datos.
+        const datos = {tipo, nombre, hora, dosis, inicio, fin, repeticion, diasSemana, completados: []};
+        const huella = JSON.stringify(datos);
+        if (formRecordatorio.dataset.pendiente !== huella) {
+            formRecordatorio.dataset.pendiente = huella;
+            formRecordatorio.dataset.idPendiente = crypto.randomUUID();
+        }
         const nuevo = {
-            id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-            tipo, nombre, hora, dosis, inicio, fin, repeticion,
-            diasSemana, completados: []
+            id: formRecordatorio.dataset.idPendiente, ...datos
         };
         // busca el primer dia en que corresponde este recordatorio
         let primeraFecha = inicio;
@@ -366,16 +377,15 @@ if (formRecordatorio && listaRecordatorios) {
             }
         }
 
-        recordatorios.push(nuevo);
-        const guardado = guardarRecordatorios();
+        if (!(await guardarCambio("PUT", nuevo, () => recordatorios.push(nuevo)))) return;
+        delete formRecordatorio.dataset.pendiente;
+        delete formRecordatorio.dataset.idPendiente;
 
         // se muestran los datos nuevos en la fecha elegida
         lunesActual = obtenerLunes(leerFecha(primeraFecha));
         fechaSeleccionada = primeraFecha;
         actualizarSemana();
-        if (mensaje) mensaje.textContent = guardado
-            ? "Recordatorio agregado en esta sesión."
-            : "Recordatorio agregado solo en esta página.";
+        if (mensaje) mensaje.textContent = "Recordatorio guardado.";
 
         // limpiar formulario sin ocultarlo
         formRecordatorio.reset();
