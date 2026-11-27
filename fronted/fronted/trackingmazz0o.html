@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tracking Mazzo | Moodsitto</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="pagina-tracking">
+    <!-- encabezado -->
+    <header class="encabezado">
+        <a href="dashboard.html" class="marca" aria-label="Moodsitto, dashboard">
+            <img src="img/Moodsitto_snFondo.png" alt="Moodsitto" class="logo">
+        </a>
+        <nav class="menu-principal" aria-label="Menu principal">
+            <a href="dashboard.html" class="menu-enlace">Mi inicio</a>
+            <a href="trackingmazz0o.html" class="menu-enlace activo" aria-current="page">Mis emociones</a>
+            <a href="perfil.html" class="menu-enlace destacado">Mi perfil</a>
+        </nav>
+    </header>
+
+    <!-- titulo y olita -->
+    <section class="saludo">
+        <h1>Mis emociones</h1>
+        <p>Tracking Mazzo · Descubre lo que sientes, a tu ritmo.</p>
+        <svg class="ola" viewBox="0 0 600 120" preserveAspectRatio="none" aria-hidden="true">
+            <path d="M0 0 C30 95, 90 75, 155 65 C235 35, 310 80, 395 105 C475 125, 535 80, 600 20 L600 120 L0 120 Z" fill="#F2E9E4"/>
+        </svg>
+    </section>
+
+    <main class="contenido-tracking">
+        <!-- cartas principales -->
+        <section id="rueda">
+            <p class="intro-tracking">Elige una carta para comenzar.</p>
+            <div id="agregadas" aria-live="polite"></div>
+            <div id="mazo"></div>
+        </section>
+
+        <!-- detalle de la emocion -->
+        <section id="detalle">
+            <div class="detalle-carta">
+                <div id="carta-grande" class="carta grande"></div>
+            </div>
+            <div class="derecha">
+                <button type="button" class="volver" id="btn-volver">‹ Volver a las cartas</button>
+                <h2 id="pregunta">¿Cómo te sientes?</h2>
+                <p class="pista">Puedes seleccionar más de una opción.</p>
+                <div id="secundarias"></div>
+                <div id="terciarias"></div>
+
+                <div class="campo">
+                    <label for="nota">¿Qué lo provocó? (opcional)</label>
+                    <textarea id="nota" maxlength="1000" placeholder="Si quieres, cuéntalo aquí..."></textarea>
+                </div>
+                <div class="campo">
+                    <label for="intensidad">Intensidad</label>
+                    <div class="escala">
+                        <input type="range" id="intensidad" min="1" max="10" value="5">
+                        <output id="valor" for="intensidad">5</output>
+                    </div>
+                    <div class="extremos">
+                        <span>Muy poco</span>
+                        <span>Muy fuerte</span>
+                    </div>
+                </div>
+                <div class="acciones">
+                    <button type="button" class="mazo-btn principal" id="btn-guardar" disabled>Guardar registro</button>
+                    <button type="button" class="mazo-btn" id="btn-otra" disabled>Agregar otra emoción</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- historial -->
+        <section id="historial">
+            <h2>Mis registros</h2>
+            <div id="entradas">
+                <p class="vacio">Aún no tienes registros.</p>
+            </div>
+        </section>
+        <a href="dashboard.html" class="volver-inicio">Volver al inicio</a>
+    </main>
+
+    <div class="aviso-mazo" id="quemao" role="status" aria-live="polite"></div>
+
+    <!-- conexion con la api -->
+    <script src="js/api.js"></script>
+
+    <!-- control de sesion -->
+    <script src="js/auth.js"></script>
+
+    <script>
+        // emociones y sus matices
+        const emociones = {
+            Miedo: {
+                color: "--miedo",
+                simbolo: "つ﹏⊂ ",
+                significado: "Sensación de amenaza, peligro o inseguridad",
+                secundarias: {
+                    debil: ["Insignificante", "Sin valor"],
+                    inseguro: ["Inadecuado", "Inferior"],
+                    ansioso: ["Abrumado", "Preocupado"],
+                    confundido: ["Perdido", "Desorientado"],
+                    rechazado: ["Excluido", "Perseguido"],
+                    amenazado: ["Nervioso", "Expuesto"]
+                }
+            },
+            Enojao: {
+                color: "--nojao",
+                simbolo: "(* ￣︿￣)",
+                significado: "Reacción de molestia, indignación o frustración",
+                secundarias: {
+                    critico: ["Escéptico", "Sarcástico"],
+                    distante: ["Retraído", "Insensible"],
+                    frustrado: ["Molesto", "Irritado"],
+                    agresivo: ["Provocado", "Hostil"],
+                    furioso: ["Celoso", "Resentido"],
+                    humillado: ["Irrespetado", "Ridiculizado"]
+                }
+            },
+            Troste: {
+                color: "--troste",
+                simbolo: "(；′⌒`)",
+                significado: "Sentimiento de pérdida, desánimo o dolor emocional",
+                secundarias: {
+                    solo: ["Aislado", "Abandonado"],
+                    vulnerable: ["Frágil", "Expuesto"],
+                    desesperado: ["Deprimido", "Indefenso"],
+                    culpable: ["Avergonzado", "Arrepentido"],
+                    abatido: ["Decaído", "Apagado"],
+                    herido: ["Dolido", "Decepcionado"]
+                }
+            },
+            Alegría: {
+                color: "--alegria",
+                simbolo: "uwu",
+                significado: "Sensación de felicidad, bienestar y energía positiva",
+                secundarias: {
+                    Emocionado: ["Enérgico", "Asombrado"],
+                    Juguetón: ["Travieso", "Bromista"],
+                    Creativo: ["Inventivo", "Original"],
+                    Orgulloso: ["Exitoso", "Valioso"],
+                    Optimista: ["Esperanzado", "Inspirado"],
+                    Agradecido: ["Satisfecho", "Pleno"]
+                }
+            },
+            Poder: {
+                color: "--powers",
+                simbolo: "( •̀ ω •́ )✧",
+                significado: "Sentimiento de fuerza, control y capacidad",
+                secundarias: {
+                    Valiente: ["Audaz", "Atrevido"],
+                    Respetado: ["Valorado", "Reconocido"],
+                    Seguro: ["Confiado", "Firme"],
+                    Decidido: ["Resuelto", "Determinado"],
+                    Fiel: ["Leal", "Comprometido"],
+                    Importante: ["Apreciado", "Necesitado"]
+                }
+            },
+            Paz: {
+                color: "--paz",
+                simbolo: "(●'◡'●)",
+                significado: "Estado de calma, serenidad y equilibrio interior",
+                secundarias: {
+                    Tranquilo: ["Relajado", "Calmado"],
+                    Amoroso: ["Tierno", "Compasivo"],
+                    Pensativo: ["Reflexivo", "Contemplativo"],
+                    Íntimo: ["Cercano", "Conectado"],
+                    Sereno: ["Apacible", "En calma"],
+                    Satisfecho: ["Pleno", "Contento"]
+                }
+            }
+        };
+
+        // seleccion actual e historial
+        let emocionActual = null;
+        let secundariasElegidas = [];
+        let terciariasElegidas = [];
+        let grupoActual = [];
+        let historial = [];
+
+        try {
+            const datos = JSON.parse(localStorage.getItem("emociones-log") || "[]");
+            historial = Array.isArray(datos) ? datos : [];
+        } catch (error) {
+            historial = [];
+        }
+
+        // busca un elemento por su id
+        function $(id) {
+            return document.getElementById(id);
+        }
+
+        function obtenerColor(nombre) {
+            return "var(" + emociones[nombre].color + ")";
+        }
+
+        function nombreVisible(nombre) {
+            if (nombre === "Enojao") return "Enojo";
+            if (nombre === "Troste") return "Tristeza";
+            return nombre;
+        }
+
+        // crea una carta
+        function crearCarta(nombre, simbolo, color, clase, significado) {
+            const boton = document.createElement("button");
+            boton.type = "button";
+            boton.className = "carta " + clase;
+            boton.style.setProperty("--c", color);
+            boton.title = significado;
+            boton.innerHTML = `
+                <span class="simbolo">${simbolo}</span>
+                <span class="nombre">${nombreVisible(nombre)}</span>
+                <span class="simbolo abajo">${simbolo}</span>
+            `;
+            return boton;
+        }
+
+        // muestra las seis emociones
+        function dibujarMazo() {
+            const contenedor = $("mazo");
+            contenedor.innerHTML = "";
+
+            for (const nombre in emociones) {
+                const datos = emociones[nombre];
+                const carta = crearCarta(
+                    nombre,
+                    datos.simbolo,
+                    obtenerColor(nombre),
+                    "principal",
+                    datos.significado
+                );
+                carta.addEventListener("click", () => abrirEmocion(nombre));
+                contenedor.appendChild(carta);
+            }
+        }
+
+        // abre la emocion elegida
+        function abrirEmocion(nombre) {
+            emocionActual = nombre;
+            secundariasElegidas = [];
+            terciariasElegidas = [];
+            $("rueda").hidden = true;
+            $("detalle").classList.add("visible");
+
+            const datos = emociones[nombre];
+            const grande = $("carta-grande");
+            grande.style.setProperty("--c", obtenerColor(nombre));
+            grande.innerHTML = `
+                <span class="simbolo">${datos.simbolo}</span>
+                <span class="nombre">${nombreVisible(nombre)}</span>
+                <span class="simbolo abajo">${datos.simbolo}</span>
+            `;
+
+            $("pregunta").textContent =
+                "¿Cómo se siente esa emoción de " + nombreVisible(nombre).toLowerCase() + "?";
+            $("nota").value = "";
+            $("intensidad").value = 5;
+            $("valor").textContent = "5";
+            $("detalle").style.setProperty("--c", obtenerColor(nombre));
+
+            dibujarSecundarias();
+            dibujarTerciarias();
+            actualizarBotones();
+        }
+
+        // muestra los matices secundarios
+        function dibujarSecundarias() {
+            const contenedor = $("secundarias");
+            contenedor.innerHTML = "";
+            const lista = emociones[emocionActual].secundarias;
+
+            for (const nombre in lista) {
+                const carta = crearCarta(
+                    nombre,
+                    emociones[emocionActual].simbolo,
+                    obtenerColor(emocionActual),
+                    "secundaria",
+                    "Matiz: " + nombre
+                );
+                carta.setAttribute("aria-pressed", "false");
+
+                carta.addEventListener("click", () => {
+                    const elegido = secundariasElegidas.includes(nombre);
+
+                    secundariasElegidas = elegido
+                        ? secundariasElegidas.filter(item => item !== nombre)
+                        : [...secundariasElegidas, nombre];
+
+                    carta.setAttribute("aria-pressed", String(!elegido));
+                    dibujarTerciarias();
+                    actualizarBotones();
+                });
+                contenedor.appendChild(carta);
+            }
+        }
+
+        // muestra los matices mas especificos
+        function dibujarTerciarias() {
+            const contenedor = $("terciarias");
+            contenedor.innerHTML = "";
+            let todas = [];
+
+            secundariasElegidas.forEach(nombre => {
+                todas = todas.concat(emociones[emocionActual].secundarias[nombre]);
+            });
+
+            // quita los matices que ya no corresponden
+            terciariasElegidas = terciariasElegidas.filter(nombre => todas.includes(nombre));
+
+            [...new Set(todas)].forEach(nombre => {
+                const chip = document.createElement("button");
+                chip.type = "button";
+                chip.className = "chip";
+                chip.style.setProperty("--c", obtenerColor(emocionActual));
+                chip.textContent = nombre;
+                chip.setAttribute("aria-pressed", String(terciariasElegidas.includes(nombre)));
+
+                chip.addEventListener("click", () => {
+                    const elegido = terciariasElegidas.includes(nombre);
+
+                    terciariasElegidas = elegido
+                        ? terciariasElegidas.filter(item => item !== nombre)
+                        : [...terciariasElegidas, nombre];
+
+                    chip.setAttribute("aria-pressed", String(!elegido));
+                });
+                contenedor.appendChild(chip);
+            });
+        }
+
+        // activa los botones cuando hay una seleccion
+        function actualizarBotones() {
+            const haySecundarias = secundariasElegidas.length > 0;
+            $("btn-guardar").disabled = !(haySecundarias || grupoActual.length);
+            $("btn-otra").disabled = !haySecundarias;
+        }
+
+        // agrega la emocion al registro actual
+        function guardarEnGrupo() {
+            if (!secundariasElegidas.length) return;
+
+            grupoActual.push({
+                core: emocionActual,
+                subs: secundariasElegidas.slice(),
+                fine: terciariasElegidas.slice(),
+                note: $("nota").value.trim(),
+                intensity: Number($("intensidad").value)
+            });
+        }
+
+        // regresa al mazo principal
+        function volverAlMazo() {
+            $("detalle").classList.remove("visible");
+            $("rueda").hidden = false;
+            dibujarMazo();
+            $("agregadas").innerHTML = "";
+
+            grupoActual.forEach(g => {
+                const chip = document.createElement("span");
+                chip.className = "etiqueta-emocion";
+                chip.style.setProperty("--c", obtenerColor(g.core));
+                chip.textContent =
+                    nombreVisible(g.core) + ": " + g.subs.join(", ") + " · " + g.intensity + "/10";
+                $("agregadas").appendChild(chip);
+            });
+        }
+
+        $("intensidad").addEventListener("input", evento => {
+            $("valor").textContent = evento.target.value;
+        });
+
+        $("btn-otra").addEventListener("click", () => {
+            guardarEnGrupo();
+            volverAlMazo();
+        });
+
+        $("btn-volver").addEventListener("click", volverAlMazo);
+
+        // guarda el registro en el navegador
+        $("btn-guardar").addEventListener("click", () => {
+            const grupoAnterior = grupoActual.slice();
+            guardarEnGrupo();
+            if (!grupoActual.length) return;
+
+            const nuevo = {
+                t: Date.now(),
+                group: grupoActual.slice()
+            };
+
+            const nuevos = [nuevo, ...historial];
+
+            try {
+                localStorage.setItem("emociones-log", JSON.stringify(nuevos));
+                historial = nuevos;
+                grupoActual = [];
+                mostrarHistorial();
+                volverAlMazo();
+                mostrarAviso("Registro guardado en este navegador");
+            } catch (error) {
+                // se conserva la seleccion si no se puede guardar
+                grupoActual = grupoAnterior;
+                mostrarAviso("No se pudo guardar el registro");
+            }
+        });
+
+        // muestra el historial de emociones
+        function mostrarHistorial() {
+            const contenedor = $("entradas");
+            contenedor.innerHTML = "";
+
+            const validos = historial.filter(r =>
+                r && Array.isArray(r.group) && r.group.length &&
+                r.group.every(g =>
+                    g && emociones[g.core] &&
+                    Array.isArray(g.subs) &&
+                    Array.isArray(g.fine)
+                )
+            );
+
+            if (!validos.length) {
+                const vacio = document.createElement("p");
+                vacio.className = "vacio";
+                vacio.textContent = "Aún no tienes registros.";
+                contenedor.appendChild(vacio);
+                return;
+            }
+
+            validos.forEach(entrada => {
+                const articulo = document.createElement("article");
+                articulo.className = "entrada";
+                articulo.style.setProperty("--c", obtenerColor(entrada.group[0].core));
+
+                const fecha = document.createElement("small");
+                fecha.textContent = new Date(entrada.t).toLocaleString("es-MX", {
+                    dateStyle: "medium",
+                    timeStyle: "short"
+                });
+                articulo.appendChild(fecha);
+
+                entrada.group.forEach(g => {
+                    const parrafo = document.createElement("p");
+                    const titulo = document.createElement("strong");
+                    titulo.style.color = obtenerColor(g.core);
+                    titulo.textContent = nombreVisible(g.core);
+                    parrafo.appendChild(titulo);
+
+                    parrafo.appendChild(document.createTextNode(
+                        " — " + g.subs.concat(g.fine).join(", ") +
+                        " · intensidad " + g.intensity + "/10"
+                    ));
+
+                    if (g.note) {
+                        const nota = document.createElement("span");
+                        nota.className = "nota-entrada";
+                        nota.textContent = g.note;
+                        parrafo.appendChild(nota);
+                    }
+                    articulo.appendChild(parrafo);
+                });
+                contenedor.appendChild(articulo);
+            });
+        }
+
+        // mensaje de confirmacion
+        function mostrarAviso(mensaje) {
+            const aviso = $("quemao");
+            aviso.textContent = mensaje;
+            aviso.classList.add("visible");
+            setTimeout(() => aviso.classList.remove("visible"), 2200);
+        }
+
+        dibujarMazo();
+        mostrarHistorial();
+    </script>
+</body>
+</html>

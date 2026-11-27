@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#f2e9e4">
+    <title>Moodsitto | Inicio</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="pagina-inicio">
+
+    <!-- encabezado -->
+    <header class="encabezado">
+        <a href="index.html" class="marca" aria-label="Moodsitto, inicio">
+            <img src="img/Moodsitto_snFondo.png" alt="Moodsitto" class="logo">
+        </a>
+
+        <!-- menu principal -->
+        <nav class="menu-principal" aria-label="Menu principal">
+            <a href="index.html" class="menu-enlace activo" aria-current="page">Inicio</a>
+            <a href="login.html" class="menu-enlace">Iniciar sesión</a>
+            <a href="registro.html" class="menu-enlace destacado">Crear cuenta</a>
+        </nav>
+    </header>
+
+    <!-- bienvenida -->
+    <main class="bienvenida">
+        <!-- mensaje principal -->
+        <span class="etiqueta">TU ESPACIO MOODSITTO</span>
+        <h1>Un momento para ti <span aria-hidden="true">♡</span></h1>
+        <p class="descripcion">
+            Explora tu mood
+        </p>
+
+        <!-- botones de acceso -->
+        <div class="bienvenida-acciones">
+            <a href="registro.html" class="boton">Comenzar</a>
+            <a href="login.html" class="boton boton-secundario">Ya tengo cuenta</a>
+        </div>
+    </main>
+
+    <!-- pie de pagina -->
+    <footer>
+        Moodsitto · 2026
+    </footer>
+    <!-- conexion con la api -->
+    <script src="js/api.js"></script>
+    <!-- control de sesion -->
+    <script src="js/auth.js"></script>
+</body>
+</html>

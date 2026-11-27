@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi perfil | Moodsitto</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="pagina-perfil">
+
+    <!-- encabezado -->
+    <header class="encabezado">
+        <a href="dashboard.html" class="marca" aria-label="Moodsitto, dashboard">
+            <img src="img/Moodsitto_snFondo.png" alt="Moodsitto" class="logo">
+        </a>
+        <nav class="menu-principal" aria-label="Menu principal">
+            <a href="dashboard.html" class="menu-enlace">Mi inicio</a>
+            <a href="trackingmazz0o.html" class="menu-enlace">Mis emociones</a>
+            <a href="perfil.html" class="menu-enlace destacado activo" aria-current="page">Mi perfil</a>
+        </nav>
+    </header>
+
+    <!-- contenido del perfil -->
+    <main>
+        <section class="franja-perfil">
+            <h1>Mi perfil</h1>
+        </section>
+
+        <section class="contenido-perfil">
+            <div class="foto-perfil" aria-hidden="true"></div>
+
+            <h2>Información personal</h2>
+
+            <div class="datos-perfil">
+                <div class="campo-perfil">
+                    <label for="perfil-nombre">Nombre</label>
+                    <input
+                        type="text"
+                        id="perfil-nombre"
+                        placeholder="Sin datos por ahora"
+                        readonly
+                    >
+                </div>
+
+                <div class="campo-perfil">
+                    <label for="perfil-correo">Correo electrónico</label>
+                    <input
+                        type="email"
+                        id="perfil-correo"
+                        placeholder="Sin datos por ahora"
+                        readonly
+                    >
+                </div>
+
+                <div class="campo-perfil">
+                    <label for="perfil-telefono">Teléfono</label>
+                    <input
+                        type="tel"
+                        id="perfil-telefono"
+                        placeholder="Sin datos por ahora"
+                        readonly
+                    >
+                </div>
+
+                <div class="campo-perfil">
+                    <label for="perfil-nacimiento">Fecha de nacimiento</label>
+                    <input
+                        type="text"
+                        id="perfil-nacimiento"
+                        placeholder="Sin datos por ahora"
+                        readonly
+                    >
+                </div>
+            </div>
+
+            <!-- mensaje de conexion -->
+            <p id="mensaje-conexion" class="mensaje" role="status" aria-live="polite"></p>
+
+            <a href="dashboard.html" class="boton boton-secundario">
+                Volver al inicio
+            </a>
+        </section>
+    </main>
+
+    <!-- pie de pagina -->
+    <footer>Moodsitto · 2026</footer>
+
+    <!-- conexion con la api -->
+    <script src="js/api.js"></script>
+
+    <!-- datos del perfil y sesion -->
+    <script src="js/auth.js"></script>
+</body>
+</html>

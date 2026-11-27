@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crear cuenta | Moodsitto</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="pagina-acceso pagina-registro">
+
+    <!-- encabezado -->
+    <header class="encabezado">
+        <a href="index.html" class="marca" aria-label="Moodsitto, inicio">
+            <img src="img/Moodsitto_snFondo.png" alt="Moodsitto" class="logo">
+        </a>
+
+        <nav class="menu-principal" aria-label="Menu principal">
+            <a href="index.html" class="menu-enlace">Inicio</a>
+            <a href="login.html" class="menu-enlace">Iniciar sesión</a>
+            <a href="registro.html" class="menu-enlace destacado activo" aria-current="page">Crear cuenta</a>
+        </nav>
+    </header>
+
+    <!-- formulario de registro -->
+    <main class="pagina-formulario">
+        <section class="formulario">
+
+            <!-- bienvenida -->
+            <div class="registro-encabezado">
+                <h1>Crea tu cuenta <span aria-hidden="true">♡</span></h1>
+                <p class="texto-suave">Comienza tu espacio personal en Moodsitto.</p>
+            </div>
+
+            <form id="registro-form">
+                <div class="registro-grid">
+
+                    <!-- nombre -->
+                    <div class="registro-campo">
+                        <label for="nombre">Nombre</label>
+                        <input
+                            type="text"
+                            id="nombre"
+                            name="name"
+                            placeholder="Tu nombre"
+                            maxlength="45"
+                            autocomplete="given-name"
+                            required
+                        >
+                    </div>
+
+                    <!-- apellido paterno -->
+                    <div class="registro-campo">
+                        <label for="apellido-paterno">Apellido paterno</label>
+                        <input
+                            type="text"
+                            id="apellido-paterno"
+                            name="lastname1"
+                            placeholder="Apellido paterno"
+                            maxlength="25"
+                            autocomplete="family-name"
+                            required
+                        >
+                    </div>
+
+                    <!-- apellido materno -->
+                    <div class="registro-campo">
+                        <label for="apellido-materno">Apellido materno</label>
+                        <input
+                            type="text"
+                            id="apellido-materno"
+                            name="lastname2"
+                            placeholder="Apellido materno (opcional)"
+                            maxlength="25"
+                        >
+                    </div>
+
+                    <!-- fecha de nacimiento -->
+                    <div class="registro-campo">
+                        <label for="fecha-nacimiento">Fecha de nacimiento</label>
+                        <input
+                            type="date"
+                            id="fecha-nacimiento"
+                            name="date_b"
+                            autocomplete="bday"
+                            required
+                        >
+                    </div>
+
+                    <!-- telefono -->
+                    <div class="registro-campo">
+                        <label for="telefono">Teléfono</label>
+                        <input
+                            type="tel"
+                            id="telefono"
+                            name="phone"
+                            placeholder="Tu número de teléfono"
+                            autocomplete="tel"
+                            required
+                        >
+                    </div>
+
+                    <!-- telefono de emergencia -->
+                    <div class="registro-campo">
+                        <label for="telefono-emergencia">Teléfono de emergencia</label>
+                        <input
+                            type="tel"
+                            id="telefono-emergencia"
+                            name="emer_phone"
+                            placeholder="Opcional"
+                        >
+                    </div>
+
+                    <!-- correo -->
+                    <div class="registro-campo">
+                        <label for="correo-registro">Correo electrónico</label>
+                        <input
+                            type="email"
+                            id="correo-registro"
+                            name="mail"
+                            placeholder="tu@correo.com"
+                            maxlength="150"
+                            autocomplete="email"
+                            required
+                        >
+                    </div>
+
+                    <!-- contrasena -->
+                    <div class="registro-campo">
+                        <label for="contrasena-registro">Contraseña</label>
+                        <input
+                            type="password"
+                            id="contrasena-registro"
+                            name="passw"
+                            placeholder="Crea una contraseña"
+                            autocomplete="new-password"
+                            required
+                        >
+                    </div>
+                </div>
+
+                <!-- crear cuenta -->
+                <div class="registro-acciones">
+                    <button type="submit" class="boton ancho">
+                        Crear cuenta
+                    </button>
+
+                    <p id="registro-mensaje" class="mensaje" role="status" aria-live="polite"></p>
+                </div>
+            </form>
+
+            <!-- acceso existente -->
+            <p class="pie-formulario">
+                ¿Ya tienes una cuenta?
+                <a href="login.html">Iniciar sesión</a>
+            </p>
+        </section>
+    </main>
+
+    <!-- pie de pagina -->
+    <footer>Moodsitto · 2026</footer>
+
+    <!-- conexion con la api -->
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+</body>
+</html>

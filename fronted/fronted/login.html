@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar sesión | Moodsitto</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="pagina-acceso">
+
+    <!-- encabezado -->
+    <header class="encabezado">
+        <a href="index.html" class="marca" aria-label="Moodsitto, inicio">
+            <img src="img/Moodsitto_snFondo.png" alt="Moodsitto" class="logo">
+        </a>
+        <nav class="menu-principal" aria-label="Menu principal">
+            <a href="index.html" class="menu-enlace">Inicio</a>
+            <a href="login.html" class="menu-enlace activo" aria-current="page">Iniciar sesión</a>
+            <a href="registro.html" class="menu-enlace destacado">Crear cuenta</a>
+        </nav>
+    </header>
+
+    <!-- acceso del usuario -->
+    <main class="pagina-formulario">
+        <section class="formulario">
+            <h1>Bienvenida de nuevo</h1>
+            <p class="texto-suave">Ingresa a tu espacio personal.</p>
+
+            <form id="login-form">
+                <label for="correo">Correo electrónico</label>
+                <input
+                    type="email"
+                    id="correo"
+                    name="mail"
+                    placeholder="tu@correo.com"
+                    autocomplete="email"
+                    maxlength="150"
+                    required
+                >
+
+                <label for="contrasena">Contraseña</label>
+                <input
+                    type="password"
+                    id="contrasena"
+                    name="passw"
+                    placeholder="Tu contraseña"
+                    autocomplete="current-password"
+                    required
+                >
+
+                <button type="submit" class="boton ancho">
+                    Iniciar sesión
+                </button>
+
+                <p id="login-mensaje" class="mensaje" role="status" aria-live="polite"></p>
+            </form>
+
+            <p class="pie-formulario">
+                ¿Aún no tienes una cuenta?
+                <a href="registro.html">Crear cuenta</a>
+            </p>
+        </section>
+    </main>
+
+    <!-- pie de pagina -->
+    <footer>Moodsitto · 2026</footer>
+
+    <!-- conexion con la api -->
+    <script src="js/api.js"></script>
+
+    <!-- inicio de sesion -->
+    <script src="js/auth.js"></script>
+</body>
+</html>
