@@ -180,6 +180,10 @@ function Start-LocalDemoService {
         Write-Log "El puerto $($start.Port) ya está en uso. Pulsa Ver estado para comprobar qué servicio responde." 'PENDIENTE'
         return
     }
+    if ($Service -eq 'APIcore') {
+        if ((& $start.Php -m) -notcontains 'mongodb') { throw 'Pulsa Instalar MongoDB para PHP antes de iniciar APIcore.' }
+        if (-not (Get-ApiCoreAccess)) { throw 'Pulsa Solicitar accesos y luego Recibir accesos en esta pestaña.' }
+    }
     Register-TestCommand $start.File $start.Arguments
     $quoted = $start.Arguments | ForEach-Object { if ($_ -match '\s') { '"{0}"' -f $_ } else { $_ } }
     # APIcore abre la consola donde el usuario puede ingresar las claves de aplicación sin mostrarlas en el panel.

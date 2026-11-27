@@ -33,6 +33,7 @@ $script:OperationLogBox = $null
 $script:RunningOperation = $false
 $script:OperationHistory = [Collections.Generic.List[string]]::new()
 . (Join-Path $PSScriptRoot 'operaciones-panel.ps1')
+. (Join-Path $PSScriptRoot 'accesos-panel.ps1')
 
 # Cada prueba devuelve el mismo formato para la tabla y el reporte.
 function New-Result {
@@ -550,6 +551,18 @@ function Import-EnvConfig {
 }
 
 function Initialize-SecureConfig {
+    try {
+        $access = Get-PresentationAccess
+        if ($access) {
+            $script:Config.MariaUser = $access.panelMaria.UserName
+            $script:Config.MariaPassword = $access.panelMaria.GetNetworkCredential().Password
+            $script:Config.MongoUser = $access.panelMongo.UserName
+            $script:Config.MongoPassword = $access.panelMongo.GetNetworkCredential().Password
+            return 'Accesos de APIcore y del panel disponibles para este usuario'
+        }
+    } catch {
+        return 'No se pudieron abrir los accesos guardados. Vuelve a solicitarlos.'
+    }
     $envPath = Join-Path $script:Repo 'backend-integracion\.env'
     if (Import-EnvConfig $envPath) { return 'Credenciales locales cargadas de forma segura' }
 
@@ -970,7 +983,7 @@ function Invoke-PanelOperation {
 }
 
 $desktop = [Environment]::GetFolderPath('Desktop')
-$localUi = New-OperationPage $localPage 'Servicios de esta computadora' 'Arranca el API y el sitio en tu computadora para la presentación.' 288
+$localUi = New-OperationPage $localPage 'Servicios de esta computadora' 'Prepara PHP y los accesos antes de arrancar APIcore y el frontend.' 339
 $apiPathBox = Add-Field $localUi.Card 'Carpeta del repositorio APIcore' 20 76 730 (Join-Path $desktop 'Baits-demo')
 $frontPathBox = Add-Field $localUi.Card 'Carpeta del repositorio Fronted' 20 128 730 (Join-Path $desktop 'Baits-frontend')
 $phpPathBox = Add-Field $localUi.Card 'Ruta de php.exe' 20 180 730 'C:\xampp\php\php.exe'
@@ -1009,6 +1022,10 @@ $startApiButton = New-PanelButton $localButtons 'Iniciar APIcore' 140 $blue
 $startFrontButton = New-PanelButton $localButtons 'Iniciar frontend PHP' 164 $blue
 $localStatusButton = New-PanelButton $localButtons 'Ver estado' 110 $slate
 $browserButton = New-PanelButton $localButtons 'Abrir sitio' 105 $slate
+$setupButtons = New-OperationButtons $localUi.Card 282
+$installMongoButton = New-PanelButton $setupButtons 'Instalar MongoDB para PHP' 215 $blue
+$requestAccessButton = New-PanelButton $setupButtons 'Solicitar accesos' 145 $slate
+$receiveAccessButton = New-PanelButton $setupButtons 'Recibir accesos' 138 $slate
 
 $recoveryUi = New-OperationPage $recoveryPage 'Recuperación de servidores' 'Elige el equipo y revisa su estado antes de interrumpir el servicio.' 213
 $targetLabel = [Windows.Forms.Label]::new()
@@ -1035,6 +1052,33 @@ $startApiButton.Add_Click({
         Start-LocalDemoService APIcore $apiPathBox.Text.Trim() $phpPathBox.Text.Trim()
     }
 })
+$installMongoButton.Add_Click({
+    Invoke-PanelOperation 'Preparar MongoDB para el PHP seleccionado' $localUi.Output {
+        $installer = Join-Path $PSScriptRoot 'instalar-mongodb-php.ps1'
+        $php = $phpPathBox.Text.Trim()
+        Register-TestCommand $installer @('-Php', $php) -PowerShell
+        & $installer -Php $php 6>&1 | ForEach-Object { Write-Log ([string]$_) }
+    }
+})
+$requestAccessButton.Add_Click({
+    Invoke-PanelOperation 'Solicitar accesos cifrados al Windows fijo' $localUi.Output {
+        if (Get-Item -LiteralPath $script:PairFile -ErrorAction SilentlyContinue) {
+            $saved = Import-Clixml -LiteralPath $script:PairFile
+            $code = $saved.Id
+        } else { $code = New-PresentationRequest }
+        [Windows.Forms.Clipboard]::SetText($code)
+        Write-Log 'La solicitud se copió al portapapeles. Pega ese código para que se envíe el paquete a esta laptop.' 'OK'
+    }
+})
+$receiveAccessButton.Add_Click({
+    Invoke-PanelOperation 'Recibir accesos cifrados en esta laptop' $localUi.Output {
+        Receive-PresentationAccess
+        $script:CredentialStatus = Initialize-SecureConfig
+        $credentialLabel.Text = $script:CredentialStatus
+        $credentialLabel.ForeColor = $green
+        Write-Log 'Accesos guardados para este usuario de Windows. Ya puedes iniciar APIcore y ejecutar las pruebas.' 'OK'
+    }
+})
 $startFrontButton.Add_Click({
     Invoke-PanelOperation 'Iniciar frontend PHP · localhost:5500' $localUi.Output {
         Start-LocalDemoService Frontend $frontPathBox.Text.Trim() $phpPathBox.Text.Trim()
@@ -1055,6 +1099,10 @@ $localStatusButton.Add_Click({
         Register-TestCommand 'Get-Service' @('-Name', 'MongoDB', '-ErrorAction', 'SilentlyContinue') -PowerShell
         $localMongo = Get-Service -Name MongoDB -ErrorAction SilentlyContinue
         if ($localMongo) { Write-Log "MongoDB en esta computadora · $($localMongo.Status)" }
+        try {
+            if (Get-ApiCoreAccess) { Write-Log 'Acceso de APIcore listo.' 'OK' }
+            else { Write-Log 'APIcore requiere los accesos. Usa Solicitar accesos y Recibir accesos.' 'PENDIENTE' }
+        } catch { Write-Log 'El acceso de APIcore guardado no se pudo abrir.' 'PENDIENTE' }
         $result = Test-ApiCore
         Write-Log "APIcore · $($result.Summary)" $result.Status
         $url = 'http://localhost:5500/login.html'

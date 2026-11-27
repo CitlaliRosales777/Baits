@@ -27,7 +27,7 @@ git clone --branch Fronted https://github.com/CitlaliRosales777/Baits.git (Join-
 git clone --branch db-manager https://github.com/CitlaliRosales777/Baits.git (Join-Path $escritorio 'Baits-db-manager')
 ```
 
-Si **Ver estado** dice que falta MongoDB en PHP, ejecuta el asistente desde tu copia de `db-manager`. Elige la DLL de PHP.net según tu versión de XAMPP, la prueba y guarda una copia de `php.ini` antes de modificarlo.
+Si **Ver estado** dice que falta MongoDB en PHP, pulsa **Inicio local → Instalar MongoDB para PHP**. El asistente elige la DLL de PHP.net según tu versión de XAMPP, la prueba y guarda una copia de `php.ini` antes de modificarlo. También puedes usarlo desde PowerShell.
 
 ```powershell
 $repo = Join-Path ([Environment]::GetFolderPath('Desktop')) 'Baits-db-manager'
@@ -36,7 +36,9 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repo 'presen
 
 ## 2. Arrancar APIcore y el frontend local
 
-En la primera ventana de PowerShell, ejecuta el arranque. Los dos cuadros de entrada están ocultos. El primero pide la clave de MariaDB de `apicore_app` que ya utilizabas. El segundo pide la de MongoDB de `apicore_emociones`, que DB Manager entrega por el canal privado. En el Windows fijo, la cuenta que la guardó puede recuperarla desde `%LOCALAPPDATA%\Moodsitto\apicore-emociones.credential.xml`. Ingresa cada contraseña cuando aparezca su aviso.
+Primero prepara los accesos en **Inicio local → Solicitar accesos** en la laptop. El botón envía la solicitud por Tailscale al Windows fijo y copia un código público al portapapeles. Comparte ese código con DB Manager. En el Windows fijo, DB Manager ejecuta `enviar-accesos-laptop.ps1 -Codigo <código>`. Cuando el paquete llegue, pulsa **Recibir accesos**. Windows guarda cifradas las cuatro credenciales de aplicación: MariaDB y MongoDB para APIcore, y MariaDB y MongoDB para las pruebas del panel. El arranque lee esas credenciales automáticamente desde la misma cuenta de Windows. El acceso SSH de los servidores y la autorización de `sudo` se manejan por separado.
+
+Después pulsa **Iniciar APIcore** en la ventana o ejecuta el arranque desde PowerShell.
 
 ```powershell
 $escritorio = [Environment]::GetFolderPath('Desktop')
@@ -87,7 +89,7 @@ Después de ejecutar una prueba, selecciónala en la tabla y abre **Comandos de 
 
 ### Arrancar desde la ventana
 
-En **Inicio local**, revisa las rutas de los repositorios y de `php.exe`. Pulsa **Iniciar APIcore** para abrir la consola de PHP. Si solicita claves, escríbelas en esa consola. Pulsa **Iniciar frontend PHP** y después **Ver estado** para comprobar los módulos de XAMPP, `/health` en el puerto 8000 y el inicio de sesión en el puerto 5500. **Abrir sitio** abre el frontend local. Para cerrar un servidor local durante la presentación, usa **Ctrl+C** en su consola de arranque.
+En **Inicio local**, revisa las rutas de los repositorios y de `php.exe`. Con los accesos guardados, pulsa **Iniciar APIcore** para abrir la consola de PHP. Pulsa **Iniciar frontend PHP** y después **Ver estado** para comprobar los módulos de XAMPP, `/health` en el puerto 8000 y el inicio de sesión en el puerto 5500. **Abrir sitio** abre el frontend local. Para cerrar un servidor local durante la presentación, usa **Ctrl+C** en su consola de arranque.
 
 ## 4. Explicar y verificar una falla
 

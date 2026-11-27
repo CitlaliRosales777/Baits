@@ -4,6 +4,7 @@
 )
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'accesos-panel.ps1')
 $entrada = Join-Path $RepoApiCore 'apicore\api\v1\php\index.php'
 if (-not (Test-Path -LiteralPath $entrada)) { throw "No se encuentra APIcore en $RepoApiCore." }
 if (-not (Test-Path -LiteralPath $Php)) { throw "No se encuentra PHP en $Php." }
@@ -17,7 +18,10 @@ foreach ($modulo in 'pdo_mysql', 'mbstring', 'mongodb') {
     }
 }
 
-# Las contraseñas se escriben en un cuadro oculto y solo se pasan a PHP durante esta ejecución.
+$access = Get-ApiCoreAccess
+if (-not $access) { throw 'Primero usa Solicitar accesos y Recibir accesos en la pestaña Inicio local del panel.' }
+
+# Los accesos se descifran solo en este usuario de Windows y se pasan a PHP durante la ejecución.
 $claves = 'DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'DB_PASSWORD', 'JWT_SECRET', 'MOODSITTO_MONGO_URI'
 $anteriores = @{}
 foreach ($nombre in $claves) {
@@ -29,11 +33,8 @@ try {
     $env:DB_PORT = '3306'
     $env:DB_NAME = 'apicore'
     $env:DB_USER = 'apicore_app'
-    $maria = Read-Host 'Contraseña MariaDB de apicore_app' -AsSecureString
-    $mongo = Read-Host 'Contraseña MongoDB de apicore_emociones' -AsSecureString
-    if ($maria.Length -eq 0 -or $mongo.Length -eq 0) { throw 'Escribe las dos contraseñas de aplicación.' }
-    $env:DB_PASSWORD = [pscredential]::new('apicore_app', $maria).GetNetworkCredential().Password
-    $mongoTexto = [pscredential]::new('apicore_emociones', $mongo).GetNetworkCredential().Password
+    $env:DB_PASSWORD = $access.Maria.GetNetworkCredential().Password
+    $mongoTexto = $access.Mongo.GetNetworkCredential().Password
     $mongoCodificada = [uri]::EscapeDataString($mongoTexto)
     $env:MOODSITTO_MONGO_URI = "mongodb://apicore_emociones:${mongoCodificada}@100.94.145.63:27017,100.89.172.17:27017,100.86.5.50:27017/moodsitto?authSource=moodsitto&replicaSet=rsMoodsitto"
     Remove-Variable mongoTexto, mongoCodificada
