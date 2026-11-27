@@ -176,7 +176,12 @@ function Get-LocalStartConfiguration {
 function Start-LocalDemoService {
     param([string]$Service, [string]$RepoPath, [string]$Php)
     $start = Get-LocalStartConfiguration $Service $RepoPath $Php
-    if (Test-TcpPort 'localhost' $start.Port -TimeoutMs 500) {
+    # PHP puede escuchar en ::1. Consulta ambos tipos de socket antes de abrir otra instancia.
+    $localListeners = [Net.NetworkInformation.IPGlobalProperties]::GetIPGlobalProperties().GetActiveTcpListeners() | Where-Object {
+        $_.Port -eq $start.Port -and ([Net.IPAddress]::IsLoopback($_.Address) -or
+            $_.Address -in @([Net.IPAddress]::Any, [Net.IPAddress]::IPv6Any))
+    }
+    if ($localListeners) {
         Write-Log "El puerto $($start.Port) ya está en uso. Pulsa Ver estado para comprobar qué servicio responde." 'PENDIENTE'
         return
     }
