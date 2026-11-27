@@ -1,9 +1,7 @@
 # apicore — API en PHP
 
 API REST en PHP 8 sobre MySQL, sin dependencias externas: ni Composer ni frameworks.
-Es la contraparte exacta de la implementación en Python: mismo contrato, mismos códigos
-de estado, mismos mensajes de error y la misma base de datos, así que un cliente puede
-apuntar a cualquiera de las dos sin cambios.
+Las rutas compartidas conservan el contrato de la implementación en Python. El tablero de Moodsitto se sirve desde esta implementación de PHP.
 
 Pensada para que un alumno añada una entidad nueva escribiendo tres archivos cortos,
 sin tocar el arranque, el router ni los middlewares.
@@ -273,3 +271,18 @@ que la emisión de la respuesta se verifica con las pruebas de integración.
 
 `../../.github/workflows/tests.yml` ejecuta las dos suites en cada push y pull request,
 con un servicio MySQL 8.0 y el esquema de `apicore.sql` cargado desde la raíz.
+
+
+## Tablero de Moodsitto
+
+El tablero requiere el token de APIcore en la cabecera `Authorization: Bearer`. La API obtiene el identificador de la cuenta del token.
+
+| Método | Ruta | Qué hace |
+|---|---|---|
+| GET | `/tablero/recordatorios` | Lista los recordatorios de la cuenta. |
+| PUT | `/tablero/recordatorios/{id}` | Crea o actualiza el recordatorio de ese UUID. |
+| DELETE | `/tablero/recordatorios/{id}` | Elimina el recordatorio de esa cuenta. |
+| GET | `/tablero/emociones` | Devuelve los 100 registros más recientes de la cuenta. |
+| PUT | `/tablero/emociones/{id}` | Guarda un registro con confirmación por mayoría, usando un UUID para evitar duplicados. |
+
+Aplica el esquema `05-tablero-apicore.sql` de la rama `db-manager` antes de usar recordatorios. Para habilitar emociones, carga la extensión `mongodb` de PHP y configura `MOODSITTO_MONGO_URI` con la cuenta de aplicación de la colección `moodsitto.historial_emociones_apicore`. La [guía desde la laptop](https://github.com/CitlaliRosales777/Baits/blob/db-manager/presentacion/GUIA_DEMO.md) muestra el arranque con XAMPP y la configuración de ambos motores.
