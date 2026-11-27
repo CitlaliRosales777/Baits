@@ -16,6 +16,8 @@ otra, siempre que ambas usen el mismo `JWT_SECRET`.
 
 ## Cómo fluye una petición
 
+Para la presentación local, inicia APIcore en el puerto 8000 y usa el frontend de la rama `Fronted`, sirviendo su carpeta `fronted/fronted`. La copia del frontend en esta rama es la versión inicial del registro y acceso. El backend PHP de Moodsitto tiene sus propias cuentas y se prueba en el puerto 8001.
+
 Esta sección explica el recorrido completo de una petición HTTP. El orden es idéntico en
 Python y en PHP; solo cambian los nombres de los archivos, que se indican en cada capa.
 
