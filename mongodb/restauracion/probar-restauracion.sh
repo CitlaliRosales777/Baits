@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Valida la recuperación de las colecciones de moodsitto en el espacio de prueba.
 set -euo pipefail
 BACKUP=${1:?Uso: probar-restauracion.sh archivo.archive.gz}
 source /root/.moodsitto-secrets.env

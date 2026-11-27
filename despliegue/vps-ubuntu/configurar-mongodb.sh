@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Prepara el nodo de MongoDB del VPS y su autenticación.
 set -euo pipefail
 
 if [[ "${EUID}" -ne 0 ]]; then

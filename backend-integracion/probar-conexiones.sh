@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Comprueba conexiones y permisos con datos sintéticos.
 set -euo pipefail
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 [[ -f "${HERE}/.env" ]] || { echo 'Falta .env. Ejecuta configurar.sh.' >&2; exit 1; }

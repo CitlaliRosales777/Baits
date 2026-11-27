@@ -14,6 +14,9 @@
 | Respaldos/restauración | APROBADO | MongoDB 4 colecciones y MariaDB 23 tablas restauradas aisladamente; timers activos |
 | Monitoreo | APROBADO | script ejecutado; detecta correctamente laptop MongoDB pendiente |
 | Demostración | PENDIENTE | guion preparado; requiere infraestructura activa |
+| APIcore en laptop | APROBADO | registro y sesión de prueba realizados contra la base apicore del principal |
+| Restauración de APIcore | PENDIENTE | el trabajo de respaldo vigente solo exporta moodsitto |
+| Caída controlada | PENDIENTE | la recuperación operativa de la mayoría MongoDB fue observada; falta un ensayo controlado con tiempos |
 | Paquete backend | APROBADO (estático) | asistentes y verificadores presentes |
 | Asistente probado | PENDIENTE | sintaxis aprobada; ejecución desde laptop requiere motores/credenciales finales |
 | Contratos/incompatibilidades | APROBADO | documentación basada en rama backend observada |

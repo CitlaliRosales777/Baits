@@ -1,3 +1,4 @@
+# Actualiza la regla privada de MariaDB para la réplica y la laptop.
 $ErrorActionPreference = 'Stop'
 $name = 'Moodsitto MariaDB desde HP Tailscale'
 Get-NetFirewallRule -DisplayName $name -ErrorAction SilentlyContinue | Remove-NetFirewallRule

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Consulta cada miembro por su IP privada para separar problemas de red y de topología.
 set -euo pipefail
 source /root/.moodsitto-secrets.env
 for host in 100.94.145.63 100.89.172.17 100.86.5.50; do

@@ -1,3 +1,4 @@
+-- Compara la reconstrucción horizontal y vertical con el total de origen.
 USE moodsitto_lab;
 SELECT 'horizontal' prueba,
        (SELECT COUNT(*) FROM usuarios_fuente) fuente,

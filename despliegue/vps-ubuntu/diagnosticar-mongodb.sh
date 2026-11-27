@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Consulta el estado de MongoDB desde el VPS con la cuenta administrativa.
 set -euo pipefail
 source /root/.moodsitto-secrets.env
 AUTH=(-u "${MONGO_ADMIN_USER}" -p "${MONGO_ADMIN_PASS}" --authenticationDatabase admin)

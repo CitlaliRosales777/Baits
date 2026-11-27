@@ -1,26 +1,90 @@
-# Demostración de 10–15 minutos
+# Presentación de Moodsitto desde la laptop
 
-## Interfaz para la exposición
+La laptop `DESKTOP-0DDRLDI` ejecuta el frontend, APIcore y la consola de pruebas. APIcore PHP se conecta por Tailscale a la base `apicore` en el Windows fijo. El HP recibe la réplica asíncrona de MariaDB. MongoDB usa `rsMoodsitto` en VPS, fijo y laptop. El backend Moodsitto y el tablero completo tienen contratos y pantallas propios, cuya integración con APIcore sigue pendiente.
 
-Desde la laptop, abre `presentacion\INICIAR-PRUEBAS.cmd`. También puedes ejecutar `presentacion\interfaz-pruebas.ps1` con PowerShell.
+## 1. Preparar la laptop
 
-1. La interfaz carga automáticamente las credenciales locales protegidas. No solicita ni muestra contraseñas.
-2. Presiona **Ejecutar todas las seguras** para revisar la infraestructura sin detener servicios.
-3. Ejecuta las dos restauraciones aisladas por separado; la interfaz pedirá confirmación.
-4. Exporta el reporte al terminar. Se guarda en `evidencias-locales/`, una carpeta ignorada por Git.
+Abre PowerShell y verifica la red y el PHP que ya incluye XAMPP.
 
-La fila de recuperación comprueba que la topología esté lista, pero no apaga equipos ni promueve réplicas. Una caída real solo se hace cuando el profesor la autorice y el equipo acepte la interrupción.
+```powershell
+tailscale ip -4
+Test-NetConnection 100.89.172.17 -Port 3306
+Get-Service MongoDB
+$php = 'C:\xampp\php\php.exe'
+& $php -v
+& $php -m | Select-String '^(pdo_mysql|mbstring)$'
+```
 
-1. Ejecutar `presentacion\preflight\preflight.ps1` desde la laptop.
-2. Mostrar Tailscale y los cuatro nodos sin revelar cuentas ni direcciones públicas.
-3. Consultar `SHOW MASTER STATUS` en Windows fijo y `SHOW ALL SLAVES STATUS\G` en HP.
-4. Insertar un evento SQL sintético con un UUID y comprobarlo en HP. Eliminarlo al terminar.
-5. Mostrar `rs.status()` con VPS PRIMARY, Windows fijo SECONDARY y laptop SECONDARY prioridad 0.
-6. Insertar un documento sintético con `writeConcern: majority` y leerlo desde un secundario.
-7. Ejecutar `laboratorio/reconstruccion/validar.sql` para mostrar `UNION ALL` y `JOIN`.
-8. Mostrar usuarios y grants sin contraseñas: `SHOW GRANTS` y roles MongoDB.
-9. Mostrar los timers y el último respaldo; no abrir archivos que contengan datos o hashes de credenciales.
-10. Mostrar la evidencia de restauración aislada y el monitoreo.
+Espera la IP de la laptop `100.86.5.50`, `TcpTestSucceeded : True`, MongoDB `Running` y ambos módulos PHP. Para la consola de DB Manager también necesitas Git, cliente MariaDB, `mongosh` y OpenSSH según la prueba. APIcore usa el MariaDB remoto a través de PDO.
 
-La caída controlada solo se demuestra con autorización en el momento. MongoDB requiere dos de tres votos. MariaDB no tiene failover automático: se detienen escrituras, se verifica GTID y se promueve manualmente. Si la laptop está apagada, los dos miembros restantes conservan mayoría únicamente si ambos están disponibles.
+Si aún no tienes las copias del repositorio, clona ambas ramas en carpetas separadas del Escritorio. Si ya existen, usa esas copias y conserva tus cambios locales.
 
+```powershell
+$escritorio = [Environment]::GetFolderPath('Desktop')
+git clone --branch api-citas https://github.com/CitlaliRosales777/Baits.git (Join-Path $escritorio 'Baits-demo')
+git clone --branch db-manager https://github.com/CitlaliRosales777/Baits.git (Join-Path $escritorio 'Baits-db-manager')
+```
+
+## 2. Arrancar APIcore y el frontend local
+
+En la primera ventana de PowerShell, usa la clave de `apicore_app` que entrega DB Manager por un canal privado. El bloque deja las variables en esta ventana y las pasa a PHP.
+
+```powershell
+$escritorio = [Environment]::GetFolderPath('Desktop')
+$php = 'C:\xampp\php\php.exe'
+Set-Location (Join-Path $escritorio 'Baits-demo\apicore\api\v1\php')
+
+$env:DB_HOST = '100.89.172.17'
+$env:DB_PORT = '3306'
+$env:DB_NAME = 'apicore'
+$env:DB_USER = 'apicore_app'
+$clave = Read-Host 'Contraseña de apicore_app' -AsSecureString
+$env:DB_PASSWORD = [pscredential]::new('apicore_app', $clave).GetNetworkCredential().Password
+Remove-Variable clave
+$env:JWT_SECRET = & $php -r 'echo bin2hex(random_bytes(32));'
+& $php -S localhost:8000 index.php
+```
+
+Deja esa ventana abierta. [APIcore /health](http://localhost:8000/health) debe devolver HTTP 200 y `"status":"ok"`. El controlador ejecuta `SELECT 1` por PDO. Un 503 indica que PHP responde, pero su conexión SQL falló. Al terminar, cierra esa ventana para liberar las variables de la sesión.
+
+En una segunda ventana, sirve el frontend de `api-citas`.
+
+```powershell
+$escritorio = [Environment]::GetFolderPath('Desktop')
+& 'C:\xampp\php\php.exe' -S localhost:5500 -t (Join-Path $escritorio 'Baits-demo\fronted')
+```
+
+Abre [Registro local](http://localhost:5500/registro.html). Registra una cuenta ficticia con una contraseña distinta de las claves de base de datos. Comprueba el saludo y «Cerrar sesión» después del login. La portada de esta rama sigue mostrando «Comenzar» aunque haya sesión. La cuenta de prueba verifica registro y login, y la edición del tablero pertenece a la integración pendiente.
+
+## 3. Ejecutar las pruebas de DB Manager
+
+En una tercera ventana, abre el panel o ejecuta únicamente el control de APIcore.
+
+```powershell
+$escritorio = [Environment]::GetFolderPath('Desktop')
+Set-Location (Join-Path $escritorio 'Baits-db-manager')
+& .\presentacion\INICIAR-PRUEBAS.cmd
+# Comprobación de APIcore sin abrir la ventana gráfica
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\presentacion\interfaz-pruebas.ps1 -CheckApiCore
+```
+
+El panel carga las credenciales de aplicación desde `backend-integracion/.env` cuando está configurado. Usa el [asistente de integración](../backend-integracion/README_EMPIEZA_AQUI.md) antes de la exposición. La clave de `apicore_app` se usa en PHP. El panel usa las cuentas de aplicación de `moodsitto` para sus consultas directas. Inventario, monitoreo y respaldos requieren acceso SSH autorizado. Las cuentas con acceso al estado de réplica y a las restauraciones deben prepararse antes de la clase.
+
+| Orden | Prueba del panel | Qué demuestra |
+|---|---|---|
+| 1 | Conectividad e inventario | Alcance de los equipos, puertos y recursos desde la laptop. |
+| 2 | APIcore local y MariaDB | La ruta HTTP responde y PDO ejecuta una consulta SQL. |
+| 3 | MariaDB principal, réplica y evento ficticio | Binlog del principal, hilos de réplica y llegada de un registro identificado al HP. |
+| 4 | Replica set y escritura con mayoría | Rol de cada miembro y lectura del mismo documento en los secundarios. El rol principal puede cambiar tras una elección. |
+| 5 | Modelo híbrido, fragmentación y auditoría | Tablas, colecciones, reconstrucción del laboratorio y acceso a auditorías. |
+| 6 | Respaldos, restauraciones y monitoreo | Programación, copias encontradas, recuperación en el espacio de prueba y estado de los servicios. |
+
+Ejecuta las pruebas en orden y exporta el reporte a `evidencias-locales/`. El conjunto **Ejecutar todas las seguras** incluye escrituras sintéticas y la reconstrucción del laboratorio. Las restauraciones se lanzan por separado con confirmación. El panel marca **BLOQUEADO** cuando faltan credenciales, permisos o el servicio necesario.
+
+## 4. Explicar y verificar una falla
+
+- **MariaDB.** Si cae el HP, el principal puede seguir escribiendo. Si cae el principal, las escrituras esperan su recuperación o una promoción manual tras revisar GTID. La réplica asíncrona podría quedar por detrás. Para comprobar un registro creado por APIcore, compara en ambos nodos el `UserId` de la cuenta ficticia con una cuenta autorizada para leer `apicore`. La prueba automática de replicación del panel usa `moodsitto.auditoria_eventos`.
+- **MongoDB.** Dos votos de tres conservan la mayoría si queda un nodo elegible. Con un solo miembro, se pierde el principal para escrituras. En una prueba autorizada, captura roles y salud antes de la caída, durante la elección y al volver a conectar el miembro.
+- **Restauración.** Recupera una copia en un espacio de prueba y consulta un registro conocido. Registra la fecha de la copia y cuánto tarda en volver la lectura. El respaldo SQL programado actual cubre `moodsitto`. Sigue pendiente respaldar y restaurar `apicore` y ensayar la falla controlada.
+
+Revisa el [estado de aceptación](../docs/pruebas/ESTADO_ACEPTACION.md), el [plan de respaldo y recuperación](../docs/recuperacion/PLAN_RECUPERACION.md) y el [protocolo de contingencia](contingencia/CONTINGENCIA.md) antes de iniciar una interrupción.

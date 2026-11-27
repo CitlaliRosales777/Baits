@@ -1,3 +1,4 @@
+# Genera el esquema relacional que acompaña las colecciones de MongoDB.
 $ErrorActionPreference = 'Stop'
 $Repo = Split-Path -Parent $PSScriptRoot
 $Source = Join-Path $Repo 'bd-moodsitto.sql'

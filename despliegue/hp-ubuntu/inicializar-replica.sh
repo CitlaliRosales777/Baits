@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Prepara los archivos y la conexión de replicación inicial en HP.
 set -euo pipefail
 
 SEED=/tmp/moodsitto-seed.sql

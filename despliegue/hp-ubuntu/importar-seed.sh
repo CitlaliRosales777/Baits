@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Importa el respaldo inicial en HP y utiliza la posición GTID indicada.
 set -euo pipefail
 GTID=${1:?Uso: importar-seed.sh POSICION_GTID}
 [[ "${GTID}" =~ ^[0-9-]+(,[0-9-]+)*$ ]] || { echo "GTID inválido" >&2; exit 1; }

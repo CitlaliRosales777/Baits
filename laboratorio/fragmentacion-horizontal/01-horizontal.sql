@@ -1,3 +1,4 @@
+-- Prepara datos ficticios divididos por filas en moodsitto_lab.
 CREATE DATABASE IF NOT EXISTS moodsitto_lab CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE moodsitto_lab;
 

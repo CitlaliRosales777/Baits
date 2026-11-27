@@ -1,3 +1,4 @@
+# Unidad que ejecuta una copia de MariaDB en el HP.
 [Unit]
 Description=Respaldo MariaDB Moodsitto desde réplica HP
 After=mariadb.service

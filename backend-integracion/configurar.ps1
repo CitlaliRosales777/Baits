@@ -1,3 +1,4 @@
+# Prepara el .env local del backend con credenciales ingresadas en privado.
 $ErrorActionPreference = 'Stop'
 $Here = $PSScriptRoot
 $Template = Join-Path $Here '.env.example'

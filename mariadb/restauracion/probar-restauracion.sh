@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Importa una copia de moodsitto en el esquema de prueba y valida sus tablas.
 set -euo pipefail
 BACKUP=${1:?Uso: probar-restauracion.sh archivo.sql.gz}
 TEST_DB=moodsitto_restore_test

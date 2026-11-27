@@ -1,8 +1,10 @@
 ﻿param(
     [switch]$SelfTest,
-    [switch]$UiSmokeTest
+    [switch]$UiSmokeTest,
+    [switch]$CheckApiCore
 )
 
+# Destinos privados de Moodsitto y estado de la ventana durante la sesión.
 $ErrorActionPreference = 'Stop'
 $script:Repo = Split-Path -Parent $PSScriptRoot
 $script:Config = @{
@@ -26,6 +28,7 @@ $script:Grid = $null
 $script:SummaryLabel = $null
 $script:Running = $false
 
+# Cada prueba devuelve el mismo formato para la tabla y el reporte.
 function New-Result {
     param(
         [ValidateSet('APROBADO','PENDIENTE','BLOQUEADO')][string]$Status,
@@ -88,6 +91,7 @@ function Test-TcpPort {
     }
 }
 
+# La variable de conexión solo se usa mientras se ejecuta el cliente SQL.
 function Invoke-MariaQuery {
     param(
         [string]$HostName,
@@ -116,7 +120,7 @@ function Invoke-MariaQuery {
 function Get-MongoUri {
     param([string]$Hosts = $script:Config.MongoHosts, [switch]$Direct)
     $options = "authSource=$($script:Config.MongoAuthSource)&serverSelectionTimeoutMS=7000"
-    if ($Direct) { $options += '&directConnection=true' }
+    if ($Direct) { $options += '&directConnection=true&readPreference=secondaryPreferred' }
     else { $options += "&replicaSet=$($script:Config.MongoReplicaSet)&retryWrites=true&w=majority" }
     "mongodb://${Hosts}/$($script:Config.MongoDatabase)?${options}"
 }
@@ -190,28 +194,36 @@ function Test-Inventory {
     New-Result APROBADO 'Se consultaron recursos reales de la laptop, HP y VPS; el Windows fijo se comprueba mediante sus dos motores.' ($details -join [Environment]::NewLine)
 }
 
+# Usa variables de lectura disponibles para la cuenta de la aplicación.
 function Test-MariaPrimary {
-    $sql = "SELECT CONCAT(@@hostname,'|',@@version,'|server_id=',@@server_id,'|read_only=',@@read_only); SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='moodsitto'; SHOW MASTER STATUS;"
+    $sql = "SELECT CONCAT(@@hostname,'|',@@version,'|server_id=',@@server_id,'|read_only=',@@read_only,'|log_bin=',@@log_bin); SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='moodsitto';"
     $result = Invoke-MariaQuery $script:Config.MariaHost $sql
     $lines = $result.Output -split "`r?`n"
     if ($result.Output -notmatch 'read_only=0') { return New-Result PENDIENTE 'El principal de MariaDB aparece en modo de solo lectura.' $result.Output }
+    if ($result.Output -notmatch 'log_bin=1') { return New-Result PENDIENTE 'El binlog del principal está desactivado.' $result.Output }
     if ($lines -notcontains '23') { return New-Result PENDIENTE 'El esquema activo no tiene las 23 tablas esperadas.' $result.Output }
     New-Result APROBADO 'MariaDB principal acepta escritura, tiene server_id y conserva las 23 tablas del esquema híbrido.' $result.Output
 }
 
 function Test-MariaReplica {
-    $sql = "SELECT CONCAT(@@hostname,'|',@@version,'|server_id=',@@server_id,'|read_only=',@@read_only); SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='moodsitto'; SHOW ALL SLAVES STATUS;"
+    $sql = "SELECT CONCAT(@@hostname,'|',@@version,'|server_id=',@@server_id,'|read_only=',@@read_only); SHOW ALL SLAVES STATUS\G"
     $result = Invoke-MariaQuery $script:Config.MariaReplicaHost $sql -AllowFailure
     if ($result.Code -ne 0) {
         $fallback = Invoke-MariaQuery $script:Config.MariaReplicaHost "SELECT CONCAT(@@hostname,'|',@@version,'|server_id=',@@server_id,'|read_only=',@@read_only); SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='moodsitto';"
         if ($fallback.Output -notmatch 'read_only=1') { return New-Result PENDIENTE 'La réplica responde, pero no está protegida con read_only.' $fallback.Output }
-        return New-Result APROBADO 'La réplica tiene 23 tablas y está protegida contra escrituras. El usuario de aplicación no puede ver el estado administrativo, como se esperaba.' $fallback.Output
+        return New-Result BLOQUEADO 'La réplica responde en solo lectura. Para comprobar los hilos y el retraso hace falta una cuenta con REPLICA MONITOR.' $fallback.Output
     }
-    $healthy = $result.Output -match '(Yes\s+Yes|Slave_IO_Running[^\r\n]*Yes)' -and $result.Output -notmatch 'read_only=0'
-    if (-not $healthy) { return New-Result PENDIENTE 'La réplica respondió, pero su estado no coincide con la configuración esperada.' $result.Output }
-    New-Result APROBADO 'La réplica está en solo lectura y los hilos de replicación están activos.' $result.Output
+    # Muestra solo los campos de diagnóstico necesarios para la exposición.
+    $details = ($result.Output -split "`r?`n" | Where-Object {
+        $_ -match 'read_only=|^\s*(Slave_IO_Running|Slave_SQL_Running|Seconds_Behind_Master|Using_Gtid)\s*:'
+    }) -join "`n"
+    $healthy = $result.Output -match '(?m)^\s*Slave_IO_Running:\s*Yes\s*$' -and
+        $result.Output -match '(?m)^\s*Slave_SQL_Running:\s*Yes\s*$' -and $result.Output -match 'read_only=1'
+    if (-not $healthy) { return New-Result PENDIENTE 'La réplica respondió, pero su estado no coincide con la configuración esperada.' $details }
+    New-Result APROBADO 'La réplica está en solo lectura y los hilos de replicación están activos.' $details
 }
 
+# Inserta un evento temporal y verifica que llegue al HP.
 function Test-MariaReplication {
     $id = [Guid]::NewGuid().ToString()
     $inserted = $false
@@ -225,9 +237,7 @@ function Test-MariaReplication {
             if ($count -eq '1') { break }
         }
         if ($count -ne '1') { return New-Result PENDIENTE 'El registro de prueba no llegó a la réplica dentro del tiempo esperado.' "correlacion_id=$id; conteo=$count" }
-        $writeAttempt = Invoke-MariaQuery $script:Config.MariaReplicaHost "INSERT INTO auditoria_eventos(actor_id_user,accion,recurso,resultado,correlacion_id) VALUES(NULL,'no_debe_escribir','replica','error','$(New-Guid)');" -AllowFailure
-        if ($writeAttempt.Code -eq 0) { return New-Result PENDIENTE 'La réplica permitió una escritura directa y debe revisarse read_only.' $writeAttempt.Output }
-        New-Result APROBADO 'El registro sintético llegó del principal a la HP y la réplica rechazó una escritura directa.' "correlacion_id=$id; réplica=1; escritura directa=rechazada"
+        New-Result APROBADO 'El registro sintético llegó del principal a la HP.' "correlacion_id=$id; réplica=1"
     } finally {
         if ($inserted) {
             Invoke-MariaQuery $script:Config.MariaHost "DELETE FROM auditoria_eventos WHERE correlacion_id='$id';" -AllowFailure | Out-Null
@@ -237,24 +247,22 @@ function Test-MariaReplication {
 
 function Test-MongoTopology {
     $details = [Collections.Generic.List[string]]::new()
-    $expected = @(
-        @{ Host='100.94.145.63:27017'; Role='PRIMARY' },
-        @{ Host='100.89.172.17:27017'; Role='SECONDARY' },
-        @{ Host='100.86.5.50:27017'; Role='SECONDARY' }
-    )
-    $failed = 0
-    foreach ($node in $expected) {
+    $primaries = 0
+    $secondaries = 0
+    # El papel de cada miembro se lee en vivo porque puede cambiar después de una elección.
+    foreach ($node in ($script:Config.MongoHosts -split ',')) {
         $js = 'const h=db.hello(); print(JSON.stringify({me:h.me,setName:h.setName,primary:h.primary,isWritablePrimary:h.isWritablePrimary,secondary:h.secondary,ok:h.ok}))'
-        $result = Invoke-MongoEval $js (Get-MongoUri $node.Host -Direct) -AllowFailure
-        $details.Add("$($node.Host): $($result.Output)")
-        if ($result.Code -ne 0 -or $result.Output -notmatch '"setName":"rsMoodsitto"') { $failed++; continue }
-        if ($node.Role -eq 'PRIMARY' -and $result.Output -notmatch '"isWritablePrimary":true') { $failed++ }
-        if ($node.Role -eq 'SECONDARY' -and $result.Output -notmatch '"secondary":true') { $failed++ }
+        $result = Invoke-MongoEval $js (Get-MongoUri $node -Direct) -AllowFailure
+        $details.Add("${node}: $($result.Output)")
+        if ($result.Code -ne 0 -or $result.Output -notmatch '"setName":"rsMoodsitto"') { continue }
+        if ($result.Output -match '"isWritablePrimary":true') { $primaries++ }
+        if ($result.Output -match '"secondary":true') { $secondaries++ }
     }
-    if ($failed -gt 0) { return New-Result PENDIENTE 'Uno o más miembros de MongoDB no tienen el rol esperado.' ($details -join [Environment]::NewLine) }
-    New-Result APROBADO 'El VPS es PRIMARY y los dos equipos Windows son SECONDARY dentro de rsMoodsitto.' ($details -join [Environment]::NewLine)
+    if ($primaries -ne 1 -or $secondaries -ne 2) { return New-Result PENDIENTE 'Falta comprobar un PRIMARY y dos SECONDARY en rsMoodsitto.' ($details -join [Environment]::NewLine) }
+    New-Result APROBADO 'rsMoodsitto respondió con un PRIMARY y dos SECONDARY.' ($details -join [Environment]::NewLine)
 }
 
+# Confirma una escritura con mayoría y lee el documento en los demás miembros.
 function Test-MongoReplication {
     $id = [Guid]::NewGuid().ToString()
     $uri = Get-MongoUri
@@ -263,7 +271,10 @@ function Test-MongoReplication {
         $write = Invoke-MongoEval $insert $uri
         if ($write.Output -notmatch 'INSERTADO') { throw $write.Output }
         $details = [Collections.Generic.List[string]]::new()
-        foreach ($hostName in @('100.89.172.17:27017','100.86.5.50:27017')) {
+        $primary = (Invoke-MongoEval 'print(db.hello().me)' $uri).Output
+        $otherMembers = @($script:Config.MongoHosts -split ',' | Where-Object { $_ -ne $primary })
+        if ($otherMembers.Count -ne 2) { return New-Result PENDIENTE 'No se pudo identificar el miembro que recibió la escritura.' }
+        foreach ($hostName in $otherMembers) {
             $count = '0'
             for ($i=0; $i -lt 10; $i++) {
                 Start-Sleep -Milliseconds 600
@@ -303,11 +314,12 @@ function Test-Fragmentation {
     New-Result APROBADO 'La fragmentación horizontal se reconstruyó con UNION ALL y la vertical con JOIN, sin perder filas.' $result.Output
 }
 
+# Consulta privilegios sin mostrar las cláusulas de autenticación de SHOW GRANTS.
 function Test-AuditPermissions {
-    $maria = Invoke-MariaQuery $script:Config.MariaHost "SHOW GRANTS FOR CURRENT_USER; SELECT COUNT(*) FROM auditoria_eventos;"
+    $maria = Invoke-MariaQuery $script:Config.MariaHost "SELECT TABLE_SCHEMA, PRIVILEGE_TYPE FROM information_schema.SCHEMA_PRIVILEGES WHERE GRANTEE=CONCAT(QUOTE(SUBSTRING_INDEX(CURRENT_USER(),'@',1)), '@', QUOTE(SUBSTRING_INDEX(CURRENT_USER(),'@',-1))); SELECT COUNT(*) FROM auditoria_eventos;"
     $mongo = Invoke-MongoEval 'const s=db.runCommand({connectionStatus:1,showPrivileges:false}); print(JSON.stringify({usuario:s.authInfo.authenticatedUsers,roles:s.authInfo.authenticatedUserRoles,auditoria:db.auditoria_documental.countDocuments({})}))'
-    if ($maria.Output -notmatch 'GRANT' -or $mongo.Output -notmatch 'readWrite') { return New-Result PENDIENTE 'No se pudieron confirmar los permisos mínimos de las dos cuentas de aplicación.' ("MariaDB:`n$($maria.Output)`nMongoDB:`n$($mongo.Output)") }
-    New-Result APROBADO 'Las cuentas de aplicación están autenticadas, tienen permisos limitados y las dos auditorías responden.' ("MariaDB:`n$($maria.Output)`nMongoDB:`n$($mongo.Output)")
+    if ($maria.Output -notmatch '(?m)^moodsitto\s+SELECT\s*$' -or $mongo.Output -notmatch 'readWrite') { return New-Result PENDIENTE 'Falta comprobar acceso SQL al esquema o el rol documental de aplicación.' ("MariaDB:`n$($maria.Output)`nMongoDB:`n$($mongo.Output)") }
+    New-Result APROBADO 'Las cuentas de aplicación autenticaron y pudieron consultar ambas auditorías.' ("MariaDB:`n$($maria.Output)`nMongoDB:`n$($mongo.Output)")
 }
 
 function Test-Backups {
@@ -376,6 +388,25 @@ function Test-RecoveryReadiness {
     New-Result PENDIENTE 'La preparación para recuperación está comprobada. La caída real sigue pendiente hasta recibir autorización durante la exposición.' $details
 }
 
+# El controlador /health de APIcore ejecuta SELECT 1 por PDO.
+function Test-ApiCore {
+    $url = 'http://localhost:8000/health'
+    try {
+        $response = Invoke-RestMethod -Uri $url -Method Get -TimeoutSec 8
+    } catch {
+        $http = $_.Exception.Response
+        if ($http -and [int]$http.StatusCode -eq 503) {
+            return New-Result PENDIENTE 'APIcore respondió 503. Revisa su acceso a MariaDB.' $url
+        }
+        return New-Result BLOQUEADO 'No se pudo consultar APIcore en el puerto local 8000. Comprueba el servidor PHP.' $url
+    }
+    if ($response.status -ne 'ok' -or $response.message -ne 'Server is running') {
+        return New-Result PENDIENTE 'El servicio local respondió con un formato distinto al health de APIcore.' $url
+    }
+    New-Result APROBADO 'APIcore respondió y su conexión SQL ejecutó SELECT 1.' $url
+}
+
+# Las restauraciones se ejecutan por separado y requieren confirmación.
 $script:Tests = @(
     [pscustomobject]@{ Id='repo'; Name='Repositorio y modelo estático'; Objective='Archivos, 23 tablas y secretos'; Safe=$true; Confirm=$false; Action={ Test-Repository } },
     [pscustomobject]@{ Id='network'; Name='1. Conectividad de los cuatro equipos'; Objective='Tailscale y puertos privados'; Safe=$true; Confirm=$false; Action={ Test-Connectivity } },
@@ -393,6 +424,7 @@ $script:Tests = @(
     [pscustomobject]@{ Id='restore-mongo'; Name='14B. Restauración aislada MongoDB'; Objective='Recuperar cuatro colecciones fuera de producción'; Safe=$false; Confirm=$true; Action={ Test-MongoRestore } },
     [pscustomobject]@{ Id='monitor'; Name='15. Monitoreo y runners'; Objective='Red, recursos, motores y runners HP'; Safe=$true; Confirm=$false; Action={ Test-Monitoring } },
     [pscustomobject]@{ Id='backend'; Name='Paquete para backend'; Objective='Asistente y conexiones de aplicación'; Safe=$true; Confirm=$false; Action={ Test-BackendPackage } },
+    [pscustomobject]@{ Id='apicore'; Name='APIcore local y MariaDB'; Objective='GET /health y SELECT 1 por PDO'; Safe=$true; Confirm=$false; Action={ Test-ApiCore } },
     [pscustomobject]@{ Id='security'; Name='Seguridad y exposición de red'; Objective='Secretos, respaldos y escuchas privadas'; Safe=$true; Confirm=$false; Action={ Test-Security } },
     [pscustomobject]@{ Id='recovery'; Name='16. Recuperación ante fallos'; Objective='Revisión segura; caída solo con autorización'; Safe=$true; Confirm=$false; Action={ Test-RecoveryReadiness } }
 )
@@ -400,8 +432,15 @@ $script:Tests = @(
 if ($SelfTest) {
     $ids = $script:Tests.Id
     if (($ids | Select-Object -Unique).Count -ne $ids.Count) { throw 'Hay identificadores de prueba duplicados.' }
-    if ($script:Tests.Count -lt 18) { throw 'La interfaz no contiene todas las pruebas planeadas.' }
+    if ($ids -notcontains 'apicore' -or $script:Tests.Count -lt 19) { throw 'La interfaz no contiene todas las pruebas planeadas.' }
     Write-Output "[OK] Interfaz válida: $($script:Tests.Count) pruebas registradas."
+    exit 0
+}
+
+if ($CheckApiCore) {
+    $result = Test-ApiCore
+    $result | Format-List
+    if ($result.Status -ne 'APROBADO') { exit 1 }
     exit 0
 }
 

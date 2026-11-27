@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pide credenciales de aplicación y prepara el archivo .env local.
 set -euo pipefail
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 TEMPLATE="${HERE}/.env.example"

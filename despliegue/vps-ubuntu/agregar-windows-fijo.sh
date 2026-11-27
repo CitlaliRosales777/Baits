@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Incorpora el Windows fijo al conjunto de réplicas de MongoDB.
 set -euo pipefail
 
 # shellcheck disable=SC1091

@@ -1,3 +1,4 @@
+# Configura en HP el origen de replicación con la cuenta dedicada.
 $ErrorActionPreference='Stop'
 $Repo=Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $secretFile=Join-Path $Repo 'secrets\windows-fixed.env'

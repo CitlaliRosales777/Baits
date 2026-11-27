@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Respalda el esquema moodsitto en HP y comprueba la integridad del archivo.
 set -euo pipefail
 DEST=/srv/storage/moodsitto/backups/mariadb
 STAMP=$(date -u +%Y%m%dT%H%M%SZ)

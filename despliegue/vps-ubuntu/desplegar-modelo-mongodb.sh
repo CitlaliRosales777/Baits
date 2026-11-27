@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Aplica el modelo documental de Moodsitto con una cuenta autorizada.
 set -euo pipefail
 # shellcheck disable=SC1091
 source /root/.moodsitto-secrets.env

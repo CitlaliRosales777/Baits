@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Recupera las cuentas de MongoDB en una intervención de mantenimiento.
 set -euo pipefail
 
 [[ "${EUID}" -eq 0 ]] || { echo "Ejecuta como root" >&2; exit 1; }

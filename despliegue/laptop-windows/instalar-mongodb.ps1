@@ -1,3 +1,4 @@
+# Instala MongoDB en la laptop y aplica la configuración del nodo.
 $ErrorActionPreference='Stop'
 $Repo=Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 if ($env:COMPUTERNAME -ne 'DESKTOP-0DDRLDI') { throw "Este script es solo para desktop-0ddrldi; equipo actual: $env:COMPUTERNAME" }

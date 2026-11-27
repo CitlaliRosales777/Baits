@@ -1,3 +1,4 @@
+# Comprueba la conexión y los permisos de aplicación en ambos motores.
 $ErrorActionPreference = 'Stop'
 $Here = $PSScriptRoot
 $EnvFile = Join-Path $Here '.env'

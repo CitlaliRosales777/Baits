@@ -1,3 +1,4 @@
+# Resume el estado de los cuatro equipos y sus puertos privados.
 $ErrorActionPreference = 'Continue'
 $nodes = @(
     @{ Name='Windows fijo'; Host='100.89.172.17'; Ports=@(3306,27017) },

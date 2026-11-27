@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Genera el archivo de respaldo de MongoDB con oplog y suma SHA-256.
 set -euo pipefail
 umask 077
 source /root/.moodsitto-secrets.env

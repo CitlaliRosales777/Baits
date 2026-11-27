@@ -1,3 +1,4 @@
+-- Divide las columnas de los registros ficticios en dos fragmentos.
 USE moodsitto_lab;
 CREATE TABLE IF NOT EXISTS persona_fuente (
   id INT PRIMARY KEY,

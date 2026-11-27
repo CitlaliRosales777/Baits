@@ -1,3 +1,4 @@
+# Aplica los archivos de configuración y las reglas de red del Windows fijo.
 $ErrorActionPreference = 'Stop'
 
 $Repo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)

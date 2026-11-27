@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Incorpora la laptop al conjunto de réplicas de MongoDB.
 set -euo pipefail
 source /root/.moodsitto-secrets.env
 AUTH=(-u "${MONGO_ADMIN_USER}" -p "${MONGO_ADMIN_PASS}" --authenticationDatabase admin)

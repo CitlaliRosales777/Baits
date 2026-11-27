@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Consulta el estado de rsMoodsitto mediante la URI del conjunto.
 set -euo pipefail
 source /root/.moodsitto-secrets.env
 /usr/bin/mongosh --quiet 'mongodb://100.94.145.63:27017,100.89.172.17:27017/admin?replicaSet=rsMoodsitto&serverSelectionTimeoutMS=10000' \

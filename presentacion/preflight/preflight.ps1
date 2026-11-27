@@ -1,3 +1,4 @@
+# Revisa conectividad y ejecuta las pruebas autenticadas si hay un .env local.
 $ErrorActionPreference = 'Stop'
 $Repo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 Write-Output '=== MOODSITTO PREFLIGHT ==='
