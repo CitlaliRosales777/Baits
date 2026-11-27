@@ -61,6 +61,19 @@ function Get-PresentationRequestId {
     } finally { $sha.Dispose() }
 }
 
+function New-PresentationSecureString {
+    param([char[]]$Characters)
+    # El panel también funciona cuando Windows PowerShell no puede cargar Microsoft.PowerShell.Security.
+    $secret = [Security.SecureString]::new()
+    try {
+        foreach ($character in $Characters) { $secret.AppendChar($character) }
+        $secret.MakeReadOnly()
+        $secret
+    } finally {
+        [Array]::Clear($Characters, 0, $Characters.Length)
+    }
+}
+
 function New-PresentationRequest {
     if ($env:COMPUTERNAME -ine 'DESKTOP-0DDRLDI') {
         throw 'La solicitud se genera en la laptop DESKTOP-0DDRLDI que usará el acceso.'
@@ -70,8 +83,10 @@ function New-PresentationRequest {
     try {
         $public = $rsa.ToXmlString($false)
         $requestId = Get-PresentationRequestId $public
-        $private = ConvertTo-SecureString ($rsa.ToXmlString($true)) -AsPlainText -Force
-        @{ Id = $requestId; PrivateKey = $private } | Export-Clixml -LiteralPath $script:PairFile
+        $private = New-PresentationSecureString ($rsa.ToXmlString($true).ToCharArray())
+        try {
+            @{ Id = $requestId; PrivateKey = $private } | Export-Clixml -LiteralPath $script:PairFile
+        } finally { $private.Dispose() }
         $request = Join-Path $script:AccessFolder "moodsitto-solicitud-$requestId.json"
         @{ Id = $requestId; PublicKey = $public } | ConvertTo-Json -Compress | Set-Content -LiteralPath $request -Encoding UTF8
         try {
@@ -125,7 +140,8 @@ function Import-PresentationPackage {
             $message = $rsa.Decrypt([Convert]::FromBase64String($package.Ciphertext.PSObject.Properties[$key].Value),
                 [Security.Cryptography.RSAEncryptionPadding]::OaepSHA256)
             try {
-                $secret = ConvertTo-SecureString ([Text.Encoding]::UTF8.GetString($message)) -AsPlainText -Force
+                $secret = New-PresentationSecureString ([Text.Encoding]::UTF8.GetChars($message))
+                if ($secret.Length -eq 0) { throw "El paquete no contiene la credencial $key." }
                 $access[$key] = [pscredential]::new($script:AccessUsers[$key], $secret)
             } finally { [Array]::Clear($message, 0, $message.Length) }
         }
@@ -146,8 +162,14 @@ function Import-PresentationPackage {
 }
 
 function Receive-PresentationAccess {
-    if (-not (Test-Path -LiteralPath $script:PairFile)) { throw 'Pulsa Solicitar accesos en esta laptop primero.' }
+    if (-not (Test-Path -LiteralPath $script:PairFile)) {
+        if (Get-PresentationAccess) { return }
+        throw 'Pulsa Solicitar accesos en esta laptop primero.'
+    }
     $pair = Import-Clixml -LiteralPath $script:PairFile
+    if ($pair.Id -cnotmatch '^[0-9a-f]{32}$' -or $pair.PrivateKey -isnot [Security.SecureString]) {
+        throw 'La clave privada guardada para la solicitud no es válida.'
+    }
     $inbox = Get-AccessInbox
     & tailscale file get $inbox | Out-Null
     $package = Find-PresentationTransfer "moodsitto-accesos-$($pair.Id).json" $inbox
