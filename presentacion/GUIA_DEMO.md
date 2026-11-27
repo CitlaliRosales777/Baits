@@ -54,7 +54,9 @@ $escritorio = [Environment]::GetFolderPath('Desktop')
 & 'C:\xampp\php\php.exe' -S localhost:5500 -t (Join-Path $escritorio 'Baits-demo\fronted')
 ```
 
-Abre [Registro local](http://localhost:5500/registro.html). Registra una cuenta ficticia con una contraseña distinta de las claves de base de datos. Comprueba el saludo y «Cerrar sesión» después del login. La portada de esta rama sigue mostrando «Comenzar» aunque haya sesión. La cuenta de prueba verifica registro y login, y la edición del tablero pertenece a la integración pendiente.
+Para la presentación, abre [el inicio de sesión local](http://localhost:5500/login.html) y usa la cuenta de prueba `demo@test.com`. La contraseña está en la ficha local `evidencias-locales/ACCESO_DEMO.md`, excluida de Git. La ficha se entrega por separado.
+
+Si quieres mostrar el registro, abre [Registro local](http://localhost:5500/registro.html) y crea otra cuenta ficticia. Comprueba que el menú muestre la sesión y permita cerrarla. El frontend incluido en `api-citas` vuelve a la portada después del login.
 
 ## 3. Ejecutar las pruebas de DB Manager
 
