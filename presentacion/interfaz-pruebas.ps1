@@ -1054,7 +1054,7 @@ $startApiButton.Add_Click({
 })
 $installMongoButton.Add_Click({
     Invoke-PanelOperation 'Preparar MongoDB para el PHP seleccionado' $localUi.Output {
-        $installer = Join-Path $PSScriptRoot 'instalar-mongodb-php.ps1'
+        $installer = Join-Path $script:Repo 'presentacion\instalar-mongodb-php.ps1'
         $php = $phpPathBox.Text.Trim()
         Register-TestCommand $installer @('-Php', $php) -PowerShell
         & $installer -Php $php 6>&1 | ForEach-Object { Write-Log ([string]$_) }
