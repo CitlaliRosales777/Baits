@@ -1,6 +1,6 @@
 # Presentación de Moodsitto desde la laptop
 
-La laptop `DESKTOP-0DDRLDI` ejecuta el frontend, APIcore y la consola de pruebas. APIcore PHP se conecta por Tailscale a la base `apicore` en el Windows fijo. El HP recibe la réplica asíncrona de MariaDB. MongoDB usa `rsMoodsitto` en VPS, fijo y laptop. El backend Moodsitto y el tablero completo tienen contratos y pantallas propios, cuya integración con APIcore sigue pendiente.
+La laptop `DESKTOP-0DDRLDI` ejecuta el frontend, APIcore y la consola de pruebas. APIcore PHP se conecta por Tailscale a la base `apicore` en el Windows fijo. El HP recibe la réplica asíncrona de MariaDB. MongoDB usa `rsMoodsitto` en VPS, fijo y laptop. El frontend de `Fronted` usa APIcore para iniciar sesión y leer el perfil. Las pantallas de recordatorios y emociones guardan sus datos en el navegador.
 
 ## 1. Preparar la laptop
 
@@ -17,11 +17,12 @@ $php = 'C:\xampp\php\php.exe'
 
 Espera la IP de la laptop `100.86.5.50`, `TcpTestSucceeded : True`, MongoDB `Running` y ambos módulos PHP. Para la consola de DB Manager también necesitas Git, cliente MariaDB, `mongosh` y OpenSSH según la prueba. APIcore usa el MariaDB remoto a través de PDO.
 
-Si aún no tienes las copias del repositorio, clona ambas ramas en carpetas separadas del Escritorio. Si ya existen, usa esas copias y conserva tus cambios locales.
+Si aún no tienes las copias del repositorio, clona las tres ramas en carpetas separadas del Escritorio. Si ya existen, actualízalas desde su rama con `git pull --ff-only` y conserva tus cambios locales.
 
 ```powershell
 $escritorio = [Environment]::GetFolderPath('Desktop')
 git clone --branch api-citas https://github.com/CitlaliRosales777/Baits.git (Join-Path $escritorio 'Baits-demo')
+git clone --branch Fronted https://github.com/CitlaliRosales777/Baits.git (Join-Path $escritorio 'Baits-frontend')
 git clone --branch db-manager https://github.com/CitlaliRosales777/Baits.git (Join-Path $escritorio 'Baits-db-manager')
 ```
 
@@ -47,16 +48,16 @@ $env:JWT_SECRET = & $php -r 'echo bin2hex(random_bytes(32));'
 
 Deja esa ventana abierta. [APIcore /health](http://localhost:8000/health) debe devolver HTTP 200 y `"status":"ok"`. El controlador ejecuta `SELECT 1` por PDO. Un 503 indica que PHP responde, pero su conexión SQL falló. Al terminar, cierra esa ventana para liberar las variables de la sesión.
 
-En una segunda ventana, sirve el frontend de `api-citas`.
+En una segunda ventana, sirve el frontend de `Fronted`. Su carpeta contiene el tablero y el cliente de APIcore.
 
 ```powershell
 $escritorio = [Environment]::GetFolderPath('Desktop')
-& 'C:\xampp\php\php.exe' -S localhost:5500 -t (Join-Path $escritorio 'Baits-demo\fronted')
+& 'C:\xampp\php\php.exe' -S localhost:5500 -t (Join-Path $escritorio 'Baits-frontend\fronted\fronted')
 ```
 
 Para la presentación, abre [el inicio de sesión local](http://localhost:5500/login.html) y usa la cuenta de prueba `demo@test.com`. La contraseña está en la ficha local `evidencias-locales/ACCESO_DEMO.md`, excluida de Git. La ficha se entrega por separado.
 
-Si quieres mostrar el registro, abre [Registro local](http://localhost:5500/registro.html) y crea otra cuenta ficticia. Comprueba que el menú muestre la sesión y permita cerrarla. El frontend incluido en `api-citas` vuelve a la portada después del login.
+Si quieres mostrar el registro, abre [Registro local](http://localhost:5500/registro.html) y crea otra cuenta ficticia. Comprueba que el login abra el tablero y que «Mi perfil» muestre los datos de APIcore. `fix-front-login` está reservado para probar el backend PHP de Moodsitto en el puerto 8001.
 
 ## 3. Ejecutar las pruebas de DB Manager
 

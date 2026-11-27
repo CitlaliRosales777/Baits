@@ -15,6 +15,7 @@
 | Monitoreo | APROBADO | script ejecutado; detecta correctamente laptop MongoDB pendiente |
 | Demostración | PENDIENTE | guion preparado; requiere infraestructura activa |
 | APIcore en laptop | APROBADO | registro y sesión de prueba realizados contra la base apicore del principal |
+| Tablas de inicio de sesión del backend Moodsitto | APROBADO | el principal permite consultar users, api_tokens y login_intentos |
 | Restauración de APIcore | PENDIENTE | el trabajo de respaldo vigente solo exporta moodsitto |
 | Caída controlada | PENDIENTE | la recuperación operativa de la mayoría MongoDB fue observada; falta un ensayo controlado con tiempos |
 | Paquete backend | APROBADO (estático) | asistentes y verificadores presentes |

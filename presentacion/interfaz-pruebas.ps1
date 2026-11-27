@@ -196,7 +196,8 @@ function Test-Inventory {
 
 # Usa variables de lectura disponibles para la cuenta de la aplicación.
 function Test-MariaPrimary {
-    $sql = "SELECT CONCAT(@@hostname,'|',@@version,'|server_id=',@@server_id,'|read_only=',@@read_only,'|log_bin=',@@log_bin); SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='moodsitto';"
+    # login_intentos es una tabla adicional del backend y no cuenta en las 23 del modelo base.
+    $sql = "SELECT CONCAT(@@hostname,'|',@@version,'|server_id=',@@server_id,'|read_only=',@@read_only,'|log_bin=',@@log_bin); SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='moodsitto' AND table_name<>'login_intentos';"
     $result = Invoke-MariaQuery $script:Config.MariaHost $sql
     $lines = $result.Output -split "`r?`n"
     if ($result.Output -notmatch 'read_only=0') { return New-Result PENDIENTE 'El principal de MariaDB aparece en modo de solo lectura.' $result.Output }
@@ -292,7 +293,8 @@ function Test-MongoReplication {
 }
 
 function Test-HybridModel {
-    $maria = Invoke-MariaQuery $script:Config.MariaHost "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='moodsitto'; SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema='moodsitto'; SELECT COUNT(*) FROM information_schema.referential_constraints WHERE constraint_schema='moodsitto';"
+    # Mantiene la revisión del modelo base separada de la tabla adicional del login.
+    $maria = Invoke-MariaQuery $script:Config.MariaHost "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='moodsitto' AND table_name<>'login_intentos'; SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema='moodsitto'; SELECT COUNT(*) FROM information_schema.referential_constraints WHERE constraint_schema='moodsitto';"
     $mongoJs = 'const names=["catalogo_emociones","registros_emocionales","resumenes_emocionales","auditoria_documental"]; const info=db.getCollectionInfos({name:{$in:names}}); print(JSON.stringify({colecciones:info.map(x=>x.name).sort(),validadores:info.filter(x=>x.options&&x.options.validator).length,indices:names.reduce((n,x)=>n+db.getCollection(x).getIndexes().length,0)}))'
     $mongo = Invoke-MongoEval $mongoJs
     if (($maria.Output -split "`r?`n")[0] -ne '23') { return New-Result PENDIENTE 'MariaDB no tiene las 23 tablas esperadas.' $maria.Output }
@@ -337,7 +339,7 @@ function Test-MariaRestore {
     } catch {
         throw "[BLOQUEADO] La restauración MariaDB necesita sudo temporal en la HP. Habilítalo solo para la presentación y vuelve a ejecutar esta fila. Detalle: $($_.Exception.Message)"
     }
-    if ($output -notmatch '23 tablas') { return New-Result PENDIENTE 'La restauración terminó, pero no recuperó las 23 tablas esperadas.' $output }
+    if ($output -notmatch '23 tablas base') { return New-Result PENDIENTE 'La restauración terminó, pero no recuperó las 23 tablas esperadas.' $output }
     New-Result APROBADO 'El respaldo MariaDB se restauró en una base aislada, se validó y se eliminó al terminar.' $output
 }
 
