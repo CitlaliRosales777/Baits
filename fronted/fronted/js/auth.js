@@ -1,6 +1,7 @@
 /* formularios y sesion de moodsitto */
 const paginaActual = window.location.pathname.split("/").pop() || "index.html";
 const paginasPrivadas = ["dashboard.html", "perfil.html", "trackingmazz0o.html"];
+const paginasDeAcceso = ["login.html", "registro.html"];
 
 /* muestra mensajes en los formularios */
 function mostrarMensaje(elemento, texto, esError = false) {
@@ -27,9 +28,15 @@ async function conBotonOcupado(formulario, textoOcupado, tarea) {
     }
 }
 
-/* protege las paginas del usuario */
-if (paginasPrivadas.includes(paginaActual) && !sesion.token()) {
+/* protege las paginas del usuario: sin sesion se manda al login */
+if (paginasPrivadas.includes(paginaActual) && (!sesion.token() || !sesion.usuario())) {
+    sesion.borrar();
     window.location.replace("login.html");
+}
+
+/* si ya hay sesion, no tiene sentido ver el login ni el registro */
+if (paginasDeAcceso.includes(paginaActual) && sesion.token() && sesion.usuario()) {
+    window.location.replace("dashboard.html");
 }
 
 /* iniciar sesion */
@@ -68,17 +75,16 @@ if (formularioRegistro) {
 
         const f = formularioRegistro.elements;
 
-        /* datos que necesita apicore */
+        /* los nombres de los campos son los de la tabla users */
         const datos = {
-            Name: f.namedItem("name").value.trim(),
-            PaternalSurname: f.namedItem("lastname1").value.trim(),
-            MaternalSurname: f.namedItem("lastname2").value.trim(),
-            BirthDate: f.namedItem("date_b").value,
-            Phone: f.namedItem("phone").value.trim(),
-            EmergencyPhone: f.namedItem("emer_phone").value.trim(),
-            Email: f.namedItem("mail").value.trim(),
-            Password: f.namedItem("passw").value,
-            UserStatus: "Active"
+            name: f.namedItem("name").value.trim(),
+            lastname1: f.namedItem("lastname1").value.trim(),
+            lastname2: f.namedItem("lastname2").value.trim(),
+            date_b: f.namedItem("date_b").value,
+            phone: f.namedItem("phone").value.trim(),
+            emer_phone: f.namedItem("emer_phone").value.trim(),
+            mail: f.namedItem("mail").value.trim(),
+            passw: f.namedItem("passw").value
         };
 
         /* quita los campos opcionales vacios */
@@ -89,7 +95,7 @@ if (formularioRegistro) {
         await conBotonOcupado(formularioRegistro, "Creando cuenta...", async () => {
             try {
                 await api("POST", "/users", datos);
-                await iniciarSesion(datos.Email, datos.Password);
+                await iniciarSesion(datos.mail, datos.passw);
                 window.location.assign("dashboard.html");
             } catch (error) {
                 mostrarMensaje(mensaje, error.message, true);
@@ -142,14 +148,14 @@ function llenarPerfil(datos) {
 
     const campos = {
         "perfil-nombre": [
-            datos.Name,
-            datos.PaternalSurname,
-            datos.MaternalSurname
+            datos.name,
+            datos.lastname1,
+            datos.lastname2
         ].filter(Boolean).join(" "),
-        "perfil-correo": datos.Email || "",
-        "perfil-telefono": datos.Phone || "",
-        "perfil-nacimiento": datos.BirthDate
-            ? String(datos.BirthDate).slice(0, 10)
+        "perfil-correo": datos.mail || "",
+        "perfil-telefono": datos.phone || "",
+        "perfil-nacimiento": datos.date_b
+            ? String(datos.date_b).slice(0, 10)
             : ""
     };
 
@@ -162,13 +168,12 @@ function llenarPerfil(datos) {
 llenarPerfil(usuario);
 
 /* comprueba que la sesion siga activa */
-if (paginasPrivadas.includes(paginaActual) && sesion.token()) {
+if (paginasPrivadas.includes(paginaActual) && sesion.token() && usuario) {
     (async () => {
         try {
-            const id = idDelToken(sesion.token());
-            const perfil = await api("GET", "/users/" + encodeURIComponent(id));
+            const perfil = await api("GET", "/users/" + usuario.id_user);
 
-            if (perfil?.data) {
+            if (perfil && perfil.data) {
                 sesion.guardar(sesion.token(), perfil.data);
                 llenarPerfil(perfil.data);
             }

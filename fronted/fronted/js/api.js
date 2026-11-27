@@ -1,31 +1,18 @@
 /* conexion con la api de moodsitto */
+// direccion de la api. cambiala cuando la api este publicada en internet.
 const API_URL = "http://localhost:8000";
 
-/* mensajes de error */
-const ERRORES = {
-    "Invalid credentials": "Correo o contraseña incorrectos.",
-    "Email already exists": "Ya existe una cuenta con ese correo.",
-    "Username already exists": "Ese nombre de usuario ya está en uso.",
-    "Email is not a valid email address": "El correo no es válido.",
-    "Phone must contain only digits, spaces, +, - or ()": "El teléfono contiene caracteres no permitidos.",
-    "EmergencyPhone must contain only digits, spaces, +, - or ()": "El teléfono de emergencia contiene caracteres no permitidos.",
-    "BirthDate must be a date like 2026-01-31": "La fecha de nacimiento no es válida.",
-    "Name must be 45 chars max": "El nombre no puede superar 45 caracteres.",
-    "PaternalSurname must be 25 chars max": "El apellido paterno no puede superar 25 caracteres.",
-    "MaternalSurname must be 25 chars max": "El apellido materno no puede superar 25 caracteres.",
-    "Database unavailable": "La base de datos no está disponible."
-};
-
-/* traduce los mensajes de la api */
+/* traduce los errores de la api para mostrarlos al usuario */
 function traducirError(mensaje, estado) {
-    if (ERRORES[mensaje]) return ERRORES[mensaje];
-    if (estado === 401) return "Tu sesión venció o tus datos son incorrectos.";
+    // la api ya responde en español, asi que se muestra tal cual
+    if (typeof mensaje === "string" && mensaje) return mensaje;
+    if (estado === 401) return "Tu sesión venció. Inicia sesión de nuevo.";
     if (estado === 429) return "Demasiados intentos. Intenta más tarde.";
     if (estado >= 500) return "El servidor no está disponible.";
-    return typeof mensaje === "string" ? mensaje : "Ocurrió un error inesperado.";
+    return "Ocurrió un error inesperado.";
 }
 
-/* datos de la sesion */
+/* datos de la sesion (se guardan en el navegador) */
 const sesion = {
     token() {
         return localStorage.getItem("moodsitto_token");
@@ -50,7 +37,7 @@ const sesion = {
     }
 };
 
-/* envia solicitudes al servidor */
+/* envia una solicitud a la api y regresa el json */
 async function api(metodo, ruta, datos) {
     const opciones = {
         method: metodo,
@@ -73,7 +60,7 @@ async function api(metodo, ruta, datos) {
     try {
         respuesta = await fetch(API_URL + ruta, opciones);
     } catch (error) {
-        throw new Error("No se pudo conectar con APIcore. Revisa que el servidor esté encendido.");
+        throw new Error("No se pudo conectar con el servidor. Revisa que la API esté encendida.");
     }
 
     const cuerpo = respuesta.status === 204
@@ -81,11 +68,12 @@ async function api(metodo, ruta, datos) {
         : await respuesta.json().catch(() => null);
 
     if (!respuesta.ok) {
+        // token vencido o falso: se borra la sesion (menos en el login, donde 401 es clave incorrecta)
         if (respuesta.status === 401 && ruta !== "/auth/login") {
             sesion.borrar();
         }
 
-        const error = new Error(traducirError(cuerpo?.error, respuesta.status));
+        const error = new Error(traducirError(cuerpo && cuerpo.error, respuesta.status));
         error.status = respuesta.status;
         throw error;
     }
@@ -93,47 +81,27 @@ async function api(metodo, ruta, datos) {
     return cuerpo;
 }
 
-/* obtiene el id del usuario desde el token */
-function idDelToken(token) {
-    try {
-        const parte = token.split(".")[1]
-            .replace(/-/g, "+")
-            .replace(/_/g, "/");
-
-        const contenido = JSON.parse(
-            atob(parte.padEnd(Math.ceil(parte.length / 4) * 4, "="))
-        );
-
-        if (!contenido.sub) {
-            throw new Error("Token sin usuario");
-        }
-
-        return contenido.sub;
-    } catch (error) {
-        throw new Error("No se pudo leer la sesión.");
-    }
-}
-
-/* inicia sesion y obtiene el perfil */
+/* inicia sesion y guarda el token y el perfil */
 async function iniciarSesion(correo, contrasena) {
     const login = await api("POST", "/auth/login", {
-        Username: correo,
-        Password: contrasena
+        mail: correo,
+        passw: contrasena
     });
 
-    const token = login?.data?.token;
+    const token = login && login.data && login.data.token;
+    const id = login && login.data && login.data.id_user;
 
-    if (!token) {
+    if (!token || !id) {
         throw new Error("El servidor no devolvió una sesión válida.");
     }
 
     try {
+        // se guarda el token primero porque la siguiente solicitud lo necesita
         sesion.guardar(token, null);
 
-        const id = idDelToken(token);
-        const perfil = await api("GET", "/users/" + encodeURIComponent(id));
+        const perfil = await api("GET", "/users/" + id);
 
-        if (!perfil?.data) {
+        if (!perfil || !perfil.data) {
             throw new Error("No se pudieron obtener tus datos.");
         }
 
