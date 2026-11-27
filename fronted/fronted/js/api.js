@@ -1,6 +1,6 @@
 /* conexion con la api de moodsitto */
-// direccion de la api. cambiala cuando la api este publicada en internet.
-const API_URL = "http://localhost:8000";
+// El puerto 8000 pertenece a APIcore. Este cliente habla con el backend de Moodsitto.
+const API_URL = "http://localhost:8001";
 
 /* traduce los errores de la api para mostrarlos al usuario */
 function traducirError(mensaje, estado) {
@@ -13,29 +13,37 @@ function traducirError(mensaje, estado) {
 }
 
 /* datos de la sesion (se guardan en el navegador) */
+// Guarda esta sesión por separado para evitar reutilizar el token de la otra API.
+const claveSesion = "moodsitto_backend";
 const sesion = {
     token() {
-        return localStorage.getItem("moodsitto_token");
+        return localStorage.getItem(claveSesion + "_token");
     },
 
     usuario() {
         try {
-            return JSON.parse(localStorage.getItem("moodsitto_usuario") || "null");
+            return JSON.parse(localStorage.getItem(claveSesion + "_usuario") || "null");
         } catch (error) {
             return null;
         }
     },
 
     guardar(token, usuario) {
-        localStorage.setItem("moodsitto_token", token);
-        localStorage.setItem("moodsitto_usuario", JSON.stringify(usuario));
+        localStorage.setItem(claveSesion + "_token", token);
+        localStorage.setItem(claveSesion + "_usuario", JSON.stringify(usuario));
     },
 
     borrar() {
-        localStorage.removeItem("moodsitto_token");
-        localStorage.removeItem("moodsitto_usuario");
+        localStorage.removeItem(claveSesion + "_token");
+        localStorage.removeItem(claveSesion + "_usuario");
     }
 };
+
+// Separa los datos del navegador por servicio y por cuenta.
+function claveLocalCuenta(nombre) {
+    const id = sesion.usuario()?.id_user;
+    return sesion.token() && id ? "backend:" + id + ":" + nombre : null;
+}
 
 /* envia una solicitud a la api y regresa el json */
 async function api(metodo, ruta, datos) {
@@ -60,7 +68,7 @@ async function api(metodo, ruta, datos) {
     try {
         respuesta = await fetch(API_URL + ruta, opciones);
     } catch (error) {
-        throw new Error("No se pudo conectar con el servidor. Revisa que la API esté encendida.");
+        throw new Error("No se pudo conectar con el backend de Moodsitto en localhost:8001.");
     }
 
     const cuerpo = respuesta.status === 204
