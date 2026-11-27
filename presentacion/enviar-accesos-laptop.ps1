@@ -22,8 +22,8 @@ $access = @{
 }
 $inbox = Get-AccessInbox
 & tailscale file get $inbox | Out-Null
-$request = Join-Path $inbox "moodsitto-solicitud-$Codigo.json"
-if (-not (Test-Path -LiteralPath $request)) { throw 'La solicitud de esa laptop aún no llegó al Windows fijo.' }
+$request = Find-PresentationTransfer "moodsitto-solicitud-$Codigo.json" $inbox
+if (-not $request) { throw 'La solicitud de esa laptop aún no llegó al Windows fijo.' }
 $package = Join-Path $inbox "moodsitto-accesos-$Codigo.json"
 try {
     New-PresentationPackage $request $Codigo $access | Set-Content -LiteralPath $package -Encoding UTF8

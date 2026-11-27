@@ -38,6 +38,20 @@ function Get-AccessInbox {
     $inbox
 }
 
+function Find-PresentationTransfer {
+    param([string]$Name, [string]$Inbox)
+    $folders = @($Inbox)
+    $knownFolders = Get-ItemProperty -LiteralPath 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders' -ErrorAction SilentlyContinue
+    $downloads = $knownFolders.'{374DE290-123F-4565-9164-39C4925E467B}'
+    if ($downloads) { $folders += [Environment]::ExpandEnvironmentVariables($downloads) }
+    $folders += Join-Path ([Environment]::GetFolderPath('UserProfile')) 'Downloads'
+    # Tailscale para Windows también puede guardar los archivos directamente en Descargas.
+    foreach ($folder in $folders) {
+        $path = Join-Path $folder $Name
+        if (Test-Path -LiteralPath $path -PathType Leaf) { return $path }
+    }
+}
+
 function Get-PresentationRequestId {
     param([string]$PublicKey)
     $sha = [Security.Cryptography.SHA256]::Create()
@@ -136,8 +150,8 @@ function Receive-PresentationAccess {
     $pair = Import-Clixml -LiteralPath $script:PairFile
     $inbox = Get-AccessInbox
     & tailscale file get $inbox | Out-Null
-    $package = Join-Path $inbox "moodsitto-accesos-$($pair.Id).json"
-    if (-not (Test-Path -LiteralPath $package)) { throw 'Todavía no llegó el paquete del Windows fijo. Conserva esta solicitud y vuelve a intentar Recibir accesos.' }
+    $package = Find-PresentationTransfer "moodsitto-accesos-$($pair.Id).json" $inbox
+    if (-not $package) { throw 'Todavía no llegó el paquete del Windows fijo. Conserva esta solicitud y vuelve a intentar Recibir accesos.' }
     Import-PresentationPackage $package $pair
     Remove-Item -LiteralPath $package, $script:PairFile
 }
