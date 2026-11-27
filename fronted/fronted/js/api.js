@@ -26,29 +26,37 @@ function traducirError(mensaje, estado) {
 }
 
 /* datos de la sesion */
+// Guarda esta sesión por separado para evitar reutilizar el token de la otra API.
+const claveSesion = "moodsitto_apicore";
 const sesion = {
     token() {
-        return localStorage.getItem("moodsitto_token");
+        return localStorage.getItem(claveSesion + "_token");
     },
 
     usuario() {
         try {
-            return JSON.parse(localStorage.getItem("moodsitto_usuario") || "null");
+            return JSON.parse(localStorage.getItem(claveSesion + "_usuario") || "null");
         } catch (error) {
             return null;
         }
     },
 
     guardar(token, usuario) {
-        localStorage.setItem("moodsitto_token", token);
-        localStorage.setItem("moodsitto_usuario", JSON.stringify(usuario));
+        localStorage.setItem(claveSesion + "_token", token);
+        localStorage.setItem(claveSesion + "_usuario", JSON.stringify(usuario));
     },
 
     borrar() {
-        localStorage.removeItem("moodsitto_token");
-        localStorage.removeItem("moodsitto_usuario");
+        localStorage.removeItem(claveSesion + "_token");
+        localStorage.removeItem(claveSesion + "_usuario");
     }
 };
+
+// Separa los datos del navegador por servicio y por cuenta.
+function claveLocalCuenta(nombre) {
+    const id = sesion.usuario()?.UserId;
+    return sesion.token() && id ? "apicore:" + id + ":" + nombre : null;
+}
 
 /* envia solicitudes al servidor */
 async function api(metodo, ruta, datos) {
@@ -114,10 +122,10 @@ function idDelToken(token) {
     }
 }
 
-/* inicia sesion y obtiene el perfil */
-async function iniciarSesion(correo, contrasena) {
+/* APIcore acepta un correo o un nombre de usuario en el mismo campo. */
+async function iniciarSesion(identificador, contrasena) {
     const login = await api("POST", "/auth/login", {
-        Username: correo,
+        Username: identificador,
         Password: contrasena
     });
 

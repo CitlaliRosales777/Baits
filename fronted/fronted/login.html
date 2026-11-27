@@ -27,13 +27,16 @@
             <p class="texto-suave">Ingresa a tu espacio personal.</p>
 
             <form id="login-form">
-                <label for="correo">Correo electrónico</label>
+                <!-- APIcore admite el correo o el nombre de usuario de la cuenta. -->
+                <label for="correo">Correo o nombre de usuario</label>
                 <input
-                    type="email"
+                    type="text"
                     id="correo"
                     name="mail"
-                    placeholder="tu@correo.com"
-                    autocomplete="email"
+                    placeholder="Correo o nombre de usuario"
+                    autocomplete="username"
+                    autocapitalize="none"
+                    spellcheck="false"
                     maxlength="150"
                     required
                 >

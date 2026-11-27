@@ -177,9 +177,11 @@
         let terciariasElegidas = [];
         let grupoActual = [];
         let historial = [];
+        // El historial queda en este navegador, separado por cuenta.
+        const claveEmociones = claveLocalCuenta("emociones-log");
 
         try {
-            const datos = JSON.parse(localStorage.getItem("emociones-log") || "[]");
+            const datos = claveEmociones ? JSON.parse(localStorage.getItem(claveEmociones) || "[]") : [];
             historial = Array.isArray(datos) ? datos : [];
         } catch (error) {
             historial = [];
@@ -378,6 +380,7 @@
 
         // guarda el registro en el navegador
         $("btn-guardar").addEventListener("click", () => {
+            if (!claveEmociones) return;
             const grupoAnterior = grupoActual.slice();
             guardarEnGrupo();
             if (!grupoActual.length) return;
@@ -390,7 +393,7 @@
             const nuevos = [nuevo, ...historial];
 
             try {
-                localStorage.setItem("emociones-log", JSON.stringify(nuevos));
+                localStorage.setItem(claveEmociones, JSON.stringify(nuevos));
                 historial = nuevos;
                 grupoActual = [];
                 mostrarHistorial();

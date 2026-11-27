@@ -42,12 +42,12 @@ if (formularioLogin) {
         evento.preventDefault();
         mostrarMensaje(mensaje, "");
 
-        const correo = formularioLogin.elements.namedItem("mail").value.trim();
+        const identificador = formularioLogin.elements.namedItem("mail").value.trim();
         const contrasena = formularioLogin.elements.namedItem("passw").value;
 
         await conBotonOcupado(formularioLogin, "Ingresando...", async () => {
             try {
-                await iniciarSesion(correo, contrasena);
+                await iniciarSesion(identificador, contrasena);
                 window.location.assign("dashboard.html");
             } catch (error) {
                 mostrarMensaje(mensaje, error.message, true);

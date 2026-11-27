@@ -5,13 +5,13 @@ const listaRecordatorios = document.querySelector(".recordatorios");
 const formRecordatorio = document.getElementById("form-recordatorio");
 const mensajeVacio = document.querySelector(".sin-recordatorios");
 
-// los datos se conservan solo durante esta sesion del navegador
-const claveRecordatorios = "moodsitto_recordatorios_temporales";
+// Los recordatorios de esta pantalla son locales y tienen una clave por cuenta.
+const claveRecordatorios = claveLocalCuenta("recordatorios_temporales");
 let recordatorios = [];
 
 // recupera los recordatorios temporales si el navegador los permite
 try {
-    const guardados = JSON.parse(sessionStorage.getItem(claveRecordatorios) || "[]");
+    const guardados = claveRecordatorios ? JSON.parse(sessionStorage.getItem(claveRecordatorios) || "[]") : [];
     if (Array.isArray(guardados)) {
         recordatorios = guardados.filter(r =>
             r && typeof r.id === "string" && typeof r.nombre === "string" &&
@@ -52,6 +52,7 @@ function mostrarHora(hora) {
 
 // guarda los cambios sin conectarse a la base de datos
 function guardarRecordatorios() {
+    if (!claveRecordatorios) return false;
     try {
         sessionStorage.setItem(claveRecordatorios, JSON.stringify(recordatorios));
         return true;
