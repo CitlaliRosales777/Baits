@@ -145,12 +145,14 @@ function Invoke-SshCommand {
 }
 
 function Invoke-RemoteScript {
-    param([string]$Target, [string]$LocalScript, [string]$RemoteArgument, [switch]$UseSudo, [string]$RemoteSetup = '')
+    param([string]$Target, [string]$LocalScript, [string]$RemoteArgument, [switch]$UseSudo)
     $ssh = Require-Tool 'ssh' 'Activa el cliente OpenSSH de Windows.'
     $runner = if ($UseSudo) { "sudo -n bash -s -- '$RemoteArgument'" } else { "bash -s -- '$RemoteArgument'" }
-    $remote = if ($RemoteSetup) { "$RemoteSetup; $runner" } else { $runner }
-    $content = Get-Content -Raw -LiteralPath $LocalScript
-    $output = $content | & $ssh -o BatchMode=yes -o ConnectTimeout=7 $Target $remote 2>&1
+    # Envía el script en UTF-8 con saltos de Linux para que Bash lea bien los acentos y el final del archivo.
+    $content = [IO.File]::ReadAllText($LocalScript).Replace("`r`n", "`n")
+    $encoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($content))
+    $remote = "set -eo pipefail; printf %s '$encoded' | base64 -d | $runner"
+    $output = & $ssh -o BatchMode=yes -o ConnectTimeout=7 $Target $remote 2>&1
     $code = $LASTEXITCODE
     if ($code -ne 0) { throw ($output -join [Environment]::NewLine) }
     ($output -join [Environment]::NewLine).Trim()
@@ -325,28 +327,41 @@ function Test-AuditPermissions {
 }
 
 function Test-Backups {
-    $hp = Invoke-SshCommand $script:Config.HpSsh "systemctl is-active moodsitto-mariadb-backup.timer; systemctl list-timers moodsitto-mariadb-backup.timer --no-pager; find /srv/storage/moodsitto/backups/mariadb -maxdepth 1 -type f -name '*.sql.gz' -printf '%TY-%Tm-%Td %TH:%TM %s bytes %f\n' 2>/dev/null | sort | tail -n 1"
-    $vps = Invoke-SshCommand $script:Config.VpsSsh "systemctl is-active moodsitto-mongodb-backup.timer; systemctl list-timers moodsitto-mongodb-backup.timer --no-pager; find /var/backups/moodsitto/mongodb -maxdepth 1 -type f -name '*.archive.gz' -printf '%TY-%Tm-%Td %TH:%TM %s bytes %f\n' 2>/dev/null | sort | tail -n 1"
-    if ($hp.Output -notmatch 'active' -or $vps.Output -notmatch 'active' -or $hp.Output -notmatch '\.sql\.gz' -or $vps.Output -notmatch '\.archive\.gz') { return New-Result PENDIENTE 'Falta un temporizador activo o no se encontró el último archivo de respaldo.' ("HP:`n$($hp.Output)`nVPS:`n$($vps.Output)") }
-    New-Result APROBADO 'Los respaldos programados están activos y se encontró el archivo más reciente de cada motor.' ("HP/MariaDB:`n$($hp.Output)`nVPS/MongoDB:`n$($vps.Output)")
+    # systemd registra cuándo terminó el trabajo sin dar permiso de lectura sobre las copias.
+    $command = 'systemctl is-active {0}.timer; systemctl show {0}.service -p Result -p ExecMainStatus -p ExecMainExitTimestamp'
+    $hp = Invoke-SshCommand $script:Config.HpSsh ($command -f 'moodsitto-mariadb-backup') -AllowFailure
+    $vps = Invoke-SshCommand $script:Config.VpsSsh ($command -f 'moodsitto-mongodb-backup') -AllowFailure
+    $detalle = "HP/MariaDB:`n$($hp.Output)`nVPS/MongoDB:`n$($vps.Output)"
+    foreach ($nodo in $hp, $vps) {
+        if ($nodo.Code -ne 0) { return New-Result BLOQUEADO 'No se pudo consultar el estado de los trabajos por SSH.' $detalle }
+        if ($nodo.Output -notmatch '(?m)^active\s*$' -or $nodo.Output -notmatch '(?m)^Result=success\s*$' -or
+            $nodo.Output -notmatch '(?m)^ExecMainStatus=0\s*$' -or $nodo.Output -notmatch '(?m)^ExecMainExitTimestamp=\S') {
+            return New-Result PENDIENTE 'Se requiere un temporizador activo y una ejecución exitosa en ambos motores.' $detalle
+        }
+    }
+    New-Result APROBADO 'Ambos temporizadores están activos y systemd confirmó la última ejecución. Las filas de restauración verifican el contenido.' $detalle
 }
 
 function Test-MariaRestore {
-    $latest = Invoke-SshCommand $script:Config.HpSsh "find /srv/storage/moodsitto/backups/mariadb -maxdepth 1 -type f -name '*.sql.gz' -printf '%T@ %p\n' 2>/dev/null | sort -nr | head -n 1 | cut -d' ' -f2-"
-    if (-not $latest.Output) { return New-Result PENDIENTE 'No se encontró un respaldo MariaDB para restaurar.' }
+    param([switch]$ApiCore)
+    $esquema = if ($ApiCore) { 'apicore' } else { 'moodsitto' }
+    $latest = Invoke-SshCommand $script:Config.HpSsh "set -o pipefail; sudo -n find /srv/storage/moodsitto/backups/mariadb -maxdepth 1 -type f -name '${esquema}-*.sql.gz' | sort | tail -n 1" -AllowFailure
+    if ($latest.Code -ne 0) { return New-Result BLOQUEADO 'Se requiere acceso a los respaldos protegidos en el HP.' $latest.Output }
+    if (-not $latest.Output) { return New-Result PENDIENTE "No se encontró un respaldo de $esquema para restaurar." }
     try {
         $output = Invoke-RemoteScript $script:Config.HpSsh (Join-Path $script:Repo 'mariadb\restauracion\probar-restauracion.sh') $latest.Output -UseSudo
     } catch {
         throw "[BLOQUEADO] La restauración MariaDB necesita sudo temporal en la HP. Habilítalo solo para la presentación y vuelve a ejecutar esta fila. Detalle: $($_.Exception.Message)"
     }
-    if ($output -notmatch '23 tablas base') { return New-Result PENDIENTE 'La restauración terminó, pero no recuperó las 23 tablas esperadas.' $output }
+    $esperado = if ($ApiCore) { 'Restauración aislada de APIcore aprobada' } else { '23 tablas base' }
+    if ($output -notmatch $esperado) { return New-Result PENDIENTE "La restauración no confirmó las tablas esperadas en $esquema." $output }
     New-Result APROBADO 'El respaldo MariaDB se restauró en una base aislada, se validó y se eliminó al terminar.' $output
 }
 
 function Test-MongoRestore {
     $latest = Invoke-SshCommand $script:Config.VpsSsh "find /var/backups/moodsitto/mongodb -maxdepth 1 -type f -name '*.archive.gz' -printf '%T@ %p\n' 2>/dev/null | sort -nr | head -n 1 | cut -d' ' -f2-"
     if (-not $latest.Output) { return New-Result PENDIENTE 'No se encontró un respaldo MongoDB para restaurar.' }
-    $output = Invoke-RemoteScript $script:Config.VpsSsh (Join-Path $script:Repo 'mongodb\restauracion\probar-restauracion.sh') $latest.Output -RemoteSetup 'set -a; source /root/.moodsitto-secrets.env; set +a'
+    $output = Invoke-RemoteScript $script:Config.VpsSsh (Join-Path $script:Repo 'mongodb\restauracion\probar-restauracion.sh') $latest.Output
     if ($output -notmatch '4 colecciones') { return New-Result PENDIENTE 'La restauración terminó, pero no recuperó las cuatro colecciones esperadas.' $output }
     New-Result APROBADO 'El respaldo MongoDB se restauró en una base aislada, se validó y se eliminó al terminar.' $output
 }
@@ -423,7 +438,8 @@ $script:Tests = @(
     [pscustomobject]@{ Id='audit'; Name='11–12. Auditoría, usuarios y permisos'; Objective='Mínimo privilegio sin mostrar claves'; Safe=$true; Confirm=$false; Action={ Test-AuditPermissions } },
     [pscustomobject]@{ Id='backups'; Name='13. Respaldos programados'; Objective='Timers y archivos recientes'; Safe=$true; Confirm=$false; Action={ Test-Backups } },
     [pscustomobject]@{ Id='restore-maria'; Name='14A. Restauración aislada MariaDB'; Objective='Recuperar 23 tablas fuera de producción'; Safe=$false; Confirm=$true; Action={ Test-MariaRestore } },
-    [pscustomobject]@{ Id='restore-mongo'; Name='14B. Restauración aislada MongoDB'; Objective='Recuperar cuatro colecciones fuera de producción'; Safe=$false; Confirm=$true; Action={ Test-MongoRestore } },
+    [pscustomobject]@{ Id='restore-mongo'; Name='14B. Restauración aislada MongoDB'; Objective='Recuperar las colecciones en un espacio temporal'; Safe=$false; Confirm=$true; Action={ Test-MongoRestore } },
+    [pscustomobject]@{ Id='restore-apicore'; Name='14C. Restauración aislada de APIcore'; Objective='Recuperar cuentas y recordatorios fuera de producción'; Safe=$false; Confirm=$true; Action={ Test-MariaRestore -ApiCore } },
     [pscustomobject]@{ Id='monitor'; Name='15. Monitoreo y runners'; Objective='Red, recursos, motores y runners HP'; Safe=$true; Confirm=$false; Action={ Test-Monitoring } },
     [pscustomobject]@{ Id='backend'; Name='Paquete para backend'; Objective='Asistente y conexiones de aplicación'; Safe=$true; Confirm=$false; Action={ Test-BackendPackage } },
     [pscustomobject]@{ Id='apicore'; Name='APIcore local y MariaDB'; Objective='GET /health y SELECT 1 por PDO'; Safe=$true; Confirm=$false; Action={ Test-ApiCore } },

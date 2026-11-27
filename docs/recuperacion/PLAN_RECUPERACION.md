@@ -4,5 +4,7 @@ MariaDB se respalda con `mariadb-backup` o `mariadb-dump --single-transaction` s
 
 En el HP, el destino previsto es `/srv/storage/moodsitto/backups/`. Debe existir además una copia cifrada fuera del HP; la clave no se guarda junto al respaldo. Una réplica no es un respaldo.
 
+El trabajo del HP genera archivos separados de `moodsitto` y `apicore`. El respaldo del VPS incluye `moodsitto.historial_emociones_apicore`. El panel permite recuperar las copias en espacios temporales y revisar qué tablas y colecciones se recuperaron.
+
 Toda restauración se realiza primero en puerto/directorio aislado, valida conteos y consultas, documenta hash/tamaño/fecha y elimina solo datos sintéticos autorizados. No se restaura encima de producción sin ventana, respaldo previo y aprobación.
 
