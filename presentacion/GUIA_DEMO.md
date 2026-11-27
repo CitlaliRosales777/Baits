@@ -27,6 +27,13 @@ git clone --branch Fronted https://github.com/CitlaliRosales777/Baits.git (Join-
 git clone --branch db-manager https://github.com/CitlaliRosales777/Baits.git (Join-Path $escritorio 'Baits-db-manager')
 ```
 
+Si **Ver estado** dice que falta MongoDB en PHP, ejecuta el asistente desde tu copia de `db-manager`. Elige la DLL de PHP.net según tu versión de XAMPP, la prueba y guarda una copia de `php.ini` antes de modificarlo.
+
+```powershell
+$repo = Join-Path ([Environment]::GetFolderPath('Desktop')) 'Baits-db-manager'
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repo 'presentacion\instalar-mongodb-php.ps1')
+```
+
 ## 2. Arrancar APIcore y el frontend local
 
 En la primera ventana de PowerShell, ejecuta el arranque. Los dos cuadros de entrada están ocultos. El primero pide la clave de MariaDB de `apicore_app` que ya utilizabas. El segundo pide la de MongoDB de `apicore_emociones`, que DB Manager entrega por el canal privado. En el Windows fijo, la cuenta que la guardó puede recuperarla desde `%LOCALAPPDATA%\Moodsitto\apicore-emociones.credential.xml`. Ingresa cada contraseña cuando aparezca su aviso.

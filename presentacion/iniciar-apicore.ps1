@@ -11,7 +11,10 @@ $Php = (Resolve-Path -LiteralPath $Php).Path
 $modulos = & $Php -m
 if ($LASTEXITCODE -ne 0) { throw 'PHP no pudo cargar sus módulos.' }
 foreach ($modulo in 'pdo_mysql', 'mbstring', 'mongodb') {
-    if ($modulos -notcontains $modulo) { throw "Activa $modulo en el php.ini de XAMPP y vuelve a arrancar APIcore." }
+    if ($modulos -notcontains $modulo) {
+        if ($modulo -eq 'mongodb') { throw 'Falta mongodb. Ejecuta instalar-mongodb-php.ps1 desde la carpeta presentacion y vuelve a arrancar APIcore.' }
+        throw "Activa $modulo en el php.ini de XAMPP y vuelve a arrancar APIcore."
+    }
 }
 
 # Las contraseñas se escriben en un cuadro oculto y solo se pasan a PHP durante esta ejecución.

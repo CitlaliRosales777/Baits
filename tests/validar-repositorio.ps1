@@ -13,6 +13,7 @@ $required=@(
  'backend-integracion\apicore.env.example',
  'mariadb\estructura\01-esquema-hibrido.sql','mongodb\colecciones\01-modelo-hibrido.js',
  'presentacion\interfaz-pruebas.ps1','presentacion\operaciones-panel.ps1',
+ 'presentacion\instalar-mongodb-php.ps1',
  'presentacion\INICIAR-PRUEBAS.cmd','presentacion\GUIA_DEMO.md'
 )
 foreach($f in $required){if(-not(Test-Path (Join-Path $Repo $f))){throw "Falta $f"}}
