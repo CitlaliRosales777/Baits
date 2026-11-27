@@ -76,6 +76,8 @@ El panel carga las credenciales de aplicación desde `backend-integracion/.env` 
 
 Ejecuta las pruebas en orden y exporta el reporte a `evidencias-locales/`. El conjunto **Ejecutar todas las seguras** incluye escrituras sintéticas y la reconstrucción del laboratorio. Las restauraciones se lanzan por separado con confirmación. El panel marca **BLOQUEADO** cuando faltan credenciales, permisos o el servicio necesario.
 
+Después de ejecutar una prueba, selecciónala en la tabla y abre **Comandos de la prueba**. Ahí se muestran las consultas SQL y de MongoDB, las llamadas por SSH o el script que se ejecutó, según la prueba. **Actividad** muestra los resultados y errores. El reporte incluye ambos y oculta las contraseñas.
+
 ## 4. Explicar y verificar una falla
 
 - **MariaDB.** Si cae el HP, el principal puede seguir escribiendo. Si cae el principal, las escrituras esperan su recuperación o una promoción manual tras revisar GTID. La réplica asíncrona podría quedar por detrás. Para comprobar un registro creado por APIcore, compara en ambos nodos el `UserId` de la cuenta ficticia con una cuenta autorizada para leer `apicore`. La prueba automática de replicación del panel usa `moodsitto.auditoria_eventos`.

@@ -27,6 +27,8 @@ $script:LogBox = $null
 $script:Grid = $null
 $script:SummaryLabel = $null
 $script:Running = $false
+$script:CommandBox = $null
+$script:ActiveCommands = $null
 
 # Cada prueba devuelve el mismo formato para la tabla y el reporte.
 function New-Result {
@@ -38,9 +40,38 @@ function New-Result {
     [pscustomobject]@{ Status = $Status; Summary = $Summary; Details = $Details }
 }
 
+function Protect-LogText {
+    param([string]$Text)
+    # Cubre tanto una contraseña en texto como su forma dentro de una URI.
+    $forms = foreach ($secret in $script:Config.MariaPassword, $script:Config.MongoPassword) {
+        if ($secret) {
+            $secret
+            [Uri]::EscapeDataString($secret)
+        }
+    }
+    foreach ($form in ($forms | Sort-Object Length -Descending)) {
+        $Text = $Text.Replace($form, '[OCULTO]')
+    }
+    $Text
+}
+
+function Register-TestCommand {
+    param([string]$Command, [string[]]$Arguments = @(), [string]$Note = '', [switch]$PowerShell)
+    if ($null -eq $script:ActiveCommands) { return }
+    # Las comillas mantienen juntos los argumentos con espacios, como SQL o JavaScript.
+    $parts = @("& '$($Command.Replace("'", "''"))'")
+    $parts += foreach ($argument in $Arguments) {
+        if ($PowerShell -and $argument -cmatch '^-[A-Z][A-Za-z]+$') { $argument }
+        else { "'$($argument.Replace("'", "''"))'" }
+    }
+    $line = $parts -join ' '
+    if ($Note) { $line = "# $Note`n$line" }
+    $script:ActiveCommands.Add((Protect-LogText $line))
+}
+
 function Write-Log {
     param([string]$Text, [string]$Level = 'INFO')
-    $line = "[{0:HH:mm:ss}] [{1}] {2}" -f (Get-Date), $Level, $Text
+    $line = "[{0:HH:mm:ss}] [{1}] {2}" -f (Get-Date), $Level, (Protect-LogText $Text)
     if ($script:LogBox) {
         $script:LogBox.AppendText($line + [Environment]::NewLine)
         $script:LogBox.SelectionStart = $script:LogBox.TextLength
@@ -82,6 +113,9 @@ function Test-TcpPort {
     param([string]$HostName, [int]$Port, [int]$TimeoutMs = 3500)
     $client = [Net.Sockets.TcpClient]::new()
     try {
+        if ($null -ne $script:ActiveCommands) {
+            $script:ActiveCommands.Add((Protect-LogText "`$client.ConnectAsync('$HostName', $Port).Wait($TimeoutMs)  # TcpClient"))
+        }
         $task = $client.ConnectAsync($HostName, $Port)
         return $task.Wait($TimeoutMs) -and $client.Connected
     } catch {
@@ -107,6 +141,7 @@ function Invoke-MariaQuery {
         $args = @('--connect-timeout=6','--batch','--skip-column-names','-h', $HostName, '-P', "$($script:Config.MariaPort)", '-u', $script:Config.MariaUser)
         if ($Database) { $args += @('-D', $Database) }
         $args += @('-e', $Sql)
+        Register-TestCommand $client $args 'MariaDB toma la contraseña de MYSQL_PWD.'
         $output = & $client @args 2>&1
         $code = $LASTEXITCODE
         if ($code -ne 0 -and -not $AllowFailure) { throw ($output -join [Environment]::NewLine) }
@@ -129,6 +164,7 @@ function Invoke-MongoEval {
     param([string]$JavaScript, [string]$Uri = (Get-MongoUri), [switch]$AllowFailure)
     Require-Credentials MongoDB
     $mongosh = Require-Tool 'mongosh' 'Instala MongoDB Shell; no hace falta instalar otro servidor.'
+    Register-TestCommand $mongosh @('--quiet', $Uri, '-u', $script:Config.MongoUser, '-p', '[OCULTO]', '--eval', $JavaScript)
     $output = & $mongosh --quiet $Uri -u $script:Config.MongoUser -p $script:Config.MongoPassword --eval $JavaScript 2>&1
     $code = $LASTEXITCODE
     if ($code -ne 0 -and -not $AllowFailure) { throw ($output -join [Environment]::NewLine) }
@@ -138,7 +174,9 @@ function Invoke-MongoEval {
 function Invoke-SshCommand {
     param([string]$Target, [string]$Command, [switch]$AllowFailure)
     $ssh = Require-Tool 'ssh' 'Activa el cliente OpenSSH de Windows.'
-    $output = & $ssh -o BatchMode=yes -o ConnectTimeout=7 -o ServerAliveInterval=3 $Target $Command 2>&1
+    $sshArgs = @('-o', 'BatchMode=yes', '-o', 'ConnectTimeout=7', '-o', 'ServerAliveInterval=3', $Target, $Command)
+    Register-TestCommand $ssh $sshArgs
+    $output = & $ssh @sshArgs 2>&1
     $code = $LASTEXITCODE
     if ($code -ne 0 -and -not $AllowFailure) { throw ($output -join [Environment]::NewLine) }
     [pscustomobject]@{ Code = $code; Output = ($output -join [Environment]::NewLine).Trim() }
@@ -152,7 +190,9 @@ function Invoke-RemoteScript {
     $content = [IO.File]::ReadAllText($LocalScript).Replace("`r`n", "`n")
     $encoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($content))
     $remote = "set -eo pipefail; printf %s '$encoded' | base64 -d | $runner"
-    $output = & $ssh -o BatchMode=yes -o ConnectTimeout=7 $Target $remote 2>&1
+    $sshArgs = @('-o', 'BatchMode=yes', '-o', 'ConnectTimeout=7', $Target)
+    Register-TestCommand $ssh ($sshArgs + @($runner)) "Envía por SSH el contenido de $LocalScript al Bash remoto."
+    $output = & $ssh @sshArgs $remote 2>&1
     $code = $LASTEXITCODE
     if ($code -ne 0) { throw ($output -join [Environment]::NewLine) }
     ($output -join [Environment]::NewLine).Trim()
@@ -160,6 +200,7 @@ function Invoke-RemoteScript {
 
 function Test-Repository {
     $scriptPath = Join-Path $script:Repo 'tests\validar-repositorio.ps1'
+    Register-TestCommand $scriptPath
     $output = & $scriptPath 2>&1
     New-Result APROBADO 'El repositorio, el esquema de 23 tablas y la exclusión de secretos pasaron la revisión.' ($output -join [Environment]::NewLine)
 }
@@ -174,6 +215,7 @@ function Test-Connectivity {
     $lines = [Collections.Generic.List[string]]::new()
     $failed = 0
     foreach ($node in $nodes) {
+        Register-TestCommand 'Test-Connection' @('-ComputerName', $node.Host, '-Count', '1', '-Quiet', '-ErrorAction', 'SilentlyContinue') -PowerShell
         $ping = Test-Connection -ComputerName $node.Host -Count 1 -Quiet -ErrorAction SilentlyContinue
         $lines.Add("$($node.Name): Tailscale/ping=" + $(if ($ping) {'OK'} else {'sin respuesta ICMP'}))
         foreach ($port in $node.Ports) {
@@ -188,6 +230,7 @@ function Test-Connectivity {
 
 function Test-Inventory {
     $details = [Collections.Generic.List[string]]::new()
+    Register-TestCommand 'Get-CimInstance' @('Win32_ComputerSystem')
     $details.Add("Laptop: $env:COMPUTERNAME | RAM $([math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory/1GB,1)) GiB | Windows $([Environment]::OSVersion.Version)")
     $hp = Invoke-SshCommand $script:Config.HpSsh "printf 'HP: '; hostname; free -h | sed -n '2p'; df -h / /srv/storage | tail -n +2; systemctl list-units --type=service --all 'actions.runner*' --no-legend"
     $vps = Invoke-SshCommand $script:Config.VpsSsh "printf 'VPS: '; hostname; free -h | sed -n '2p'; df -h / | tail -n 1; systemctl is-active mongod"
@@ -368,6 +411,7 @@ function Test-MongoRestore {
 
 function Test-Monitoring {
     $monitor = Join-Path $script:Repo 'monitoreo\scripts\estado-general.ps1'
+    Register-TestCommand $monitor
     $output = & $monitor 2>&1 | Out-String
     $hp = Invoke-SshCommand $script:Config.HpSsh "printf 'RAM y swap\n'; free -h; printf 'Discos\n'; df -h / /srv/storage; printf 'Runners\n'; systemctl list-units --type=service --state=running 'actions.runner*' --no-legend; printf 'MariaDB\n'; systemctl is-active mariadb"
     $vps = Invoke-SshCommand $script:Config.VpsSsh "printf 'RAM y swap\n'; free -h; printf 'Disco\n'; df -h /; printf 'MongoDB\n'; systemctl is-active mongod"
@@ -378,7 +422,11 @@ function Test-Monitoring {
 
 function Test-BackendPackage {
     $required = @('README_EMPIEZA_AQUI.md','.env.example','configurar.ps1','configurar.sh','probar-conexiones.ps1','probar-conexiones.sh','ERRORES_FRECUENTES.md','INTEGRACION_BACKEND_MOODSITTO.md','CHECKLIST_BACKEND.md','CONTRATO_DATOS_MOODSITTO.md')
-    $missing = $required | Where-Object { -not (Test-Path (Join-Path $script:Repo "backend-integracion\$_")) }
+    $missing = $required | Where-Object {
+        $path = Join-Path $script:Repo "backend-integracion\$_"
+        Register-TestCommand 'Test-Path' @($path)
+        -not (Test-Path $path)
+    }
     if ($missing) { return New-Result PENDIENTE 'El paquete para backend está incompleto.' ($missing -join ', ') }
     if (-not $script:Config.MariaPassword -or -not $script:Config.MongoPassword) { return New-Result BLOQUEADO 'El paquete está completo, pero faltan credenciales para ejecutar la prueba real de integración.' }
     $maria = Test-MariaPrimary
@@ -388,6 +436,7 @@ function Test-BackendPackage {
 }
 
 function Test-Security {
+    Register-TestCommand 'git' @('-C', $script:Repo, 'ls-files')
     $tracked = & git -C $script:Repo ls-files
     $bad = $tracked | Where-Object { $_ -match '(^|/)(\.env|.*\.key|.*\.pem|mongodb-keyfile|.*\.archive\.gz|.*\.sql\.gz)$' }
     $hp = Invoke-SshCommand $script:Config.HpSsh "ss -lnt | awk 'NR==1 || /:3306/'; systemctl is-active ufw 2>/dev/null || true"
@@ -409,6 +458,7 @@ function Test-RecoveryReadiness {
 function Test-ApiCore {
     $url = 'http://localhost:8000/health'
     try {
+        Register-TestCommand 'Invoke-RestMethod' @('-Uri', $url, '-Method', 'Get', '-TimeoutSec', '8') 'GET /health ejecuta SELECT 1 en APIcore.' -PowerShell
         $response = Invoke-RestMethod -Uri $url -Method Get -TimeoutSec 8
     } catch {
         $http = $_.Exception.Response
@@ -451,6 +501,12 @@ if ($SelfTest) {
     $ids = $script:Tests.Id
     if (($ids | Select-Object -Unique).Count -ne $ids.Count) { throw 'Hay identificadores de prueba duplicados.' }
     if ($ids -notcontains 'apicore' -or $script:Tests.Count -lt 19) { throw 'La interfaz no contiene todas las pruebas planeadas.' }
+    $script:Config.MongoPassword = 'clave sintética@'
+    $script:ActiveCommands = [Collections.Generic.List[string]]::new()
+    Register-TestCommand 'mongosh' @('--eval', "print('prueba')", [Uri]::EscapeDataString($script:Config.MongoPassword))
+    if ($script:ActiveCommands[0] -ne "& 'mongosh' '--eval' 'print(''prueba'')' '[OCULTO]'") {
+        throw 'El registro de comandos debe conservar las comillas y ocultar la contraseña.'
+    }
     Write-Output "[OK] Interfaz válida: $($script:Tests.Count) pruebas registradas."
     exit 0
 }
@@ -520,12 +576,25 @@ function Update-Summary {
     $script:SummaryLabel.Text = "APROBADO $($counts.APROBADO)   |   PENDIENTE $($counts.PENDIENTE)   |   BLOQUEADO $($counts.BLOQUEADO)   |   SIN EJECUTAR $($counts['NO EJECUTADO'])"
 }
 
+function Show-SelectedCommands {
+    if ($script:Grid.SelectedRows.Count -eq 0) {
+        $script:CommandBox.Text = 'Selecciona una prueba en la tabla.'
+        return
+    }
+    $row = $script:Grid.SelectedRows[0]
+    $heading = [string]$row.Cells['Prueba'].Value
+    $body = if ($null -eq $row.Tag) { 'Ejecuta esta prueba para ver sus comandos.' }
+        elseif ($row.Tag.Commands.Count -eq 0) { 'La prueba terminó antes de ejecutar comandos.' }
+        else { $row.Tag.Commands -join "`r`n`r`n" }
+    $script:CommandBox.Text = "$heading`r`n`r`n$body"
+}
+
 function Set-RowResult {
-    param([int]$RowIndex, $Result)
+    param([int]$RowIndex, $Result, [string[]]$Commands)
     $row = $script:Grid.Rows[$RowIndex]
     $row.Cells['Estado'].Value = $Result.Status
-    $row.Cells['Resultado'].Value = $Result.Summary
-    $row.Tag = $Result.Details
+    $row.Cells['Resultado'].Value = Protect-LogText $Result.Summary
+    $row.Tag = [pscustomobject]@{ Commands = $Commands; Details = (Protect-LogText $Result.Details) }
     $color = switch ($Result.Status) {
         'APROBADO' { [Drawing.Color]::FromArgb(220,252,231) }
         'PENDIENTE' { [Drawing.Color]::FromArgb(254,249,195) }
@@ -533,6 +602,7 @@ function Set-RowResult {
     }
     $row.DefaultCellStyle.BackColor = $color
     Update-Summary
+    Show-SelectedCommands
 }
 
 function Invoke-TestRow {
@@ -549,7 +619,9 @@ function Invoke-TestRow {
     }
     Sync-FormConfig
     $script:Grid.CurrentCell = $script:Grid.Rows[$RowIndex].Cells['Prueba']
+    $script:CommandBox.Text = "$($test.Name)`r`n`r`nEjecutando la prueba…"
     Write-Log "Iniciando: $($test.Name)"
+    $script:ActiveCommands = [Collections.Generic.List[string]]::new()
     try {
         $result = & $test.Action
         if (-not $result) { throw 'La prueba no devolvió un resultado.' }
@@ -561,8 +633,11 @@ function Invoke-TestRow {
         } else {
             $result = New-Result PENDIENTE 'La prueba no terminó correctamente.' $message
         }
+    } finally {
+        $commands = $script:ActiveCommands.ToArray()
+        $script:ActiveCommands = $null
     }
-    Set-RowResult $RowIndex $result
+    Set-RowResult $RowIndex $result $commands
     Write-Log "$($result.Status): $($result.Summary)" $(if ($result.Status -eq 'APROBADO') {'OK'} elseif ($result.Status -eq 'BLOQUEADO') {'BLOQUEADO'} else {'PENDIENTE'})
     if ($result.Details) { Write-Log $result.Details 'DETALLE' }
 }
@@ -586,21 +661,24 @@ function Export-Report {
         $lines.Add("| $state | $name | $summary |")
     }
     $lines.Add('')
-    $lines.Add('## Detalles')
+    $lines.Add('## Comandos y detalles')
     foreach ($row in $script:Grid.Rows) {
         if ($row.Tag) {
             $lines.Add('')
             $lines.Add("### $($row.Cells['Prueba'].Value)")
-            $lines.Add('```text')
-            $safeDetails = [string]$row.Tag
-            if (-not [string]::IsNullOrEmpty($script:Config.MariaPassword)) {
-                $safeDetails = $safeDetails.Replace($script:Config.MariaPassword, '[OCULTO]')
+            if ($row.Tag.Commands.Count -gt 0) {
+                $lines.Add('```powershell')
+                $lines.Add(($row.Tag.Commands -join "`n`n"))
+                $lines.Add('```')
+            } else {
+                $lines.Add('La prueba terminó antes de ejecutar comandos.')
             }
-            if (-not [string]::IsNullOrEmpty($script:Config.MongoPassword)) {
-                $safeDetails = $safeDetails.Replace($script:Config.MongoPassword, '[OCULTO]')
+            if ($row.Tag.Details) {
+                $lines.Add('')
+                $lines.Add('```text')
+                $lines.Add($row.Tag.Details)
+                $lines.Add('```')
             }
-            $lines.Add($safeDetails)
-            $lines.Add('```')
         }
     }
     [IO.File]::WriteAllLines($file, $lines, [Text.UTF8Encoding]::new($false))
@@ -631,7 +709,7 @@ $title.Location = [Drawing.Point]::new(22, 12)
 $header.Controls.Add($title)
 
 $subtitle = [Windows.Forms.Label]::new()
-$subtitle.Text = 'Ejecuta pruebas reales, conserva los errores y no muestra contraseñas.'
+$subtitle.Text = 'Selecciona una prueba para ver sus comandos. La pestaña Actividad muestra el resultado.'
 $subtitle.ForeColor = [Drawing.Color]::FromArgb(203,213,225)
 $subtitle.AutoSize = $true
 $subtitle.Location = [Drawing.Point]::new(25, 47)
@@ -740,6 +818,22 @@ foreach ($test in $script:Tests) {
 $main.Panel1.Controls.Add($script:Grid)
 $script:Grid.BringToFront()
 
+$tabs = [Windows.Forms.TabControl]::new()
+$tabs.Dock = 'Fill'
+$commandTab = [Windows.Forms.TabPage]::new('Comandos de la prueba')
+$activityTab = [Windows.Forms.TabPage]::new('Actividad')
+$tabs.TabPages.AddRange(@($commandTab, $activityTab))
+$main.Panel2.Controls.Add($tabs)
+
+$script:CommandBox = [Windows.Forms.TextBox]::new()
+$script:CommandBox.Multiline = $true
+$script:CommandBox.ReadOnly = $true
+$script:CommandBox.ScrollBars = 'Both'
+$script:CommandBox.WordWrap = $false
+$script:CommandBox.Dock = 'Fill'
+$script:CommandBox.Font = [Drawing.Font]::new('Consolas', 10)
+$commandTab.Controls.Add($script:CommandBox)
+
 $script:LogBox = [Windows.Forms.RichTextBox]::new()
 $script:LogBox.Dock = 'Fill'
 $script:LogBox.ReadOnly = $true
@@ -747,7 +841,7 @@ $script:LogBox.BackColor = [Drawing.Color]::FromArgb(15,23,42)
 $script:LogBox.ForeColor = [Drawing.Color]::FromArgb(226,232,240)
 $script:LogBox.Font = [Drawing.Font]::new('Cascadia Mono', 9)
 $script:LogBox.BorderStyle = 'None'
-$main.Panel2.Controls.Add($script:LogBox)
+$activityTab.Controls.Add($script:LogBox)
 
 $runSelectedButton.Add_Click({
     if ($script:Running -or $script:Grid.SelectedRows.Count -eq 0) { return }
@@ -784,20 +878,31 @@ $runSafeButton.Add_Click({
 $exportButton.Add_Click({ Sync-FormConfig; Export-Report })
 $guideButton.Add_Click({ Start-Process (Join-Path $script:Repo 'presentacion\GUIA_DEMO.md') })
 $script:Grid.Add_SelectionChanged({
+    Show-SelectedCommands
     if ($script:Grid.SelectedRows.Count -gt 0) {
-        $details = [string]$script:Grid.SelectedRows[0].Tag
+        $details = $script:Grid.SelectedRows[0].Tag.Details
         if ($details) { Write-Log $details 'EVIDENCIA' }
     }
 })
 
 Update-Summary
+Show-SelectedCommands
 Write-Log "Interfaz lista. $script:CredentialStatus." 'OK'
 Write-Log 'Las restauraciones se ejecutan una por una. La prueba de recuperación no detiene servicios.' 'INFO'
 if ($UiSmokeTest) {
-    $timer = [Windows.Forms.Timer]::new()
-    $timer.Interval = 900
-    $timer.Add_Tick({ $timer.Stop(); $form.Close() })
-    $timer.Start()
+    # Usa la revisión local del repositorio para comprobar la vista sin depender de la red.
+    $form.Add_Shown({
+        Invoke-TestRow 0
+        if ($script:Grid.Rows[0].Cells['Estado'].Value -ne 'APROBADO' -or
+            $script:CommandBox.Text -notmatch 'validar-repositorio\.ps1') {
+            $script:UiSmokeFailed = $true
+        }
+        $form.Close()
+    })
 }
 [void]$form.ShowDialog()
+if ($UiSmokeTest) {
+    if ($script:UiSmokeFailed) { throw 'La ventana no mostró el comando de la prueba local.' }
+    Write-Output '[OK] Ventana abierta, prueba local ejecutada y comando visible.'
+}
 
