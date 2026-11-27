@@ -114,7 +114,7 @@ Usa el esquema del equipo (`bd-moodsitto.sql` de la rama `db-manager`). Además 
 Con el `.env` listo, desde la carpeta del proyecto:
 
 ```
-php -S localhost:8000 -t backend/public
+php -S localhost:8001 -t backend/public
 ```
 
 Y en otra terminal:

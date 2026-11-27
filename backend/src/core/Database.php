@@ -36,7 +36,11 @@ class Database
     public static function responde(): bool
     {
         try {
-            self::conexion()->query('SELECT 1');
+            // La conexión sola puede responder aunque falten las tablas del inicio de sesión.
+            $pdo = self::conexion();
+            $pdo->query('SELECT 1 FROM users LIMIT 0');
+            $pdo->query('SELECT 1 FROM api_tokens LIMIT 0');
+            $pdo->query('SELECT 1 FROM login_intentos LIMIT 0');
             return true;
         } catch (Throwable $e) {
             error_log('Base de datos no disponible: ' . $e->getMessage());

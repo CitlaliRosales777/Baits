@@ -2,7 +2,8 @@
 # Uso (con el servidor corriendo en otra terminal):
 #   powershell -ExecutionPolicy Bypass -File backend\tests\pruebas.ps1
 #   powershell -ExecutionPolicy Bypass -File backend\tests\pruebas.ps1 -Base https://tu-sitio.com
-param([string]$Base = "http://localhost:8000")
+# El puerto 8000 se reserva para APIcore en la presentación.
+param([string]$Base = "http://localhost:8001")
 
 $script:bien = 0
 $script:mal = 0
