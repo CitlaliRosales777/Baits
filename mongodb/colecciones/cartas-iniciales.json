@@ -1,0 +1,338 @@
+[
+  {
+    "codigo": "miedo",
+    "nombre": "Miedo",
+    "descripcion": "Sensación de amenaza, peligro o inseguridad",
+    "nivel": "central",
+    "parent_codigo": null,
+    "color": "#a78bdb",
+    "icono": "miedo",
+    "activo": true,
+    "orden": 0,
+    "clave_registro": "Miedo",
+    "matices": [
+      {
+        "nombre": "Preocupación",
+        "detalles": [
+          "Temor a que algo salga mal",
+          "Temor a que algo malo se repita"
+        ]
+      },
+      {
+        "nombre": "Inseguridad",
+        "detalles": [
+          "Duda sobre mi capacidad",
+          "Temor a equivocarme"
+        ]
+      },
+      {
+        "nombre": "Alarma",
+        "detalles": [
+          "Sobresalto repentino",
+          "Sensación de peligro inmediato"
+        ]
+      },
+      {
+        "nombre": "Intimidación",
+        "detalles": [
+          "Temor a la reacción de alguien",
+          "Temor a que alguien me haga daño"
+        ]
+      },
+      {
+        "nombre": "Desprotección",
+        "detalles": [
+          "Temor a quedarme sin apoyo",
+          "Sensación de estar expuesto"
+        ]
+      },
+      {
+        "nombre": "Inquietud",
+        "detalles": [
+          "Nervios sin una causa clara",
+          "Sensación de estar en alerta"
+        ]
+      }
+    ]
+  },
+  {
+    "codigo": "enojo",
+    "nombre": "Enojo",
+    "descripcion": "Reacción de molestia, indignación o frustración",
+    "nivel": "central",
+    "parent_codigo": null,
+    "color": "#f07872",
+    "icono": "enojo",
+    "activo": true,
+    "orden": 1,
+    "clave_registro": "Enojao",
+    "matices": [
+      {
+        "nombre": "Molestia",
+        "detalles": [
+          "Irritación leve",
+          "Fastidio por algo repetitivo"
+        ]
+      },
+      {
+        "nombre": "Frustración",
+        "detalles": [
+          "Impaciencia ante un obstáculo",
+          "Enojo por no poder avanzar"
+        ]
+      },
+      {
+        "nombre": "Indignación",
+        "detalles": [
+          "Enojo ante una injusticia",
+          "Enojo ante un abuso"
+        ]
+      },
+      {
+        "nombre": "Resentimiento",
+        "detalles": [
+          "Enojo que se ha acumulado",
+          "Enojo que vuelve al recordar algo"
+        ]
+      },
+      {
+        "nombre": "Rabia",
+        "detalles": [
+          "Ira intensa",
+          "Ganas de gritar"
+        ]
+      },
+      {
+        "nombre": "Ofensa",
+        "detalles": [
+          "Enojo por una burla",
+          "Enojo por un comentario hiriente"
+        ]
+      }
+    ]
+  },
+  {
+    "codigo": "tristeza",
+    "nombre": "Tristeza",
+    "descripcion": "Sentimiento de pérdida, desánimo o dolor emocional",
+    "nivel": "central",
+    "parent_codigo": null,
+    "color": "#75adeb",
+    "icono": "tristeza",
+    "activo": true,
+    "orden": 2,
+    "clave_registro": "Troste",
+    "matices": [
+      {
+        "nombre": "Soledad",
+        "detalles": [
+          "Falta de compañía",
+          "Sensación de no conectar con nadie"
+        ]
+      },
+      {
+        "nombre": "Duelo",
+        "detalles": [
+          "Dolor por una pérdida",
+          "Extrañar a quien ya no está"
+        ]
+      },
+      {
+        "nombre": "Desánimo",
+        "detalles": [
+          "Falta de ganas",
+          "Sensación de estar sin energía"
+        ]
+      },
+      {
+        "nombre": "Decepción",
+        "detalles": [
+          "Tristeza porque algo no salió como esperaba",
+          "Tristeza por una promesa incumplida"
+        ]
+      },
+      {
+        "nombre": "Nostalgia",
+        "detalles": [
+          "Añoranza de otros tiempos",
+          "Tristeza al recordar un lugar"
+        ]
+      },
+      {
+        "nombre": "Dolor emocional",
+        "detalles": [
+          "Tristeza por un rechazo",
+          "Tristeza por palabras que me hirieron"
+        ]
+      }
+    ]
+  },
+  {
+    "codigo": "alegria",
+    "nombre": "Alegría",
+    "descripcion": "Sensación de felicidad, bienestar y energía positiva",
+    "nivel": "central",
+    "parent_codigo": null,
+    "color": "#f6c650",
+    "icono": "alegria",
+    "activo": true,
+    "orden": 3,
+    "clave_registro": "Alegría",
+    "matices": [
+      {
+        "nombre": "Entusiasmo",
+        "detalles": [
+          "Ganas de empezar algo",
+          "Energía para compartir"
+        ]
+      },
+      {
+        "nombre": "Diversión",
+        "detalles": [
+          "Ganas de reír",
+          "Ganas de jugar"
+        ]
+      },
+      {
+        "nombre": "Orgullo",
+        "detalles": [
+          "Satisfacción por mi esfuerzo",
+          "Alegría por un logro"
+        ]
+      },
+      {
+        "nombre": "Gratitud",
+        "detalles": [
+          "Aprecio por un gesto",
+          "Alegría por el apoyo recibido"
+        ]
+      },
+      {
+        "nombre": "Alivio",
+        "detalles": [
+          "Alegría porque pasó una dificultad",
+          "Descanso después de una preocupación"
+        ]
+      },
+      {
+        "nombre": "Ilusión",
+        "detalles": [
+          "Alegría por algo que está por llegar",
+          "Expectativa por una posibilidad"
+        ]
+      }
+    ]
+  },
+  {
+    "codigo": "poder",
+    "nombre": "Poder",
+    "descripcion": "Sentimiento de fuerza, control y capacidad",
+    "nivel": "central",
+    "parent_codigo": null,
+    "color": "#f2a066",
+    "icono": "poder",
+    "activo": true,
+    "orden": 4,
+    "clave_registro": "Poder",
+    "matices": [
+      {
+        "nombre": "Confianza",
+        "detalles": [
+          "Seguridad al actuar",
+          "Confianza en mi criterio"
+        ]
+      },
+      {
+        "nombre": "Valentía",
+        "detalles": [
+          "Fuerza para actuar aunque tenga miedo",
+          "Valor para poner un límite"
+        ]
+      },
+      {
+        "nombre": "Determinación",
+        "detalles": [
+          "Claridad sobre lo que quiero",
+          "Decisión de seguir adelante"
+        ]
+      },
+      {
+        "nombre": "Autonomía",
+        "detalles": [
+          "Libertad para elegir",
+          "Capacidad para tomar mis propias decisiones"
+        ]
+      },
+      {
+        "nombre": "Capacidad",
+        "detalles": [
+          "Sensación de tener los recursos",
+          "Seguridad para resolver un problema"
+        ]
+      },
+      {
+        "nombre": "Fortaleza",
+        "detalles": [
+          "Fuerza para sostenerme",
+          "Capacidad de recuperarme"
+        ]
+      }
+    ]
+  },
+  {
+    "codigo": "paz",
+    "nombre": "Paz",
+    "descripcion": "Estado de calma, serenidad y equilibrio interior",
+    "nivel": "central",
+    "parent_codigo": null,
+    "color": "#6ccea8",
+    "icono": "paz",
+    "activo": true,
+    "orden": 5,
+    "clave_registro": "Paz",
+    "matices": [
+      {
+        "nombre": "Relajación",
+        "detalles": [
+          "Cuerpo sin tensión",
+          "Respiración pausada"
+        ]
+      },
+      {
+        "nombre": "Serenidad",
+        "detalles": [
+          "Calma en medio de una dificultad",
+          "Ánimo estable"
+        ]
+      },
+      {
+        "nombre": "Aceptación",
+        "detalles": [
+          "Calma con lo que no puedo cambiar",
+          "Estar en paz con una decisión"
+        ]
+      },
+      {
+        "nombre": "Armonía",
+        "detalles": [
+          "Sensación de equilibrio",
+          "Calma al estar con otras personas"
+        ]
+      },
+      {
+        "nombre": "Seguridad",
+        "detalles": [
+          "Sensación de estar a salvo",
+          "Tranquilidad porque tengo apoyo"
+        ]
+      },
+      {
+        "nombre": "Quietud",
+        "detalles": [
+          "Mente en silencio",
+          "Sensación de estar presente"
+        ]
+      }
+    ]
+  }
+]

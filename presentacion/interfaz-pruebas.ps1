@@ -34,6 +34,7 @@ $script:RunningOperation = $false
 $script:OperationHistory = [Collections.Generic.List[string]]::new()
 . (Join-Path $PSScriptRoot 'operaciones-panel.ps1')
 . (Join-Path $PSScriptRoot 'accesos-panel.ps1')
+. (Join-Path $PSScriptRoot 'datos-panel.ps1')
 
 # Cada prueba devuelve el mismo formato para la tabla y el reporte.
 function New-Result {
@@ -136,26 +137,48 @@ function Test-TcpPort {
 }
 
 # La variable de conexión solo se usa mientras se ejecuta el cliente SQL.
+function Invoke-PanelUtf8Command {
+    param([string]$Executable, [string[]]$Arguments)
+    $previousEncoding = [Console]::OutputEncoding
+    $previousErrorPreference = $ErrorActionPreference
+    try {
+        # Los clientes devuelven UTF-8 aunque la consola de Windows use una página OEM.
+        [Console]::OutputEncoding = [Text.Encoding]::UTF8
+        $ErrorActionPreference = 'Continue'
+        $lines = & $Executable @Arguments 2>&1
+        [pscustomobject]@{ Code = $LASTEXITCODE; Lines = $lines }
+    } finally {
+        $ErrorActionPreference = $previousErrorPreference
+        [Console]::OutputEncoding = $previousEncoding
+    }
+}
+
 function Invoke-MariaQuery {
     param(
         [string]$HostName,
         [string]$Sql,
         [string]$Database = $script:Config.MariaDatabase,
-        [switch]$AllowFailure
+        [switch]$AllowFailure,
+        [pscredential]$Credential,
+        [switch]$Vertical
     )
-    Require-Credentials MariaDB
+    if (-not $Credential) { Require-Credentials MariaDB }
     $client = Require-Tool 'mariadb' 'Instala únicamente el cliente de MariaDB.'
     $oldPassword = $env:MYSQL_PWD
+    $user = if ($Credential) { $Credential.UserName } else { $script:Config.MariaUser }
     try {
-        $env:MYSQL_PWD = $script:Config.MariaPassword
-        $args = @('--connect-timeout=6','--batch','--skip-column-names','-h', $HostName, '-P', "$($script:Config.MariaPort)", '-u', $script:Config.MariaUser)
+        $env:MYSQL_PWD = if ($Credential) { $Credential.GetNetworkCredential().Password } else { $script:Config.MariaPassword }
+        $format = if ($Vertical) { @('--vertical') } else { @('--batch','--skip-column-names') }
+        $args = @('--connect-timeout=6', '--default-character-set=utf8mb4') + $format + @('-h', $HostName, '-P', "$($script:Config.MariaPort)", '-u', $user)
         if ($Database) { $args += @('-D', $Database) }
         $args += @('-e', $Sql)
         Register-TestCommand $client $args 'MariaDB toma la contraseña de MYSQL_PWD.'
-        $output = & $client @args 2>&1
-        $code = $LASTEXITCODE
+        $result = Invoke-PanelUtf8Command $client $args
+        $output = $result.Lines
+        $code = $result.Code
         if ($code -ne 0 -and -not $AllowFailure) { throw ($output -join [Environment]::NewLine) }
-        [pscustomobject]@{ Code = $code; Output = ($output -join [Environment]::NewLine).Trim() }
+        $rows = ($output | Where-Object { $_ -is [string] }) -join [Environment]::NewLine
+        [pscustomobject]@{ Code = $code; Output = ($output -join [Environment]::NewLine).Trim(); Rows = $rows }
     } finally {
         if ($null -eq $oldPassword) { Remove-Item Env:MYSQL_PWD -ErrorAction SilentlyContinue }
         else { $env:MYSQL_PWD = $oldPassword }
@@ -175,37 +198,74 @@ function Invoke-MongoEval {
     Require-Credentials MongoDB
     $mongosh = Require-Tool 'mongosh' 'Instala MongoDB Shell; no hace falta instalar otro servidor.'
     Register-TestCommand $mongosh @('--quiet', $Uri, '-u', $script:Config.MongoUser, '-p', '[OCULTO]', '--eval', $JavaScript)
-    $output = & $mongosh --quiet $Uri -u $script:Config.MongoUser -p $script:Config.MongoPassword --eval $JavaScript 2>&1
-    $code = $LASTEXITCODE
+    # Un archivo conserva las comillas y permite que mongosh espere las operaciones de la base.
+    $sourceFile = Join-Path ([IO.Path]::GetTempPath()) ("moodsitto-mongo-" + [Guid]::NewGuid() + '.js')
+    try {
+        [IO.File]::WriteAllText($sourceFile, $JavaScript, [Text.UTF8Encoding]::new($false))
+        $result = Invoke-PanelUtf8Command $mongosh @('--quiet', $Uri, '-u', $script:Config.MongoUser,
+            '-p', $script:Config.MongoPassword, '--file', $sourceFile)
+        $output = $result.Lines
+        $code = $result.Code
+    } finally {
+        [IO.File]::Delete($sourceFile)
+    }
     if ($code -ne 0 -and -not $AllowFailure) { throw ($output -join [Environment]::NewLine) }
     [pscustomobject]@{ Code = $code; Output = ($output -join [Environment]::NewLine).Trim() }
 }
 
 function Invoke-SshCommand {
-    param([string]$Target, [string]$Command, [switch]$AllowFailure)
+    param([string]$Target, [string]$Command, [switch]$AllowFailure, [int]$TimeoutSeconds = 45, [string]$DisplayCommand = $Command)
     $ssh = Require-Tool 'ssh' 'Activa el cliente OpenSSH de Windows.'
-    $sshArgs = @('-o', 'BatchMode=yes', '-o', 'ConnectTimeout=7', '-o', 'ServerAliveInterval=3', '--', $Target, $Command)
-    Register-TestCommand $ssh $sshArgs
-    $output = & $ssh @sshArgs 2>&1
-    $code = $LASTEXITCODE
-    if ($code -ne 0 -and -not $AllowFailure) { throw ($output -join [Environment]::NewLine) }
-    [pscustomobject]@{ Code = $code; Output = ($output -join [Environment]::NewLine).Trim() }
+    $sshArgs = @('-o', 'BatchMode=yes', '-o', 'ConnectTimeout=7', '-o', 'ServerAliveInterval=3',
+        '-o', 'ServerAliveCountMax=2', '--', $Target, $Command)
+    Register-TestCommand $ssh ($sshArgs[0..($sshArgs.Count-2)] + @($DisplayCommand))
+
+    $info = [Diagnostics.ProcessStartInfo]::new()
+    $info.FileName = $ssh
+    # ProcessStartInfo.Arguments en PowerShell 5.1 necesita las reglas de comillas de Windows.
+    $info.Arguments = ($sshArgs | ForEach-Object {
+        $quoted = [regex]::Replace($_, '(\\*)"', '$1$1\"')
+        $quoted = [regex]::Replace($quoted, '(\\+)$', '$1$1')
+        '"' + $quoted + '"'
+    }) -join ' '
+    $info.UseShellExecute = $false
+    $info.CreateNoWindow = $true
+    $info.RedirectStandardOutput = $true
+    $info.RedirectStandardError = $true
+    $info.StandardOutputEncoding = [Text.Encoding]::UTF8
+    $info.StandardErrorEncoding = [Text.Encoding]::UTF8
+    $process = [Diagnostics.Process]::new()
+    $process.StartInfo = $info
+    try {
+        [void]$process.Start()
+        $stdout = $process.StandardOutput.ReadToEndAsync()
+        $stderr = $process.StandardError.ReadToEndAsync()
+        $watch = [Diagnostics.Stopwatch]::StartNew()
+        while (-not $process.WaitForExit(100)) {
+            if ($script:RunningOperation) { [Windows.Forms.Application]::DoEvents() }
+            if ($watch.Elapsed.TotalSeconds -ge $TimeoutSeconds) {
+                try { $process.Kill() } catch [InvalidOperationException] { }
+                $message = "SSH a $Target superó $TimeoutSeconds s. Consulta Ver estado antes de repetir una orden."
+                if (-not $AllowFailure) { throw $message }
+                return [pscustomobject]@{ Code = 124; Output = $message }
+            }
+        }
+        $code = $process.ExitCode
+        $output = ($stdout.GetAwaiter().GetResult().Trim() + [Environment]::NewLine + $stderr.GetAwaiter().GetResult().Trim()).Trim()
+        if ($code -ne 0 -and -not $AllowFailure) { throw $output }
+        [pscustomobject]@{ Code = $code; Output = $output }
+    } finally { $process.Dispose() }
 }
 
 function Invoke-RemoteScript {
     param([string]$Target, [string]$LocalScript, [string]$RemoteArgument, [switch]$UseSudo)
-    $ssh = Require-Tool 'ssh' 'Activa el cliente OpenSSH de Windows.'
-    $runner = if ($UseSudo) { "sudo -n bash -s -- '$RemoteArgument'" } else { "bash -s -- '$RemoteArgument'" }
+    $quotedArgument = "'" + $RemoteArgument.Replace("'", "'`"'`"'") + "'"
+    $runner = if ($UseSudo) { "sudo -n bash -s -- $quotedArgument" } else { "bash -s -- $quotedArgument" }
     # Envía el script en UTF-8 con saltos de Linux para que Bash lea bien los acentos y el final del archivo.
     $content = [IO.File]::ReadAllText($LocalScript).Replace("`r`n", "`n")
     $encoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($content))
     $remote = "set -eo pipefail; printf %s '$encoded' | base64 -d | $runner"
-    $sshArgs = @('-o', 'BatchMode=yes', '-o', 'ConnectTimeout=7', '--', $Target)
-    Register-TestCommand $ssh ($sshArgs + @($runner)) "Envía por SSH el contenido de $LocalScript al Bash remoto."
-    $output = & $ssh @sshArgs $remote 2>&1
-    $code = $LASTEXITCODE
-    if ($code -ne 0) { throw ($output -join [Environment]::NewLine) }
-    ($output -join [Environment]::NewLine).Trim()
+    (Invoke-SshCommand $Target $remote -TimeoutSeconds 90 -DisplayCommand "$runner  # $LocalScript").Output
 }
 
 function Test-Repository {
@@ -252,7 +312,7 @@ function Test-Inventory {
 # Usa variables de lectura disponibles para la cuenta de la aplicación.
 function Test-MariaPrimary {
     # login_intentos es una tabla adicional del backend y no cuenta en las 23 del modelo base.
-    $sql = "SELECT CONCAT(@@hostname,'|',@@version,'|server_id=',@@server_id,'|read_only=',@@read_only,'|log_bin=',@@log_bin); SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='moodsitto' AND table_name<>'login_intentos';"
+    $sql = "SELECT CONCAT(@@hostname,'|',@@version,'|server_id=',@@server_id,'|read_only=',@@read_only+0,'|log_bin=',@@log_bin+0); SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='moodsitto' AND table_name<>'login_intentos';"
     $result = Invoke-MariaQuery $script:Config.MariaHost $sql
     $lines = $result.Output -split "`r?`n"
     if ($result.Output -notmatch 'read_only=0') { return New-Result PENDIENTE 'El principal de MariaDB aparece en modo de solo lectura.' $result.Output }
@@ -262,21 +322,45 @@ function Test-MariaPrimary {
 }
 
 function Test-MariaReplica {
-    $sql = "SELECT CONCAT(@@hostname,'|',@@version,'|server_id=',@@server_id,'|read_only=',@@read_only); SHOW ALL SLAVES STATUS\G"
-    $result = Invoke-MariaQuery $script:Config.MariaReplicaHost $sql -AllowFailure
+    $sql = "SELECT CONCAT(@@hostname,'|',@@version,'|server_id=',@@server_id,'|read_only=',@@read_only+0) AS nodo; SHOW ALL SLAVES STATUS;"
+    $monitorPath = Join-Path $env:LOCALAPPDATA 'Moodsitto\replica-monitor.credential.xml'
+    $monitor = if (Test-Path -LiteralPath $monitorPath -PathType Leaf) {
+        try { Import-Clixml -LiteralPath $monitorPath -ErrorAction Stop }
+        catch { Write-Log 'No se pudo abrir la credencial local de monitoreo de MariaDB.' 'PENDIENTE' }
+    }
+    $result = if ($monitor -is [pscredential] -and $monitor.UserName -eq 'moodsitto_panel_monitor') {
+        Invoke-MariaQuery $script:Config.MariaReplicaHost $sql -Database '' -Credential $monitor -AllowFailure -Vertical
+    } else { Invoke-MariaQuery $script:Config.MariaReplicaHost $sql -AllowFailure -Vertical }
     if ($result.Code -ne 0) {
-        $fallback = Invoke-MariaQuery $script:Config.MariaReplicaHost "SELECT CONCAT(@@hostname,'|',@@version,'|server_id=',@@server_id,'|read_only=',@@read_only); SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='moodsitto';"
+        $statusQuery = "SELECT CONCAT('read_only=',@@read_only+0,'|gtid_aplicado=',@@gtid_slave_pos);"
+        $queryOptions = @{ AllowFailure = $true }
+        $apiAccess = Get-ApiCoreAccess
+        if ($apiAccess) { $queryOptions.Credential = $apiAccess.Maria; $queryOptions.Database = 'apicore' }
+        $primary = Invoke-MariaQuery $script:Config.MariaHost 'SELECT @@gtid_binlog_pos;' @queryOptions
+        $fallback = Invoke-MariaQuery $script:Config.MariaReplicaHost $statusQuery @queryOptions
+        if ($fallback.Code -ne 0) { return New-Result BLOQUEADO 'No se pudo consultar el estado de la réplica MariaDB.' }
         if ($fallback.Output -notmatch 'read_only=1') { return New-Result PENDIENTE 'La réplica responde, pero no está protegida con read_only.' $fallback.Output }
-        return New-Result BLOQUEADO 'La réplica responde en solo lectura. Para comprobar los hilos y el retraso hace falta una cuenta con REPLICA MONITOR.' $fallback.Output
+        $gtidFormat = '[0-9]+-[0-9]+-[0-9]+(?:,[0-9]+-[0-9]+-[0-9]+)*'
+        $applied = [regex]::Match($fallback.Output, "gtid_aplicado=($gtidFormat)").Groups[1].Value
+        $published = [regex]::Match($primary.Output, "(?m)^\s*($gtidFormat)\s*$").Groups[1].Value
+        $checkpoint = if ($primary.Code -eq 0 -and $applied -and $applied -eq $published) {
+            "El HP aplicó el GTID $applied observado en el principal."
+        } elseif ($primary.Code -eq 0 -and $published) {
+            "GTID observado en el principal: $published. Registra otra muestra si hubo escrituras entre consultas."
+        } else { 'No se pudo leer el GTID del principal.' }
+        return New-Result BLOQUEADO 'Réplica accesible en solo lectura. Los hilos y el retraso requieren REPLICA MONITOR.' "read_only=1 | GTID aplicado: $applied.`n$checkpoint"
     }
     # Muestra solo los campos de diagnóstico necesarios para la exposición.
     $details = ($result.Output -split "`r?`n" | Where-Object {
-        $_ -match 'read_only=|^\s*(Slave_IO_Running|Slave_SQL_Running|Seconds_Behind_Master|Using_Gtid)\s*:'
+        $_ -match 'read_only=|^\s*(Slave_IO_Running|Slave_SQL_Running|Seconds_Behind_Master|Using_Gtid|Last_IO_Errno|Last_SQL_Errno)\s*:'
     }) -join "`n"
+    $lag = [regex]::Match($result.Output, '(?m)^\s*Seconds_Behind_Master:\s*([0-9]+)\s*$')
     $healthy = $result.Output -match '(?m)^\s*Slave_IO_Running:\s*Yes\s*$' -and
-        $result.Output -match '(?m)^\s*Slave_SQL_Running:\s*Yes\s*$' -and $result.Output -match 'read_only=1'
+        $result.Output -match '(?m)^\s*Slave_SQL_Running:\s*Yes\s*$' -and $result.Output -match 'read_only=1' -and
+        $lag.Success -and $result.Output -match '(?m)^\s*Last_IO_Errno:\s*0\s*$' -and
+        $result.Output -match '(?m)^\s*Last_SQL_Errno:\s*0\s*$'
     if (-not $healthy) { return New-Result PENDIENTE 'La réplica respondió, pero su estado no coincide con la configuración esperada.' $details }
-    New-Result APROBADO 'La réplica está en solo lectura y los hilos de replicación están activos.' $details
+    New-Result APROBADO "Réplica en solo lectura, ambos hilos activos y retraso observado de $($lag.Groups[1].Value) s." $details
 }
 
 # Inserta un evento temporal y verifica que llegue al HP.
@@ -289,7 +373,7 @@ function Test-MariaReplication {
         $count = '0'
         for ($i=0; $i -lt 12; $i++) {
             Start-Sleep -Milliseconds 750
-            $count = (Invoke-MariaQuery $script:Config.MariaReplicaHost "SELECT COUNT(*) FROM auditoria_eventos WHERE correlacion_id='$id';").Output.Trim()
+            $count = (Invoke-MariaQuery $script:Config.MariaReplicaHost "SELECT COUNT(*) FROM auditoria_eventos WHERE correlacion_id='$id';").Rows
             if ($count -eq '1') { break }
         }
         if ($count -ne '1') { return New-Result PENDIENTE 'El registro de prueba no llegó a la réplica dentro del tiempo esperado.' "correlacion_id=$id; conteo=$count" }
@@ -352,23 +436,27 @@ function Test-HybridModel {
     $maria = Invoke-MariaQuery $script:Config.MariaHost "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='moodsitto' AND table_name<>'login_intentos'; SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema='moodsitto'; SELECT COUNT(*) FROM information_schema.referential_constraints WHERE constraint_schema='moodsitto';"
     $mongoJs = 'const names=["catalogo_emociones","registros_emocionales","resumenes_emocionales","auditoria_documental"]; const info=db.getCollectionInfos({name:{$in:names}}); print(JSON.stringify({colecciones:info.map(x=>x.name).sort(),validadores:info.filter(x=>x.options&&x.options.validator).length,indices:names.reduce((n,x)=>n+db.getCollection(x).getIndexes().length,0)}))'
     $mongo = Invoke-MongoEval $mongoJs
-    if (($maria.Output -split "`r?`n")[0] -ne '23') { return New-Result PENDIENTE 'MariaDB no tiene las 23 tablas esperadas.' $maria.Output }
+    $counts = @($maria.Output -split "`r?`n" | Where-Object { $_ -match '^\d+$' })
+    if ($counts.Count -ne 3 -or $counts[0] -ne '23' -or [int]$counts[1] -lt 1 -or [int]$counts[2] -lt 1) {
+        return New-Result PENDIENTE 'MariaDB no confirmó las 23 tablas, índices y referencias esperados.' $maria.Output
+    }
+    $model = $mongo.Output | ConvertFrom-Json
     foreach ($name in @('catalogo_emociones','registros_emocionales','resumenes_emocionales','auditoria_documental')) {
-        if ($mongo.Output -notmatch $name) { return New-Result PENDIENTE "Falta la colección $name." $mongo.Output }
+        if ($model.colecciones -notcontains $name) { return New-Result PENDIENTE "Falta la colección $name." $mongo.Output }
+    }
+    if ($model.validadores -lt 1 -or $model.indices -lt 4) {
+        return New-Result PENDIENTE 'MongoDB no confirmó los validadores e índices del modelo.' $mongo.Output
     }
     New-Result APROBADO 'El modelo híbrido tiene 23 tablas, cuatro colecciones, índices, validadores y referencias lógicas por id_user.' ("MariaDB:`n$($maria.Output)`nMongoDB:`n$($mongo.Output)")
 }
 
 function Test-Fragmentation {
-    $horizontal = Get-Content -Raw (Join-Path $script:Repo 'laboratorio\fragmentacion-horizontal\01-horizontal.sql')
-    $vertical = Get-Content -Raw (Join-Path $script:Repo 'laboratorio\fragmentacion-vertical\01-vertical.sql')
-    $setup = Invoke-MariaQuery $script:Config.MariaHost ($horizontal + [Environment]::NewLine + $vertical) '' -AllowFailure
-    if ($setup.Code -ne 0) { throw "[BLOQUEADO] El usuario indicado no puede preparar moodsitto_lab. Para la exposición usa una cuenta de laboratorio con CREATE, o deja el laboratorio preparado. Detalle: $($setup.Output)" }
     $validate = Get-Content -Raw (Join-Path $script:Repo 'laboratorio\reconstruccion\validar.sql')
-    $result = Invoke-MariaQuery $script:Config.MariaHost $validate ''
-    $approved = ([regex]::Matches($result.Output, '(?m)^(horizontal|vertical)\s+\d+\s+\d+\s+1$')).Count
+    $result = Invoke-MariaQuery $script:Config.MariaReplicaHost $validate '' -AllowFailure
+    if ($result.Code -ne 0) { return New-Result BLOQUEADO 'No se pudo consultar moodsitto_lab en la HP con la cuenta del panel.' $result.Output }
+    $approved = ([regex]::Matches($result.Rows, '(?m)^(horizontal|vertical)\t[1-9][0-9]*\t[1-9][0-9]*\t1\r?$')).Count
     if ($approved -ne 2) { return New-Result PENDIENTE 'La reconstrucción horizontal o vertical no coincidió con su fuente.' $result.Output }
-    New-Result APROBADO 'La fragmentación horizontal se reconstruyó con UNION ALL y la vertical con JOIN, sin perder filas.' $result.Output
+    New-Result APROBADO 'En la HP, UNION ALL y JOIN reconstruyeron los dos conjuntos del laboratorio con el total esperado.' $result.Rows
 }
 
 # Consulta privilegios sin mostrar las cláusulas de autenticación de SHOW GRANTS.
@@ -398,14 +486,12 @@ function Test-Backups {
 function Test-MariaRestore {
     param([switch]$ApiCore)
     $esquema = if ($ApiCore) { 'apicore' } else { 'moodsitto' }
-    $latest = Invoke-SshCommand $script:Config.HpSsh "set -o pipefail; sudo -n find /srv/storage/moodsitto/backups/mariadb -maxdepth 1 -type f -name '${esquema}-*.sql.gz' | sort | tail -n 1" -AllowFailure
-    if ($latest.Code -ne 0) { return New-Result BLOQUEADO 'Se requiere acceso a los respaldos protegidos en el HP.' $latest.Output }
-    if (-not $latest.Output) { return New-Result PENDIENTE "No se encontró un respaldo de $esquema para restaurar." }
-    try {
-        $output = Invoke-RemoteScript $script:Config.HpSsh (Join-Path $script:Repo 'mariadb\restauracion\probar-restauracion.sh') $latest.Output -UseSudo
-    } catch {
-        throw "[BLOQUEADO] La restauración MariaDB necesita sudo temporal en la HP. Habilítalo solo para la presentación y vuelve a ejecutar esta fila. Detalle: $($_.Exception.Message)"
+    $restore = Invoke-SshCommand $script:Config.HpSsh "sudo -n /usr/local/sbin/moodsitto-validar-respaldo $esquema" -AllowFailure -TimeoutSeconds 90
+    $output = $restore.Output
+    if ($restore.Code -ne 0 -and $output -match '(?i)sudo:|permission denied') {
+        return New-Result BLOQUEADO 'Falta el permiso restringido de restauración en el HP.' $output
     }
+    if ($restore.Code -ne 0) { return New-Result PENDIENTE "La restauración aislada de $esquema no terminó." $output }
     $esperado = if ($ApiCore) { 'Restauración aislada de APIcore aprobada' } else { '23 tablas base' }
     if ($output -notmatch $esperado) { return New-Result PENDIENTE "La restauración no confirmó las tablas esperadas en $esquema." $output }
     New-Result APROBADO 'El respaldo MariaDB se restauró en una base aislada, se validó y se eliminó al terminar.' $output
@@ -458,10 +544,57 @@ function Test-Security {
 function Test-RecoveryReadiness {
     $maria = Test-MariaReplica
     $mongo = Test-MongoTopology
-    $guide = Get-Content -Raw (Join-Path $script:Repo 'presentacion\contingencia\CONTINGENCIA.md')
-    $details = "MariaDB: $($maria.Status) - $($maria.Summary)`nMongoDB: $($mongo.Status) - $($mongo.Summary)`n`nProtocolo:`n$guide"
-    if ($maria.Status -ne 'APROBADO' -or $mongo.Status -ne 'APROBADO') { return New-Result PENDIENTE 'La topología no está lista para una demostración de contingencia.' $details }
-    New-Result PENDIENTE 'La preparación para recuperación está comprobada. La caída real sigue pendiente hasta recibir autorización durante la exposición.' $details
+    $guide = Get-Content -Raw -Encoding UTF8 (Join-Path $script:Repo 'presentacion\contingencia\CONTINGENCIA.md')
+    $trial = Read-RecoveryReport MongoDB
+    $replicaTrial = Read-RecoveryReport MariaDB
+    $primaryTrial = Read-RecoveryReport MariaDB -WindowsFijo
+    $details = "MariaDB: $($maria.Status) - $($maria.Summary)`nMongoDB: $($mongo.Status) - $($mongo.Summary)"
+    if ($trial) { $details += "`nEnsayo real guardado de MongoDB: $($trial.Status) · $($trial.StartedAt)." }
+    if ($replicaTrial) { $details += "`nEnsayo de caída de la réplica MariaDB en la HP: $($replicaTrial.Status) · $($replicaTrial.StartedAt)." }
+    if ($primaryTrial) { $details += "`nEnsayo de caída del Windows fijo: $($primaryTrial.Status) · $($primaryTrial.StartedAt)." }
+    $details += "`n`nProtocolo:`n$guide"
+    if ($maria.Status -ne 'APROBADO' -or $mongo.Status -ne 'APROBADO') {
+        return New-Result PENDIENTE 'Falta comprobar el estado actual de los motores.' $details
+    }
+
+    $access = Get-ApiCoreAccess
+    if (-not $access) { return New-Result BLOQUEADO 'Falta el acceso de APIcore para comparar las versiones de MariaDB.' $details }
+    $versions = @(foreach ($node in $script:Config.MariaHost, $script:Config.MariaReplicaHost) {
+        $result = Invoke-MariaQuery $node 'SELECT VERSION();' -Database apicore -Credential $access.Maria -AllowFailure
+        $match = [regex]::Match($result.Output, '(?m)^([0-9]+\.[0-9]+\.[0-9]+)(?:[-+]|$)')
+        if ($result.Code -eq 0 -and $match.Success) { [version]$match.Groups[1].Value }
+    })
+    if ($versions.Count -ne 2) {
+        return New-Result BLOQUEADO 'No se pudieron comprobar las dos versiones de MariaDB.' $details
+    }
+    $details = "MariaDB Windows fijo: $($versions[0]) · MariaDB HP: $($versions[1]).`n$details"
+    if ($versions[0] -lt $versions[1]) {
+        return New-Result BLOQUEADO 'Promoción MariaDB bloqueada: el Windows fijo sería una réplica de versión anterior al HP.' $details
+    }
+    if ($primaryTrial.Status -eq 'APROBADO') {
+        $routePath = Join-Path $env:LOCALAPPDATA 'Moodsitto\apicore-ruta-8000.json'
+        try {
+            if (Test-Path -LiteralPath $routePath -PathType Leaf) {
+                $route = Get-Content -LiteralPath $routePath -Raw -Encoding UTF8 | ConvertFrom-Json
+                $launch = Get-Process -Id $route.LauncherId -ErrorAction SilentlyContinue
+                $listeners = Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue
+                if ($launch -and $launch.StartTime.ToUniversalTime().Ticks -eq $route.StartedUtcTicks -and
+                    $route.MariaHost -eq '100.94.145.63' -and $route.MariaPort -eq 4006) {
+                    foreach ($listener in $listeners) {
+                        $php = Get-CimInstance Win32_Process -Filter "ProcessId=$($listener.OwningProcess)"
+                        if ($php.Name -eq 'php.exe' -and $php.ParentProcessId -eq $route.LauncherId -and
+                            (Test-ApiCore).Status -eq 'APROBADO') {
+                            return New-Result APROBADO 'Conmutación comprobada en el ensayo y APIcore habitual conectado a MaxScale.' $details
+                        }
+                    }
+                }
+            }
+        } catch {
+            $details += "`nNo se pudo comprobar la ruta de la instancia habitual."
+        }
+        return New-Result PENDIENTE 'La conmutación real pasó en APIcore de prueba. Falta comprobar que la instancia habitual en 8000 use MaxScale.' $details
+    }
+    New-Result PENDIENTE 'Falta ensayar la caída del Windows fijo, una escritura de APIcore en la HP y la reincorporación del Windows fijo.' $details
 }
 
 # El controlador /health de APIcore ejecuta SELECT 1 por PDO.
@@ -599,7 +732,7 @@ function Update-Summary {
         $state = [string]$row.Cells['Estado'].Value
         if ($counts.ContainsKey($state)) { $counts[$state]++ }
     }
-    $script:SummaryLabel.Text = "APROBADO $($counts.APROBADO)   |   PENDIENTE $($counts.PENDIENTE)   |   BLOQUEADO $($counts.BLOQUEADO)   |   SIN EJECUTAR $($counts['NO EJECUTADO'])"
+    $script:SummaryLabel.Text = "Aprobadas $($counts.APROBADO)     Pendientes $($counts.PENDIENTE)     Bloqueadas $($counts.BLOQUEADO)     Sin ejecutar $($counts['NO EJECUTADO'])"
 }
 
 function Show-SelectedCommands {
@@ -626,7 +759,7 @@ function Set-RowResult {
         'PENDIENTE' { [Drawing.Color]::FromArgb(254,249,195) }
         'BLOQUEADO' { [Drawing.Color]::FromArgb(254,226,226) }
     }
-    $row.DefaultCellStyle.BackColor = $color
+    $row.Cells['Estado'].Style.BackColor = $color
     Update-Summary
     Show-SelectedCommands
 }
@@ -724,34 +857,35 @@ $form.Text = 'Moodsitto DB Manager | Operación y pruebas'
 $form.StartPosition = 'CenterScreen'
 $form.Size = [Drawing.Size]::new(1320, 860)
 $form.MinimumSize = [Drawing.Size]::new(1100, 720)
-$form.BackColor = [Drawing.ColorTranslator]::FromHtml('#F8FAFC')
+$form.BackColor = [Drawing.ColorTranslator]::FromHtml('#F4F0F2')
 $form.Font = [Drawing.Font]::new('Segoe UI', 10)
 $form.AutoScaleMode = 'Dpi'
-$blue = [Drawing.ColorTranslator]::FromHtml('#1D4ED8')
-$ink = [Drawing.ColorTranslator]::FromHtml('#1E293B')
-$slate = [Drawing.ColorTranslator]::FromHtml('#475569')
+$blue = [Drawing.ColorTranslator]::FromHtml('#554367')
+$ink = [Drawing.ColorTranslator]::FromHtml('#302940')
+$slate = [Drawing.ColorTranslator]::FromHtml('#5F5269')
+$soft = [Drawing.ColorTranslator]::FromHtml('#EBE3EE')
 $green = [Drawing.ColorTranslator]::FromHtml('#047857')
 $red = [Drawing.ColorTranslator]::FromHtml('#B91C1C')
 
 $header = [Windows.Forms.Panel]::new()
 $header.Dock = 'Top'
-$header.Height = 86
+$header.Height = 72
 $header.BackColor = $ink
 $form.Controls.Add($header)
 
 $title = [Windows.Forms.Label]::new()
 $title.Text = 'Moodsitto DB Manager'
 $title.ForeColor = [Drawing.Color]::White
-$title.Font = [Drawing.Font]::new('Segoe UI Semibold', 23)
+$title.Font = [Drawing.Font]::new('Segoe UI Semibold', 19)
 $title.AutoSize = $true
-$title.Location = [Drawing.Point]::new(22, 12)
+$title.Location = [Drawing.Point]::new(22, 8)
 $header.Controls.Add($title)
 
 $subtitle = [Windows.Forms.Label]::new()
-$subtitle.Text = 'Pruebas y operación de la infraestructura'
-$subtitle.ForeColor = [Drawing.Color]::FromArgb(203,213,225)
+$subtitle.Text = 'Panel de pruebas'
+$subtitle.ForeColor = [Drawing.ColorTranslator]::FromHtml('#E2D6E9')
 $subtitle.AutoSize = $true
-$subtitle.Location = [Drawing.Point]::new(25, 55)
+$subtitle.Location = [Drawing.Point]::new(25, 43)
 $header.Controls.Add($subtitle)
 
 $settings = [Windows.Forms.GroupBox]::new()
@@ -759,19 +893,41 @@ $settings.Text = 'Conexiones de la presentación'
 $settings.Dock = 'Top'
 $settings.Height = 82
 $settings.Padding = [Windows.Forms.Padding]::new(12)
+$settings.Visible = $false
 $form.Controls.Add($settings)
 
 $navigation = [Windows.Forms.TabControl]::new()
 $navigation.Dock = 'Fill'
-$navigation.ItemSize = [Drawing.Size]::new(177, 38)
+$navigation.ItemSize = [Drawing.Size]::new(178, 40)
 $navigation.SizeMode = 'Fixed'
+$navigation.AccessibleName = 'Secciones del panel de pruebas'
+$navigation.DrawMode = 'OwnerDrawFixed'
+$navigation.Add_DrawItem({
+    param($sender, $eventArgs)
+    $bounds = $eventArgs.Bounds
+    $selected = $eventArgs.Index -eq $sender.SelectedIndex
+    $background = [Drawing.SolidBrush]::new($(if ($selected) { $soft } else { $form.BackColor }))
+    $indicator = [Drawing.SolidBrush]::new($blue)
+    try {
+        $eventArgs.Graphics.FillRectangle($background, $bounds)
+        if ($selected) { $eventArgs.Graphics.FillRectangle($indicator, $bounds.X, $bounds.Bottom - 3, $bounds.Width, 3) }
+        $flags = [Windows.Forms.TextFormatFlags]'HorizontalCenter, VerticalCenter, EndEllipsis, NoPrefix'
+        [Windows.Forms.TextRenderer]::DrawText($eventArgs.Graphics, $sender.TabPages[$eventArgs.Index].Text,
+            $sender.Font, $bounds, $ink, $flags)
+        if ($selected -and $sender.Focused) { $eventArgs.DrawFocusRectangle() }
+    } finally {
+        $background.Dispose()
+        $indicator.Dispose()
+    }
+})
 $form.Controls.Add($navigation)
 $navigation.BringToFront()
 $header.SendToBack()
 $testPage = [Windows.Forms.TabPage]::new('Pruebas')
 $localPage = [Windows.Forms.TabPage]::new('Inicio local')
 $recoveryPage = [Windows.Forms.TabPage]::new('Recuperación')
-$navigation.TabPages.AddRange(@($testPage, $localPage, $recoveryPage))
+$dataPage = [Windows.Forms.TabPage]::new('Datos de prueba')
+$navigation.TabPages.AddRange(@($testPage, $localPage, $recoveryPage, $dataPage))
 
 function Add-Field {
     param($Parent, [string]$Label, [int]$X, [int]$Y, [int]$Width, [string]$Value, [switch]$Password)
@@ -807,13 +963,16 @@ $main.Orientation = 'Horizontal'
 $main.SplitterDistance = 390
 $main.Panel1MinSize = 260
 $main.Panel2MinSize = 140
+$main.SplitterWidth = 8
+$main.BackColor = $form.BackColor
+$testPage.Padding = [Windows.Forms.Padding]::new(16, 10, 16, 14)
 $testPage.Controls.Add($main)
 $main.BringToFront()
 
 $toolbar = [Windows.Forms.FlowLayoutPanel]::new()
 $toolbar.Dock = 'Top'
-$toolbar.Height = 92
-$toolbar.Padding = [Windows.Forms.Padding]::new(8,8,0,0)
+$toolbar.Height = 86
+$toolbar.Padding = [Windows.Forms.Padding]::new(0,5,0,0)
 $main.Panel1.Controls.Add($toolbar)
 
 function New-PanelButton {
@@ -825,12 +984,22 @@ function New-PanelButton {
     $button.Margin = [Windows.Forms.Padding]::new(4, 2, 8, 4)
     $button.Cursor = [Windows.Forms.Cursors]::Hand
     $button.FlatStyle = 'Flat'
-    $button.BackColor = $Color
-    $button.ForeColor = [Drawing.Color]::White
+    $secondary = $Color -eq $slate
+    $button.BackColor = if ($secondary) { $soft } else { $Color }
+    $button.ForeColor = if ($secondary) { $ink } else { [Drawing.Color]::White }
     $button.FlatAppearance.BorderSize = 0
     $Parent.Controls.Add($button)
     $button
 }
+
+$connectionsButton = New-PanelButton $header 'Mostrar conexiones' 161 $slate
+$connectionsButton.Anchor = 'Top, Right'
+$connectionsButton.Location = [Drawing.Point]::new(($header.ClientSize.Width - 184), 16)
+$connectionsButton.AccessibleDescription = 'Muestra u oculta los destinos SSH y el estado de los accesos.'
+$connectionsButton.Add_Click({
+    $settings.Visible = -not $settings.Visible
+    $connectionsButton.Text = if ($settings.Visible) { 'Ocultar conexiones' } else { 'Mostrar conexiones' }
+})
 
 $runSelectedButton = New-PanelButton $toolbar 'Ejecutar seleccionada' 182 $blue
 $runSafeButton = New-PanelButton $toolbar 'Ejecutar todas las seguras' 204 $green
@@ -841,6 +1010,7 @@ $script:SummaryLabel = [Windows.Forms.Label]::new()
 $script:SummaryLabel.AutoSize = $true
 $script:SummaryLabel.Margin = [Windows.Forms.Padding]::new(7,8,0,0)
 $script:SummaryLabel.Font = [Drawing.Font]::new('Segoe UI Semibold', 10)
+$script:SummaryLabel.ForeColor = $slate
 $toolbar.SetFlowBreak($guideButton, $true)
 $toolbar.Controls.Add($script:SummaryLabel)
 
@@ -850,19 +1020,24 @@ $script:Grid.AllowUserToAddRows = $false
 $script:Grid.AllowUserToDeleteRows = $false
 $script:Grid.AllowUserToResizeRows = $false
 $script:Grid.ReadOnly = $true
+$script:Grid.AccessibleName = 'Pruebas de infraestructura y resultados'
 $script:Grid.MultiSelect = $false
 $script:Grid.SelectionMode = 'FullRowSelect'
 $script:Grid.RowHeadersVisible = $false
 $script:Grid.AutoSizeRowsMode = 'AllCells'
 $script:Grid.BackgroundColor = [Drawing.Color]::White
 $script:Grid.BorderStyle = 'None'
-$script:Grid.GridColor = [Drawing.ColorTranslator]::FromHtml('#E2E8F0')
+$script:Grid.GridColor = [Drawing.ColorTranslator]::FromHtml('#E8E0E9')
+$script:Grid.CellBorderStyle = 'SingleHorizontal'
 $script:Grid.DefaultCellStyle.Padding = [Windows.Forms.Padding]::new(6,5,6,5)
 $script:Grid.DefaultCellStyle.WrapMode = 'True'
 $script:Grid.DefaultCellStyle.ForeColor = $ink
+$script:Grid.DefaultCellStyle.SelectionBackColor = $blue
+$script:Grid.DefaultCellStyle.SelectionForeColor = [Drawing.Color]::White
 $script:Grid.ColumnHeadersHeight = 36
 $script:Grid.ColumnHeadersHeightSizeMode = 'DisableResizing'
-$script:Grid.ColumnHeadersDefaultCellStyle.BackColor = [Drawing.Color]::FromArgb(226,232,240)
+$script:Grid.ColumnHeadersDefaultCellStyle.BackColor = $soft
+$script:Grid.ColumnHeadersDefaultCellStyle.ForeColor = $ink
 $script:Grid.EnableHeadersVisualStyles = $false
 $script:Grid.Columns.Add('Estado','Estado') | Out-Null
 $script:Grid.Columns.Add('Prueba','Prueba') | Out-Null
@@ -874,7 +1049,7 @@ $script:Grid.Columns['Objetivo'].Width = 280
 $script:Grid.Columns['Resultado'].AutoSizeMode = 'Fill'
 foreach ($test in $script:Tests) {
     $index = $script:Grid.Rows.Add('NO EJECUTADO', $test.Name, $test.Objective, '—')
-    $script:Grid.Rows[$index].DefaultCellStyle.BackColor = if ($index % 2) { [Drawing.ColorTranslator]::FromHtml('#F1F5F9') } else { [Drawing.Color]::White }
+    if ($index % 2) { $script:Grid.Rows[$index].DefaultCellStyle.BackColor = [Drawing.ColorTranslator]::FromHtml('#F8F5F8') }
 }
 $main.Panel1.Controls.Add($script:Grid)
 $script:Grid.BringToFront()
@@ -898,14 +1073,14 @@ $commandTab.Controls.Add($script:CommandBox)
 $script:LogBox = [Windows.Forms.RichTextBox]::new()
 $script:LogBox.Dock = 'Fill'
 $script:LogBox.ReadOnly = $true
-$script:LogBox.BackColor = [Drawing.Color]::FromArgb(15,23,42)
-$script:LogBox.ForeColor = [Drawing.Color]::FromArgb(226,232,240)
+$script:LogBox.BackColor = $ink
+$script:LogBox.ForeColor = [Drawing.ColorTranslator]::FromHtml('#F3EDF5')
 $script:LogBox.Font = [Drawing.Font]::new('Cascadia Mono', 9)
 $script:LogBox.BorderStyle = 'None'
 $activityTab.Controls.Add($script:LogBox)
 
 function New-OperationPage {
-    param($Page, [string]$Title, [string]$Description, [int]$Height)
+    param($Page, [string]$Title, [string]$Description, [int]$Height, [string]$EvidenceTitle = 'Actividad y comandos')
     $Page.Padding = [Windows.Forms.Padding]::new(18, 14, 18, 16)
     $Page.BackColor = $form.BackColor
     $card = [Windows.Forms.Panel]::new()
@@ -928,7 +1103,7 @@ function New-OperationPage {
     $card.Controls.Add($descriptionLabel)
 
     $evidence = [Windows.Forms.GroupBox]::new()
-    $evidence.Text = 'Actividad y comandos'
+    $evidence.Text = $EvidenceTitle
     $evidence.Dock = 'Fill'
     $evidence.Padding = [Windows.Forms.Padding]::new(8)
     $Page.Controls.Add($evidence)
@@ -1027,25 +1202,676 @@ $installMongoButton = New-PanelButton $setupButtons 'Instalar MongoDB para PHP' 
 $requestAccessButton = New-PanelButton $setupButtons 'Solicitar accesos' 145 $slate
 $receiveAccessButton = New-PanelButton $setupButtons 'Recibir accesos' 138 $slate
 
-$recoveryUi = New-OperationPage $recoveryPage 'Recuperación de servidores' 'Elige el equipo y revisa su estado antes de interrumpir el servicio.' 213
+$dataUi = New-OperationPage $dataPage 'Datos de prueba' 'Registra una emoción o un recordatorio con la cuenta de ensayo.' 295 'Evidencia de la operación'
+$manageCatalog = New-PanelButton $dataUi.Card 'Gestionar cartas' 145 $blue
+$manageCatalog.Anchor = 'Top, Right'
+$manageCatalog.Location = [Drawing.Point]::new(($dataUi.Card.ClientSize.Width - 165), 22)
+$manageCatalog.AccessibleDescription = 'Crea, edita, desactiva o reactiva cartas del catálogo de Mis emociones.'
+$dataEvidence = [Windows.Forms.TableLayoutPanel]::new()
+$dataEvidence.Dock = 'Fill'
+$dataEvidence.ColumnCount = 2
+$dataEvidence.RowCount = 2
+[void]$dataEvidence.ColumnStyles.Add([Windows.Forms.ColumnStyle]::new('Percent', 53))
+[void]$dataEvidence.ColumnStyles.Add([Windows.Forms.ColumnStyle]::new('Percent', 47))
+[void]$dataEvidence.RowStyles.Add([Windows.Forms.RowStyle]::new('Absolute', 29))
+[void]$dataEvidence.RowStyles.Add([Windows.Forms.RowStyle]::new('Percent', 100))
+$evidenceContainer = $dataUi.Output.Parent
+$queryBox = [Windows.Forms.TextBox]::new()
+$queryBox.AccessibleName = 'Consulta de la base de datos'
+$queryBox.Dock = 'Fill'
+$queryBox.Multiline = $true
+$queryBox.ReadOnly = $true
+$queryBox.ScrollBars = 'Both'
+$queryBox.WordWrap = $false
+$queryBox.Font = $dataUi.Output.Font
+$queryBox.BackColor = [Drawing.ColorTranslator]::FromHtml('#F7F3F8')
+$queryBox.Text = 'Aquí aparecerá la consulta al guardar o leer un dato.'
+$queryBox.Margin = [Windows.Forms.Padding]::new(3, 0, 7, 3)
+$dataUi.Output.AccessibleName = 'Resultados de las consultas reales'
+$dataUi.Output.WordWrap = $true
+$dataUi.Output.ScrollBars = 'Vertical'
+$dataUi.Output.Font = $form.Font
+$dataUi.Output.Margin = [Windows.Forms.Padding]::new(7, 0, 3, 3)
+$evidenceLabels = @('Consulta SQL o MongoDB', 'Respuesta y actividad')
+for ($column = 0; $column -lt $evidenceLabels.Count; $column++) {
+    $label = [Windows.Forms.Label]::new()
+    $label.Text = $evidenceLabels[$column]
+    $label.Font = [Drawing.Font]::new('Segoe UI Semibold', 10)
+    $label.ForeColor = $ink
+    $label.TextAlign = 'MiddleLeft'
+    $label.Dock = 'Fill'
+    $label.Margin = [Windows.Forms.Padding]::new($(if ($column -eq 0) { 3 } else { 7 }), 0, 0, 0)
+    $dataEvidence.Controls.Add($label, $column, 0)
+}
+$dataEvidence.Controls.Add($queryBox, 0, 1)
+$dataEvidence.Controls.Add($dataUi.Output, 1, 1)
+$evidenceContainer.Controls.Add($dataEvidence)
+$dataForms = [Windows.Forms.TableLayoutPanel]::new()
+$dataForms.Dock = 'Bottom'
+$dataForms.Height = 211
+$dataForms.Padding = [Windows.Forms.Padding]::new(14, 0, 14, 16)
+$dataForms.ColumnCount = 2
+$dataForms.RowCount = 1
+[void]$dataForms.ColumnStyles.Add([Windows.Forms.ColumnStyle]::new('Percent', 50))
+[void]$dataForms.ColumnStyles.Add([Windows.Forms.ColumnStyle]::new('Percent', 50))
+[void]$dataForms.RowStyles.Add([Windows.Forms.RowStyle]::new('Percent', 100))
+$dataUi.Card.Controls.Add($dataForms)
+$emotionGroup = [Windows.Forms.GroupBox]::new()
+$emotionGroup.Text = 'Registrar emoción · MongoDB'
+$emotionGroup.Size = [Drawing.Size]::new(440, 195)
+$reminderGroup = [Windows.Forms.GroupBox]::new()
+$reminderGroup.Text = 'Registrar recordatorio · MariaDB'
+$reminderGroup.Size = [Drawing.Size]::new(440, 195)
+foreach ($group in @($emotionGroup, $reminderGroup)) {
+    $group.Dock = 'Fill'
+    $group.ForeColor = $ink
+    $group.Margin = [Windows.Forms.Padding]::new(6, 0, 6, 0)
+}
+
+function Add-DataControl {
+    param($Parent, $Control, [string]$Caption, [int]$X, [int]$Y, [int]$Width)
+    $label = [Windows.Forms.Label]::new()
+    $label.Text = $Caption
+    $label.AutoSize = $true
+    $label.Location = [Drawing.Point]::new($X, $Y)
+    $Parent.Controls.Add($label)
+    $Control.AccessibleName = $Caption
+    $Control.Location = [Drawing.Point]::new($X, $Y + 20)
+    $Control.Width = $Width
+    $Parent.Controls.Add($Control)
+    $Control
+}
+
+$emotionNames = [ordered]@{ 'Alegría' = 'Alegría'; 'Paz' = 'Paz'; 'Tristeza' = 'Troste'; 'Enojo' = 'Enojao'; 'Miedo' = 'Miedo'; 'Poder' = 'Poder' }
+$emotionChoice = Add-DataControl $emotionGroup ([Windows.Forms.ComboBox]::new()) 'Emoción del registro' 14 25 233
+$emotionChoice.DropDownStyle = 'DropDown'
+$emotionChoice.MaxLength = 80
+$emotionChoice.Items.AddRange([object[]]@($emotionNames.Keys))
+$emotionChoice.SelectedIndex = 0
+$intensity = Add-DataControl $emotionGroup ([Windows.Forms.NumericUpDown]::new()) 'Intensidad (1 a 10)' 268 25 155
+$intensity.Minimum = 1
+$intensity.Maximum = 10
+$intensity.Value = 5
+$emotionNote = Add-Field $emotionGroup 'Nota ficticia (opcional)' 14 78 409 ''
+$emotionNote.MaxLength = 200
+$saveEmotion = New-PanelButton $emotionGroup 'Guardar emoción' 135 $blue
+$saveEmotion.Location = [Drawing.Point]::new(14, 143)
+$listEmotions = New-PanelButton $emotionGroup 'Consultar registros' 144 $slate
+$listEmotions.Location = [Drawing.Point]::new(160, 143)
+
+$reminderName = Add-Field $reminderGroup 'Nombre del recordatorio' 14 25 409 ''
+$reminderName.MaxLength = 100
+$reminderDate = Add-DataControl $reminderGroup ([Windows.Forms.DateTimePicker]::new()) 'Fecha' 14 78 218
+$reminderDate.Format = 'Short'
+$reminderTime = Add-DataControl $reminderGroup ([Windows.Forms.DateTimePicker]::new()) 'Hora' 250 78 173
+$reminderTime.Format = 'Custom'
+$reminderTime.CustomFormat = 'HH:mm'
+$reminderTime.ShowUpDown = $true
+$saveReminder = New-PanelButton $reminderGroup 'Guardar recordatorio' 170 $blue
+$saveReminder.Location = [Drawing.Point]::new(14, 143)
+$listReminders = New-PanelButton $reminderGroup 'Consultar recordatorios' 185 $slate
+$listReminders.Location = [Drawing.Point]::new(196, 143)
+foreach ($control in @($intensity, $emotionNote, $reminderName, $reminderTime)) {
+    $control.Anchor = 'Top, Left, Right'
+}
+$dataForms.Controls.Add($emotionGroup, 0, 0)
+$dataForms.Controls.Add($reminderGroup, 1, 0)
+
+$recoveryUi = New-OperationPage $recoveryPage 'Recuperación de servidores' 'Sigue los cambios de equipo durante un ensayo real.' 440
 $targetLabel = [Windows.Forms.Label]::new()
 $targetLabel.Location = [Drawing.Point]::new(20, 80)
 $targetLabel.AutoSize = $true
-$targetLabel.Text = 'Equipo y motor'
+$targetLabel.Text = 'Equipo para ejecutar acciones'
 $recoveryUi.Card.Controls.Add($targetLabel)
 $targetChoice = [Windows.Forms.ComboBox]::new()
 $targetChoice.DropDownStyle = 'DropDownList'
 $targetChoice.Location = [Drawing.Point]::new(20, 103)
 $targetChoice.Width = 310
-$targetChoice.AccessibleName = 'Equipo y motor'
+$targetChoice.AccessibleName = 'Equipo para ejecutar acciones'
 $targetChoice.Items.AddRange(@((Get-RecoveryTargets).Name))
-$targetChoice.SelectedIndex = 0
+$targetChoice.SelectedIndex = 1
 $recoveryUi.Card.Controls.Add($targetChoice)
-$recoveryButtons = New-OperationButtons $recoveryUi.Card 153
+$windowsTrialButton = New-PanelButton $recoveryUi.Card 'Ver caída del Windows fijo' 215 $slate
+$windowsTrialButton.Location = [Drawing.Point]::new(350, 96)
+$liveMariaButton = New-PanelButton $recoveryUi.Card 'Seguir MariaDB en vivo' 200 $blue
+$liveMariaButton.Location = [Drawing.Point]::new(578, 96)
+$recoveryButtons = New-OperationButtons $recoveryUi.Card 144
 $statusButton = New-PanelButton $recoveryButtons 'Ver estado' 110 $slate
 $startMotorButton = New-PanelButton $recoveryButtons 'Iniciar motor' 120 $blue
 $outageButton = New-PanelButton $recoveryButtons 'Ensayar caída del motor' 194 $red
 $rebootButton = New-PanelButton $recoveryButtons 'Reiniciar servidor' 162 $red
+
+$timelineLabel = [Windows.Forms.Label]::new()
+$timelineLabel.Location = [Drawing.Point]::new(20, 201)
+$timelineLabel.AutoSize = $true
+$timelineLabel.Font = [Drawing.Font]::new('Segoe UI Semibold', 11)
+$timelineLabel.Text = 'Último ensayo'
+$recoveryUi.Card.Controls.Add($timelineLabel)
+
+$timeline = [Windows.Forms.ListView]::new()
+$timeline.Location = [Drawing.Point]::new(20, 230)
+$timeline.Size = [Drawing.Size]::new(925, 148)
+$timeline.Anchor = 'Top, Left, Right'
+$timeline.AccessibleName = 'Cambios de nodo y tiempos observados durante el ensayo'
+$timeline.View = 'Details'
+$timeline.FullRowSelect = $true
+$timeline.GridLines = $true
+$timeline.HeaderStyle = 'Nonclickable'
+[void]$timeline.Columns.Add('Tiempo', 90)
+[void]$timeline.Columns.Add('Evento observado', 315)
+[void]$timeline.Columns.Add('Nodo', 295)
+$timeline.ForeColor = $ink
+$recoveryUi.Card.Controls.Add($timeline)
+$timeline.Visible = $false
+
+function New-RecoveryNodeCard {
+    param([string]$Caption, [int]$X)
+    $card = [Windows.Forms.Panel]::new()
+    $card.Location = [Drawing.Point]::new($X, 0)
+    $card.Size = [Drawing.Size]::new(282, 77)
+    $card.BorderStyle = 'FixedSingle'
+    $label = [Windows.Forms.Label]::new()
+    $label.Location = [Drawing.Point]::new(11, 5)
+    $label.AutoSize = $true
+    $label.Text = $Caption
+    $card.Controls.Add($label)
+    $name = [Windows.Forms.Label]::new()
+    $name.Location = [Drawing.Point]::new(11, 23)
+    $name.Size = [Drawing.Size]::new(256, 24)
+    $name.AutoEllipsis = $true
+    $name.Font = [Drawing.Font]::new('Segoe UI Semibold', 13)
+    $card.Controls.Add($name)
+    $status = [Windows.Forms.Label]::new()
+    $status.Location = [Drawing.Point]::new(12, 50)
+    $status.AutoSize = $true
+    $card.Controls.Add($status)
+    $card.AccessibleName = $Caption
+    [pscustomobject]@{ Panel = $card; Caption = $label; Name = $name; Status = $status }
+}
+
+$recoveryMap = [Windows.Forms.Panel]::new()
+$recoveryMap.Location = [Drawing.Point]::new(20, 230)
+$recoveryMap.Size = [Drawing.Size]::new(925, 148)
+$recoveryUi.Card.Controls.Add($recoveryMap)
+$recoveryTargetCard = New-RecoveryNodeCard 'Equipo del ensayo' 0
+$recoveryWriterCard = New-RecoveryNodeCard 'Equipo que recibe escrituras' 300
+$recoveryMap.Controls.Add($recoveryTargetCard.Panel)
+$recoveryMap.Controls.Add($recoveryWriterCard.Panel)
+$recoveryStage = [Windows.Forms.Label]::new()
+$recoveryStage.Location = [Drawing.Point]::new(0, 83)
+$recoveryStage.Size = [Drawing.Size]::new(850, 24)
+$recoveryStage.AutoEllipsis = $true
+$recoveryStage.Font = [Drawing.Font]::new('Segoe UI Semibold', 10)
+$recoveryMap.Controls.Add($recoveryStage)
+$previousStepButton = New-PanelButton $recoveryMap 'Anterior' 100 $slate
+$nextStepButton = New-PanelButton $recoveryMap 'Siguiente' 100 $blue
+$previousStepButton.Location = [Drawing.Point]::new(0, 111)
+$nextStepButton.Location = [Drawing.Point]::new(111, 111)
+$previousStepButton.Height = $nextStepButton.Height = 33
+$changeRecoveryViewButton = New-PanelButton $recoveryUi.Card 'Ver eventos' 124 $slate
+$changeRecoveryViewButton.Location = [Drawing.Point]::new(659, 195)
+$changeRecoveryViewButton.Height = 28
+
+$script:RecoveryReport = $null
+$script:RecoveryStep = -1
+$script:MariaRecoveryWatch = $null
+$mariaWatchTimer = [Windows.Forms.Timer]::new()
+$mariaWatchTimer.Interval = 750
+
+function Show-RecoveryFrame {
+    param($Frame)
+    $recoveryTargetCard.Name.Text = if ($frame.Target) { $frame.Target } else { 'Sin datos' }
+    $recoveryTargetCard.Status.Text = $frame.TargetState
+    $recoveryTargetCard.Panel.BackColor = if ($frame.TargetState -in 'Motor detenido', 'Puerto sin respuesta') {
+        [Drawing.ColorTranslator]::FromHtml('#FEE2E2')
+    } else { [Drawing.ColorTranslator]::FromHtml('#F1F5F9') }
+    $recoveryWriterCard.Name.Text = if ($frame.Writer) { $frame.Writer } else { 'Sin primario confirmado' }
+    $recoveryWriterCard.Status.Text = $frame.WriterState
+    $recoveryWriterCard.Panel.BackColor = if ($frame.Writer) {
+        [Drawing.ColorTranslator]::FromHtml('#DCFCE7')
+    } else { [Drawing.ColorTranslator]::FromHtml('#F1F5F9') }
+}
+
+function Set-RecoveryStep {
+    param([int]$Index)
+    $report = $script:RecoveryReport
+    $count = if ($report) { @($report.Events).Count } else { 0 }
+    $script:RecoveryStep = if ($count) { [Math]::Max(0, [Math]::Min($Index, $count - 1)) } else { -1 }
+    $step = $script:RecoveryStep
+    Show-RecoveryFrame (Get-RecoveryFrame $report $step)
+    $recoveryStage.Text = if ($count) {
+        $event = $report.Events[$step]
+        $time = if ($null -eq $event.Seconds) { 'Antes de la caída' } else { '{0:0.00} s' -f $event.Seconds }
+        "Paso $($step + 1) de $count · $($event.Name) · $time"
+    } else { 'Todavía no hay eventos para mostrar.' }
+    $saved = $report.Status -ne 'EN CURSO'
+    $previousStepButton.Enabled = $saved -and $step -gt 0
+    $nextStepButton.Enabled = $saved -and $step -ge 0 -and $step -lt ($count - 1)
+    $recoveryMap.Refresh()
+}
+
+$previousStepButton.Add_Click({ Set-RecoveryStep ($script:RecoveryStep - 1) })
+$nextStepButton.Add_Click({ Set-RecoveryStep ($script:RecoveryStep + 1) })
+$changeRecoveryViewButton.Add_Click({
+    $showEvents = $recoveryMap.Visible
+    $recoveryMap.Visible = -not $showEvents
+    $timeline.Visible = $showEvents
+    $changeRecoveryViewButton.Text = if ($showEvents) { 'Ver cambio' } else { 'Ver eventos' }
+})
+
+function Stop-MariaRecoveryWatch {
+    $mariaWatchTimer.Stop()
+    if ($script:MariaRecoveryWatch) {
+        Close-MariaRecoveryProbe $script:MariaRecoveryWatch.Probe
+        $script:MariaRecoveryWatch = $null
+    }
+    $liveMariaButton.Text = 'Seguir MariaDB en vivo'
+    $recoveryTargetCard.Caption.Text = 'Equipo del ensayo'
+    $previousStepButton.Visible = $nextStepButton.Visible = $changeRecoveryViewButton.Visible = $true
+}
+
+$recoveryResult = [Windows.Forms.Label]::new()
+$recoveryResult.Location = [Drawing.Point]::new(20, 383)
+$recoveryResult.Size = [Drawing.Size]::new(910, 24)
+$recoveryResult.Font = [Drawing.Font]::new('Segoe UI Semibold', 10)
+$recoveryUi.Card.Controls.Add($recoveryResult)
+$recoveryTopology = [Windows.Forms.Label]::new()
+$recoveryTopology.Location = [Drawing.Point]::new(20, 409)
+$recoveryTopology.Size = [Drawing.Size]::new(915, 22)
+$recoveryTopology.Anchor = 'Top, Left, Right'
+$recoveryTopology.AutoEllipsis = $true
+$recoveryUi.Card.Controls.Add($recoveryTopology)
+
+function Show-RecoveryReport {
+    param($Report, [switch]$Follow)
+    Stop-MariaRecoveryWatch
+    $script:RecoveryReport = $Report
+    if ($Follow) { Set-RecoveryStep (@($Report.Events).Count - 1) }
+    else {
+        $recoveryMap.Visible = $true
+        $timeline.Visible = $false
+        $changeRecoveryViewButton.Text = 'Ver eventos'
+        Set-RecoveryStep 0
+    }
+    $timeline.BeginUpdate()
+    try {
+        $timeline.Items.Clear()
+        $timelineLabel.Text = if ($Report) { "Ensayo real · $($Report.StartedAt) · tiempo desde que terminó la orden de parada" } else { 'Último ensayo' }
+        $recoveryResult.Text = if ($Report) { "Resultado: $($Report.Status)" } else { 'Todavía no hay un ensayo guardado para este motor.' }
+        $recoveryResult.ForeColor = if ($Report.Status -eq 'APROBADO') { $green } else { $ink }
+        $recoveryTopology.Text = if ($Report.Topology) { "Topología al finalizar: $($Report.Topology)" } else { '' }
+        if ($Report.Failure) { $recoveryTopology.Text = $Report.Failure }
+        foreach ($event in $Report.Events) {
+            $time = if ($null -eq $event.Seconds) { 'Antes' } else { '{0:0.0} s' -f $event.Seconds }
+            $nodeText = switch ($event.Node) {
+                '100.94.145.63:27017' { 'VPS · 100.94.145.63' }
+                '100.89.172.17:27017' { 'Windows fijo · 100.89.172.17' }
+                '100.86.5.50:27017' { 'Laptop · 100.86.5.50' }
+                default { $event.Node }
+            }
+            $item = [Windows.Forms.ListViewItem]::new($time)
+            [void]$item.SubItems.Add($event.Name)
+            [void]$item.SubItems.Add($nodeText)
+            [void]$timeline.Items.Add($item)
+        }
+    } finally { $timeline.EndUpdate() }
+    $timeline.Refresh()
+    $recoveryResult.Refresh()
+    $recoveryTopology.Refresh()
+}
+
+function Show-SelectedRecoveryReport {
+    $target = (Get-RecoveryTargets)[$targetChoice.SelectedIndex]
+    try { Show-RecoveryReport (Read-RecoveryReport $target.Engine) }
+    catch {
+        Show-RecoveryReport $null
+        $recoveryResult.Text = 'No se pudo leer el informe guardado.'
+    }
+}
+
+$targetChoice.Add_SelectedIndexChanged({ if (-not $script:RunningOperation) { Show-SelectedRecoveryReport } })
+$windowsTrialButton.Add_Click({
+    if ($script:Running) { return }
+    try { Show-RecoveryReport (Read-RecoveryReport MariaDB -WindowsFijo) }
+    catch {
+        Show-RecoveryReport $null
+        $recoveryResult.Text = 'No se pudo leer el informe del Windows fijo.'
+    }
+})
+$liveMariaButton.Add_Click({
+    if ($script:Running) { return }
+    if ($mariaWatchTimer.Enabled) {
+        Show-RecoveryReport $script:RecoveryReport
+        return
+    }
+    try {
+        $access = Get-ApiCoreAccess
+        if (-not $access) { throw 'Recibe los accesos de APIcore en Inicio local antes de seguir MariaDB.' }
+        $client = Require-Tool 'mariadb' 'Instala el cliente de MariaDB.'
+        $script:MariaRecoveryWatch = @{
+            Client = $client; Credential = $access.Maria; Probe = $null; LastWriter = ''; Change = ''
+        }
+        $recoveryMap.Visible = $true
+        $timeline.Visible = $false
+        $previousStepButton.Visible = $nextStepButton.Visible = $changeRecoveryViewButton.Visible = $false
+        $liveMariaButton.Text = 'Dejar de seguir'
+        $timelineLabel.Text = 'MariaDB en vivo'
+        $recoveryTargetCard.Caption.Text = 'Equipo observado'
+        $recoveryStage.Text = 'Consultando el Windows fijo, la HP y MaxScale…'
+        $recoveryResult.Text = ''
+        $recoveryTopology.Text = ''
+        Show-RecoveryFrame @{ Target = 'Windows fijo'; TargetState = 'Consultando'; Writer = ''; WriterState = 'Consultando MaxScale' }
+        $mariaWatchTimer.Start()
+    } catch {
+        Stop-MariaRecoveryWatch
+        $recoveryResult.ForeColor = $ink
+        $recoveryResult.Text = Protect-LogText $_.Exception.Message
+    }
+})
+$mariaWatchTimer.Add_Tick({
+    $watch = $script:MariaRecoveryWatch
+    if (-not $watch) { return }
+    try {
+        if (-not $watch.Probe) {
+            $watch.Probe = Start-MariaRecoveryProbe $watch.Client $watch.Credential $script:Config.MariaHost $script:Config.MariaReplicaHost
+            return
+        }
+        $probe = $watch.Probe
+        $pending = $probe.Connections.Values | Where-Object { -not $_.Task.IsCompleted }
+        if (($pending -or -not $probe.Output.IsCompleted -or -not $probe.Process.HasExited) -and
+            $probe.Clock.ElapsedMilliseconds -lt 4000) { return }
+        $offline = @(foreach ($name in $probe.Connections.Keys) {
+            $connection = $probe.Connections[$name]
+            if ($connection.Task.Status -ne 'RanToCompletion' -or -not $connection.Socket.Connected) { $name }
+        })
+        $writer = if ($probe.Process.HasExited -and $probe.Process.ExitCode -eq 0 -and $probe.Output.IsCompleted) {
+            switch ($probe.Output.GetAwaiter().GetResult().Trim()) {
+                '1|0' { 'Windows fijo' }
+                '2|0' { 'HP' }
+            }
+        }
+        Close-MariaRecoveryProbe $probe
+        $watch.Probe = $null
+        if ($writer) {
+            if ($watch.LastWriter -and $watch.LastWriter -ne $writer) { $watch.Change = "$($watch.LastWriter) → $writer" }
+            $watch.LastWriter = $writer
+        }
+        $target = if ($offline.Count) { $offline[0] } else { 'Windows fijo' }
+        $targetState = if ($offline.Count) { 'Puerto sin respuesta' } else { 'Puerto MariaDB accesible' }
+        $writerState = if ($writer) { 'Primario confirmado por MaxScale' }
+            elseif ($offline -contains 'VPS · MaxScale') { 'No se puede consultar MaxScale' }
+            else { 'MaxScale aún no confirma el primario' }
+        Show-RecoveryFrame @{ Target = $target; TargetState = $targetState; Writer = $writer; WriterState = $writerState }
+        $recoveryStage.Text = "Última consulta · $(Get-Date -Format 'HH:mm:ss')"
+        $recoveryResult.ForeColor = $ink
+        $recoveryResult.Text = if ($watch.Change) { "Cambio observado · $($watch.Change)" }
+            elseif ($offline.Count -and $writer) { "Primario disponible · $writer" }
+            else { '' }
+        $recoveryTopology.Text = (@(foreach ($name in $probe.Connections.Keys) {
+            $portState = if ($name -in $offline) { 'sin respuesta' } else { 'responde' }
+            "$name $portState"
+        }) -join '  |  ')
+    } catch {
+        Stop-MariaRecoveryWatch
+        $recoveryResult.ForeColor = $ink
+        $recoveryResult.Text = 'Se interrumpió la consulta. Pulsa Seguir MariaDB en vivo para intentarlo de nuevo.'
+    }
+})
+Show-SelectedRecoveryReport
+
+function Add-PanelEmotionOption {
+    param([string]$Label)
+    if ($Label -and $Label -notin $emotionChoice.Items) { [void]$emotionChoice.Items.Add($Label) }
+}
+
+$manageCatalog.Add_Click({
+    if ($script:Running) { return }
+    $catalogo = [Collections.Generic.List[object]]::new()
+    $lectura = @{ Confirmada = $false }
+    Invoke-PanelOperation 'Consultar catálogo de cartas en MongoDB' $dataUi.Output {
+        $queryBox.Text = 'db.catalogo_emociones.find({ nivel: "central" }).sort({ nombre: 1, codigo: 1 });'
+        foreach ($card in @(Get-PanelCatalogCards)) { $catalogo.Add($card) }
+        $lectura.Confirmada = $true
+        Write-Log "MongoDB devolvió $($catalogo.Count) cartas." 'OK'
+    }
+    if (-not $lectura.Confirmada) { return }
+    $iconKeys = @($script:PanelCatalogIcons.Keys)
+    $iconSize = 64
+    try {
+        $iconSprite = [Drawing.Bitmap]::new((Join-Path $script:Repo 'presentacion\recursos\iconos-cartas.png'))
+    } catch {
+        [void][Windows.Forms.MessageBox]::Show($form, 'Falta el archivo de vistas previas del catálogo.',
+            'Gestionar cartas', 'OK', 'Warning')
+        return
+    }
+
+    $editor = [Windows.Forms.Form]::new()
+    $editor.Text = 'Gestionar cartas de emoción'
+    $editor.StartPosition = 'CenterParent'
+    $editor.FormBorderStyle = 'FixedDialog'
+    $editor.MaximizeBox = $false
+    $editor.MinimizeBox = $false
+    $editor.ClientSize = [Drawing.Size]::new(560, 448)
+    $editor.Font = $form.Font
+    $editor.BackColor = [Drawing.Color]::White
+    $editor.ForeColor = $ink
+    $cardChoice = Add-DataControl $editor ([Windows.Forms.ComboBox]::new()) 'Carta' 18 16 270
+    $cardChoice.DropDownStyle = 'DropDownList'
+    [void]$cardChoice.Items.Add('Nueva carta')
+    foreach ($card in $catalogo) {
+        $label = if ($card.activo) { $card.nombre } else { "$($card.nombre) · Desactivada" }
+        [void]$cardChoice.Items.Add($label)
+    }
+    $cardIcon = Add-DataControl $editor ([Windows.Forms.ComboBox]::new()) 'Icono' 305 16 190
+    $cardIcon.DropDownStyle = 'DropDownList'
+    $cardIcon.Items.AddRange([object[]]@($script:PanelCatalogIcons.Values))
+    $iconPreview = [Windows.Forms.PictureBox]::new()
+    $iconPreview.Bounds = [Drawing.Rectangle]::new(506, 29, 36, 36)
+    $iconPreview.BackColor = $soft
+    $iconPreview.SizeMode = 'Zoom'
+    $iconPreview.AccessibleName = 'Vista previa del icono'
+    $editor.Controls.Add($iconPreview)
+    $cardIcon.Add_SelectedIndexChanged({
+        param($sender, $eventArgs)
+        if ($sender.SelectedIndex -lt 0) { return }
+        $area = [Drawing.Rectangle]::new(($sender.SelectedIndex * $iconSize), 0, $iconSize, $iconSize)
+        $previousImage = $iconPreview.Image
+        $iconPreview.Image = $iconSprite.Clone($area, $iconSprite.PixelFormat)
+        if ($previousImage) { $previousImage.Dispose() }
+        $iconPreview.AccessibleDescription = [string]$sender.SelectedItem
+    }.GetNewClosure())
+    $cardName = Add-Field $editor 'Nombre' 18 69 367 ''
+    $cardName.MaxLength = 80
+    $cardColor = Add-Field $editor 'Color hexadecimal' 402 69 106 '#D4A8E8'
+    $cardColor.MaxLength = 7
+    $colorPreview = [Windows.Forms.Panel]::new()
+    $colorPreview.Bounds = [Drawing.Rectangle]::new(516, 89, 26, 25)
+    $colorPreview.BorderStyle = 'FixedSingle'
+    $editor.Controls.Add($colorPreview)
+    $cardColor.Add_TextChanged({
+        param($sender, $eventArgs)
+        $colorPreview.BackColor = if ($sender.Text -match '^#[0-9A-Fa-f]{6}$') {
+            [Drawing.ColorTranslator]::FromHtml($sender.Text)
+        } else { [Drawing.Color]::White }
+    }.GetNewClosure())
+    $colorPreview.BackColor = [Drawing.ColorTranslator]::FromHtml($cardColor.Text)
+    $cardDescription = Add-Field $editor 'Descripción' 18 123 524 ''
+    $cardDescription.MaxLength = 1000
+    $cardDetails = Add-DataControl $editor ([Windows.Forms.TextBox]::new()) 'Matices opcionales (uno por línea)' 18 177 524
+    $cardDetails.Multiline = $true
+    $cardDetails.ScrollBars = 'Vertical'
+    $cardDetails.Height = 88
+    $cardDetails.MaxLength = 2000
+    $formatHint = [Windows.Forms.Label]::new()
+    $formatHint.Text = 'Formato: Matiz | Detalle | Detalle. Ejemplo: Asombro | Algo inesperado'
+    $formatHint.AutoSize = $true
+    $formatHint.Location = [Drawing.Point]::new(18, 293)
+    $editor.Controls.Add($formatHint)
+    $cardActive = [Windows.Forms.CheckBox]::new()
+    $cardActive.Text = 'Mostrar carta en Mis emociones'
+    $cardActive.AccessibleDescription = 'Al desactivarla, sus registros siguen disponibles en el historial.'
+    $cardActive.AutoSize = $true
+    $cardActive.Location = [Drawing.Point]::new(18, 322)
+    $editor.Controls.Add($cardActive)
+    $cardStatus = [Windows.Forms.Label]::new()
+    $cardStatus.Location = [Drawing.Point]::new(18, 350)
+    $cardStatus.Size = [Drawing.Size]::new(524, 43)
+    $cardStatus.ForeColor = [Drawing.Color]::DarkRed
+    $editor.Controls.Add($cardStatus)
+    $cancelCard = New-PanelButton $editor 'Cancelar' 112 $slate
+    $cancelCard.Location = [Drawing.Point]::new(261, 393)
+    $cancelCard.DialogResult = 'Cancel'
+    $editor.CancelButton = $cancelCard
+    $saveCard = New-PanelButton $editor 'Guardar carta' 155 $green
+    $saveCard.Location = [Drawing.Point]::new(387, 393)
+    $editor.AcceptButton = $saveCard
+
+    $cardChoice.Add_SelectedIndexChanged({
+        param($sender, $eventArgs)
+        $selected = if ($sender.SelectedIndex -gt 0) { $catalogo[$sender.SelectedIndex - 1] }
+        $cardName.Text = [string]$selected.nombre
+        $cardDescription.Text = [string]$selected.descripcion
+        $cardColor.Text = if ($selected.color) { $selected.color } else { '#D4A8E8' }
+        $cardIcon.SelectedIndex = [Math]::Max(0, [Array]::IndexOf($iconKeys, $selected.icono))
+        $cardDetails.Lines = [string[]]@(foreach ($matiz in $selected.matices) {
+            (@($matiz.nombre) + @($matiz.detalles)) -join ' | '
+        })
+        $cardActive.Checked = -not $selected -or $selected.activo
+        $cardActive.Enabled = $null -ne $selected
+        $cardStatus.Text = ''
+    }.GetNewClosure())
+    $cardChoice.SelectedIndex = 0
+
+    $saveCard.Add_Click({
+        Invoke-PanelOperation 'Guardar carta en el catálogo de MongoDB' $dataUi.Output {
+            $cardStatus.Text = ''
+            try {
+                $card = New-PanelCatalogCard $cardName.Text $cardDescription.Text $cardColor.Text $cardDetails.Text $iconKeys[$cardIcon.SelectedIndex]
+                $selected = if ($cardChoice.SelectedIndex -gt 0) { $catalogo[$cardChoice.SelectedIndex - 1] }
+                $card.activo = $cardActive.Checked
+                $consulta = if ($selected) {
+                    @'
+moodsitto.catalogo_emociones
+
+db.catalogo_emociones.updateOne(
+  { codigo: carta.codigo, nivel: "central", updated_at: revisionLeida },
+  { $set: cambiosConFecha },
+  { writeConcern: { w: "majority", wtimeout: 5000 } }
+);
+
+db.catalogo_emociones.findOne({ codigo: carta.codigo, nivel: "central" });
+'@
+                } else {
+                    @'
+moodsitto.catalogo_emociones
+
+db.catalogo_emociones.updateOne(
+  { codigo: carta.codigo },
+  { $setOnInsert: cartaConFechas },
+  { upsert: true, writeConcern: { w: "majority", wtimeout: 5000 } }
+);
+
+db.catalogo_emociones.findOne({ codigo: carta.codigo });
+'@
+                }
+                $queryBox.Text = $consulta -replace "`r?`n", "`r`n"
+                $saved = Save-PanelCatalogCard $card $selected
+                $expectedCode = if ($selected) { $selected.codigo } else { $card.codigo }
+                if ($saved.codigo -cne $expectedCode -or $saved.nombre -cne $card.nombre -or
+                    $saved.activo -ne $card.activo -or $saved.icono -cne $card.icono) {
+                    throw 'No se pudo confirmar la lectura de la carta.'
+                }
+                $estado = if ($saved.activo) { 'activa' } else { 'desactivada' }
+                Write-Log "Carta guardada y leída de MongoDB · $($saved.nombre) · $estado" 'OK'
+                if ($saved.activo) { Add-PanelEmotionOption $saved.nombre }
+                $editor.DialogResult = 'OK'
+            } catch {
+                $cardStatus.Text = $_.Exception.Message
+                throw
+            }
+        }
+    })
+    try { [void]$editor.ShowDialog($form) }
+    finally {
+        if ($iconPreview.Image) { $iconPreview.Image.Dispose() }
+        $iconSprite.Dispose()
+        $editor.Dispose()
+    }
+})
+
+$saveEmotion.Add_Click({
+    Invoke-PanelOperation 'Guardar emoción en MongoDB' $dataUi.Output {
+        $label = $emotionChoice.Text.Trim()
+        if (-not $label) { throw 'Elige o escribe la emoción del registro de ensayo.' }
+        $knownLabel = $emotionChoice.Items | Where-Object { $_ -eq $label } | Select-Object -First 1
+        if ($knownLabel) { $label = $knownLabel }
+        $core = if ($emotionNames.Contains($label)) { $emotionNames[$label] } else { $label }
+        $entry = @{
+            core = $core; intensity = [int]$intensity.Value
+            note = $emotionNote.Text.Trim(); subs = @(); fine = @()
+        }
+        $started = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
+        $queryBox.Text = Get-PanelDataQuery emociones -Write
+        $id = Save-PanelDataEntry emociones @{ group = @($entry) }
+        $queryBox.Text = Get-PanelDataQuery emociones -Write -RecordId $id
+        Add-PanelEmotionOption $label
+        $emotionNote.Clear()
+        Write-Log 'APIcore confirmó el guardado de la emoción en MongoDB.' 'OK'
+        $readBack = @(Invoke-PanelData GET '/tablero/emociones' | Where-Object { $_.t -ge $started } | ForEach-Object { $_.group } |
+            Where-Object { $_.core -ceq $entry.core -and $_.intensity -eq $entry.intensity -and $_.note -ceq $entry.note })
+        if ($readBack.Count) { Write-Log "Lectura confirmada · $label · intensidad $($entry.intensity)." 'OK' }
+        else { Write-Log 'El guardado respondió. Todavía no se pudo confirmar la lectura.' 'PENDIENTE' }
+    }
+})
+$listEmotions.Add_Click({
+    Invoke-PanelOperation 'Consultar emociones en MongoDB' $dataUi.Output {
+        $queryBox.Text = Get-PanelDataQuery emociones
+        $records = @(Invoke-PanelData GET '/tablero/emociones')
+        if (-not $records.Count) { Write-Log 'Todavía no hay emociones en la cuenta de prueba.'; return }
+        $shown = 0
+        foreach ($record in $records) {
+            $shown++
+            foreach ($entry in $record.group) {
+                $label = ($emotionNames.Keys | Where-Object { $emotionNames[$_] -ceq $entry.core } | Select-Object -First 1)
+                if (-not $label) { $label = [string]$entry.core }
+                Add-PanelEmotionOption $label
+                if ($shown -le 20) {
+                    $when = [DateTimeOffset]::FromUnixTimeMilliseconds($record.t).ToLocalTime().ToString('dd/MM/yyyy HH:mm')
+                    Write-Log "$when · $label · intensidad $($entry.intensity) · $($entry.note)"
+                }
+            }
+        }
+    }
+})
+$saveReminder.Add_Click({
+    Invoke-PanelOperation 'Guardar recordatorio en MariaDB' $dataUi.Output {
+        $name = $reminderName.Text.Trim()
+        if (-not $name) { throw 'Escribe un nombre ficticio para el recordatorio.' }
+        $day = $reminderDate.Value.ToString('yyyy-MM-dd')
+        $entry = @{
+            nombre = $name; hora = $reminderTime.Value.ToString('HH:mm'); tipo = 'actividad'
+            repeticion = 'una'; inicio = $day; fin = $day; diasSemana = @(); completados = @()
+        }
+        $queryBox.Text = Get-PanelDataQuery recordatorios -Write
+        $id = Save-PanelDataEntry recordatorios $entry
+        $queryBox.Text = Get-PanelDataQuery recordatorios -Write -RecordId $id
+        $reminderName.Clear()
+        Write-Log 'APIcore confirmó el guardado del recordatorio en MariaDB.' 'OK'
+        $readBack = Invoke-PanelData GET '/tablero/recordatorios' | Where-Object id -eq $id | Select-Object -First 1
+        if ($readBack) { Write-Log "Lectura confirmada · $($readBack.nombre) · $($readBack.inicio) $($readBack.hora)." 'OK' }
+        else { Write-Log 'El guardado respondió. Todavía no se pudo confirmar la lectura.' 'PENDIENTE' }
+    }
+})
+$listReminders.Add_Click({
+    Invoke-PanelOperation 'Consultar recordatorios en MariaDB' $dataUi.Output {
+        $queryBox.Text = Get-PanelDataQuery recordatorios
+        $records = @(Invoke-PanelData GET '/tablero/recordatorios')
+        if (-not $records.Count) { Write-Log 'Todavía no hay recordatorios en la cuenta de prueba.'; return }
+        foreach ($record in ($records | Sort-Object inicio, hora -Descending | Select-Object -First 20)) {
+            Write-Log "$($record.inicio) $($record.hora) · $($record.nombre)"
+        }
+    }
+})
 
 $startApiButton.Add_Click({
     Invoke-PanelOperation 'Iniciar APIcore · localhost:8000' $localUi.Output {
@@ -1123,6 +1949,7 @@ foreach ($button in $statusButton, $startMotorButton, $outageButton, $rebootButt
     $button.Add_Click({
         param($sender, $eventArgs)
         if ($script:Running) { return }
+        if ($mariaWatchTimer.Enabled) { Show-SelectedRecoveryReport }
         Sync-FormConfig
         $target = (Get-RecoveryTargets)[$targetChoice.SelectedIndex]
         $action = [string]$sender.Tag
@@ -1136,13 +1963,55 @@ foreach ($button in $statusButton, $startMotorButton, $outageButton, $rebootButt
                 'Confirmar interrupción', 'YesNo', 'Warning', 'Button2')
             if ($answer -ne 'Yes') { return }
         }
-        Invoke-PanelOperation "$($sender.Text) · $($target.Name)" $recoveryUi.Output { Invoke-RecoveryAction $action $target }
+        Invoke-PanelOperation "$($sender.Text) · $($target.Name)" $recoveryUi.Output {
+            if ($action -ne 'Ensayar') {
+                Invoke-RecoveryAction $action $target
+                return
+            }
+            $report = [pscustomobject]@{
+                Engine = $target.Engine
+                Target = $target.Name
+                StartedAt = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+                Status = 'EN CURSO'
+                Topology = ''
+                Failure = ''
+                Events = @()
+            }
+            $targetChoice.Enabled = $false
+            try {
+                Invoke-RecoveryAction $action $target -Observe {
+                    param($Event, $Node, $Seconds, $Result)
+                    if ($Result) {
+                        $report.Status = $Result.Status
+                        $report.Topology = $Result.Topology
+                    } else {
+                        $report.Events += [pscustomobject]@{ Name = $Event; Node = $Node; Seconds = $Seconds }
+                    }
+                    Show-RecoveryReport $report -Follow
+                    try { Save-RecoveryReport $report }
+                    catch { Write-Log 'El informe se muestra en pantalla, pero no se pudo guardar.' 'PENDIENTE' }
+                }
+            } catch {
+                if ($report.Events.Count) {
+                    $report.Status = 'PENDIENTE'
+                    $report.Failure = Protect-LogText $_.Exception.Message
+                    Show-RecoveryReport $report -Follow
+                    try { Save-RecoveryReport $report }
+                    catch { Write-Log 'No se pudo guardar el informe de recuperación.' 'PENDIENTE' }
+                }
+                throw
+            } finally { $targetChoice.Enabled = $true }
+        }
     })
 }
 
 $form.Add_FormClosing({
     param($sender, $eventArgs)
     if ($script:RunningOperation) { $eventArgs.Cancel = $true }
+    else {
+        Stop-MariaRecoveryWatch
+        $mariaWatchTimer.Dispose()
+    }
 })
 
 $runSelectedButton.Add_Click({
@@ -1195,6 +2064,10 @@ Write-Log 'Las restauraciones se ejecutan una por una. La prueba de recuperació
 if ($UiSmokeTest) {
     # Usa la revisión local del repositorio para comprobar la vista sin depender de la red.
     $form.Add_Shown({
+        $connectionsButton.PerformClick()
+        if (-not $settings.Visible) { $script:UiSmokeFailed = $true }
+        $connectionsButton.PerformClick()
+        if ($settings.Visible) { $script:UiSmokeFailed = $true }
         Invoke-TestRow 0
         if ($script:Grid.Rows[0].Cells['Estado'].Value -ne 'APROBADO' -or
             $script:CommandBox.Text -notmatch 'validar-repositorio\.ps1') {
@@ -1205,24 +2078,65 @@ if ($UiSmokeTest) {
         if ($localUi.Output.Text -notmatch 'Invoke-RestMethod' -or $localUi.Output.Text -notmatch 'localhost:5500') {
             $script:UiSmokeFailed = $true
         }
+        $navigation.SelectedTab = $dataPage
+        if (-not $saveEmotion.Visible -or -not $saveReminder.Visible -or -not $queryBox.Visible -or -not $manageCatalog.Visible -or
+            $emotionChoice.Items.Count -ne 6 -or $emotionChoice.DropDownStyle -ne 'DropDown' -or $dataUi.Output.Height -lt 65) {
+            $script:UiSmokeFailed = $true
+        }
         $navigation.SelectedTab = $recoveryPage
-        if ($targetChoice.Items.Count -ne 2 -or -not $rebootButton.Visible -or $recoveryUi.Output.Height -lt 100) {
+        if ($targetChoice.Items.Count -ne 2 -or -not $rebootButton.Visible -or $recoveryUi.Output.Height -lt 65 -or
+            $recoveryButtons.Bounds.IntersectsWith($changeRecoveryViewButton.Bounds) -or
+            $recoveryButtons.Bounds.IntersectsWith($timelineLabel.Bounds)) {
+            Write-Output "Controles de recuperación incompletos. Altura de actividad: $($recoveryUi.Output.Height)."
             $script:UiSmokeFailed = $true
         }
         # Comprueba el botón con una respuesta local para que la autoprueba funcione sin SSH.
         function script:Invoke-RecoveryAction {
-            param($Mode, $SelectedTarget)
+            param($Mode, $SelectedTarget, $Observe)
             Write-Log "Control $Mode · $($SelectedTarget.Unit)"
         }
         $targetChoice.SelectedIndex = 1
         $statusButton.PerformClick()
         if ($recoveryUi.Output.Text -notmatch 'Control Estado.*mongod') { $script:UiSmokeFailed = $true }
+        if ($recoveryResult.Text -eq '') { $script:UiSmokeFailed = $true }
+        $saved = Read-RecoveryReport MongoDB
+        if ($saved -and ($timeline.Items.Count -ne $saved.Events.Count -or
+                $recoveryResult.Text -notlike "*$($saved.Status)" -or
+                ($saved.Topology -and $recoveryTopology.Text -notlike "*$($saved.Topology)"))) {
+            Write-Output "El informe guardado no coincide con la vista. Filas visibles: $($timeline.Items.Count)."
+            $script:UiSmokeFailed = $true
+        }
+        $windowsTrialButton.PerformClick()
+        $windowsSaved = Read-RecoveryReport MariaDB -WindowsFijo
+        if ($windowsSaved -and ($timeline.Items.Count -ne $windowsSaved.Events.Count -or
+                $recoveryResult.Text -notlike "*$($windowsSaved.Status)")) {
+            $script:UiSmokeFailed = $true
+        }
+        if ($windowsSaved.Status -eq 'APROBADO') {
+            if ($recoveryWriterCard.Name.Text -ne 'Windows fijo') { $script:UiSmokeFailed = $true }
+            $nextStepButton.PerformClick()
+            if ($recoveryTargetCard.Status.Text -ne 'Motor detenido' -or $recoveryWriterCard.Name.Text -ne 'Sin primario confirmado') {
+                $script:UiSmokeFailed = $true
+            }
+            $nextStepButton.PerformClick()
+            if ($recoveryWriterCard.Name.Text -ne 'HP' -or $recoveryWriterCard.Status.Text -ne 'Nuevo primario') {
+                $script:UiSmokeFailed = $true
+            }
+            $nextStepButton.PerformClick()
+            if ($recoveryWriterCard.Status.Text -ne 'Escritura confirmada') { $script:UiSmokeFailed = $true }
+            $previousStepButton.PerformClick()
+            if ($recoveryWriterCard.Status.Text -ne 'Nuevo primario') { $script:UiSmokeFailed = $true }
+            $changeRecoveryViewButton.PerformClick()
+            if (-not $timeline.Visible -or $recoveryMap.Visible) { $script:UiSmokeFailed = $true }
+            $changeRecoveryViewButton.PerformClick()
+            if ($recoveryWriterCard.Name.Text -ne 'HP' -or -not $recoveryMap.Visible) { $script:UiSmokeFailed = $true }
+        }
         $form.Close()
     })
 }
 [void]$form.ShowDialog()
 if ($UiSmokeTest) {
-    if ($script:UiSmokeFailed) { throw 'La ventana no mostró el comando de la prueba local.' }
-    Write-Output '[OK] Tres secciones abiertas; prueba local, revisión de puertos y registro de comandos comprobados.'
+    if ($script:UiSmokeFailed) { throw 'La interfaz no pasó la autoprueba.' }
+    Write-Output '[OK] Cuatro secciones abiertas; prueba local, formulario de datos y recuperación comprobados.'
 }
 

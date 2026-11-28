@@ -1,4 +1,4 @@
-/* Otorga a APIcore acceso únicamente a su colección. La contraseña viene del entorno. */
+/* Otorga a APIcore escritura en su historial y lectura del catálogo. */
 const password = process.env.APICORE_MONGO_PASSWORD;
 if (!password) throw new Error("Falta la contraseña de la cuenta de APIcore");
 const base = db.getSiblingDB("moodsitto");
@@ -10,6 +10,9 @@ if (base.getUser(user)) throw new Error("La cuenta ya existe. Usa un procedimien
 const privilegios = [{
   resource: {db: "moodsitto", collection: coleccion},
   actions: ["find", "insert", "update"]
+}, {
+  resource: {db: "moodsitto", collection: "catalogo_emociones"},
+  actions: ["find"]
 }];
 if (!base.getRole(role)) base.createRole({role, roles: [], privileges: privilegios});
 else base.updateRole(role, {roles: [], privileges: privilegios});

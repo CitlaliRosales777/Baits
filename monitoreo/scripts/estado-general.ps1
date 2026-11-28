@@ -13,7 +13,10 @@ function Tcp([string]$HostName,[int]$Port) {
     finally { $c.Dispose() }
 }
 $results = foreach($node in $nodes) {
-    $ping=Test-Connection -TargetName $node.Host -Count 1 -Quiet -TimeoutSeconds 2
+    $icmp = [Net.NetworkInformation.Ping]::new()
+    try { $ping = $icmp.Send($node.Host, 2000).Status -eq 'Success' }
+    catch { $ping = $false }
+    finally { $icmp.Dispose() }
     [pscustomobject]@{Nodo=$node.Name;IP=$node.Host;Prueba='Tailscale';Estado=if($ping){'OK'}else{'FALLO'}}
     foreach($port in $node.Ports) {
         [pscustomobject]@{Nodo=$node.Name;IP=$node.Host;Prueba="TCP/$port";Estado=if(Tcp $node.Host $port){'OK'}else{'FALLO'}}
