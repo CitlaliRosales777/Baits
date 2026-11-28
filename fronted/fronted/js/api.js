@@ -57,6 +57,7 @@ async function api(metodo, ruta, datos, signal) {
     const opciones = {
         method: metodo,
         headers: {},
+        cache: "no-store",
         signal
     };
 
