@@ -1,0 +1,21 @@
+{
+  "name": "moodsitto-resilience-lab",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Panel didactico para demostrar CRUD, replica sets y tolerancia a fallos de MongoDB.",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "agent": "node agent/server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "dotenv": "^16.6.1",
+    "express": "^5.1.0",
+    "mongodb": "^6.20.0"
+  }
+}
