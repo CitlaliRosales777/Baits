@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Mi espacio | Moodsitto</title>
     <link rel="icon" type="image/svg+xml" href="img/moodsitto-logo.svg">
     <link rel="stylesheet" href="css/styles.css">
@@ -10,14 +10,14 @@
 <body class="inicio-app">
     <a class="saltar-contenido" href="#contenido">Saltar al contenido</a>
     <!-- encabezado -->
-    <header class="encabezado">
-        <a href="dashboard.html" class="marca" aria-label="Moodsitto, dashboard">
+    <header class="encabezado" id="arriba" tabindex="-1">
+        <a href="dashboard.html" class="marca" aria-label="Moodsitto, mi inicio">
             <img src="img/moodsitto-logo.svg" alt="" width="44" height="44" class="marca-simbolo">
             <span class="marca-nombre">
-                <img src="img/Moodsitto_snFondo.png" alt="" width="6666" height="3750" class="logo">
+                <img src="img/moodsitto-nombre.webp" alt="" width="320" height="74" class="logo">
             </span>
         </a>
-        <nav class="menu-principal" aria-label="Menu principal">
+        <nav class="menu-principal" aria-label="Menú principal">
             <a href="dashboard.html" class="menu-enlace activo" data-icono="inicio" aria-current="page">Mi inicio</a>
             <a href="trackingmazz0o.html" class="menu-enlace" data-icono="emociones">Mis emociones</a>
             <a href="perfil.html" class="menu-enlace destacado" data-icono="perfil">Mi perfil</a>
@@ -49,6 +49,7 @@
                 <section class="calendario" aria-labelledby="titulo-semana">
                     <div class="cabecera-semana">
                         <h2 id="titulo-semana">Mi semana</h2>
+                        <button type="button" class="boton-hoy" id="semana-hoy" hidden>Volver a hoy</button>
                         <div class="controles-semana">
                             <button type="button" id="semana-anterior" data-icono="anterior" aria-label="Semana anterior"></button>
                             <span id="rango-semana" aria-live="polite"></span>
@@ -154,7 +155,16 @@
         </form>
     </dialog>
 
-    <footer>Moodsitto · 2026</footer>
+    <footer class="pie-sitio">
+        <div class="pie-contenido">
+            <a href="index.html" class="pie-marca">
+                <img src="img/moodsitto-logo.svg" alt="" width="26" height="26">
+                <span>Moodsitto</span>
+            </a>
+            <small>© 2026</small>
+            <a href="#arriba" class="pie-arriba">Volver arriba</a>
+        </div>
+    </footer>
     <script src="js/api.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/main.js"></script>

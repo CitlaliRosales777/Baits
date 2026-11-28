@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#f2e9e4">
     <title>Moodsitto | Inicio</title>
     <link rel="icon" type="image/svg+xml" href="img/moodsitto-logo.svg">
@@ -12,16 +12,16 @@
     <a class="saltar-contenido" href="#contenido">Saltar al contenido</a>
 
     <!-- encabezado -->
-    <header class="encabezado">
+    <header class="encabezado" id="arriba" tabindex="-1">
         <a href="index.html" class="marca" aria-label="Moodsitto, inicio">
             <img src="img/moodsitto-logo.svg" alt="" width="44" height="44" class="marca-simbolo">
             <span class="marca-nombre">
-                <img src="img/Moodsitto_snFondo.png" alt="" width="6666" height="3750" class="logo">
+                <img src="img/moodsitto-nombre.webp" alt="" width="320" height="74" class="logo">
             </span>
         </a>
 
         <!-- menu principal -->
-        <nav class="menu-principal" aria-label="Menu principal">
+        <nav class="menu-principal" aria-label="Menú principal">
             <a href="index.html" class="menu-enlace activo" data-icono="inicio" aria-current="page">Inicio</a>
             <a href="login.html" class="menu-enlace" data-icono="entrar">Iniciar sesión</a>
             <a href="registro.html" class="menu-enlace destacado" data-icono="registro">Crear cuenta</a>
@@ -33,9 +33,12 @@
         <div class="bienvenida-contenido">
             <h1>Un momento para ti</h1>
             <p class="descripcion">Registra cómo te sientes y organiza los recordatorios de tu semana.</p>
-            <div class="bienvenida-acciones">
+            <div class="bienvenida-acciones" data-sesion="inactiva">
                 <a href="registro.html" class="boton" data-icono="registro">Crear cuenta</a>
                 <a href="login.html" class="boton boton-secundario" data-icono="entrar">Iniciar sesión</a>
+            </div>
+            <div class="bienvenida-acciones" data-sesion="activa" hidden>
+                <a href="dashboard.html" class="boton" data-icono="inicio">Ir a mi espacio</a>
             </div>
             <dl class="bienvenida-funciones">
                 <div>
@@ -54,8 +57,15 @@
     </main>
 
     <!-- pie de pagina -->
-    <footer>
-        Moodsitto · 2026
+    <footer class="pie-sitio">
+        <div class="pie-contenido">
+            <a href="index.html" class="pie-marca">
+                <img src="img/moodsitto-logo.svg" alt="" width="26" height="26">
+                <span>Moodsitto</span>
+            </a>
+            <small>© 2026</small>
+            <a href="#arriba" class="pie-arriba">Volver arriba</a>
+        </div>
     </footer>
     <!-- conexion con la api -->
     <script src="js/api.js"></script>

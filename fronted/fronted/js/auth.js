@@ -101,30 +101,41 @@ if (formularioRegistro) {
 /* actualiza el menu cuando hay sesion */
 const menu = document.querySelector(".encabezado .menu-principal");
 const usuario = sesion.usuario();
+const conSesion = Boolean(sesion.token() && usuario);
 
-if (menu && sesion.token() && usuario) {
-    menu.querySelectorAll('a[href="login.html"], a[href="registro.html"]')
-        .forEach(enlace => enlace.remove());
+document.querySelectorAll("[data-sesion]").forEach(elemento => {
+    elemento.hidden = (elemento.dataset.sesion === "activa") !== conSesion;
+});
 
-    if (paginaActual === "index.html") {
-        const entrar = document.createElement("a");
-        entrar.href = "dashboard.html";
-        entrar.className = "menu-enlace destacado";
-        entrar.dataset.icono = "inicio";
-        entrar.textContent = "Mi espacio";
-        menu.appendChild(entrar);
-    }
+document.querySelector(".pie-arriba")?.addEventListener("click", evento => {
+    evento.preventDefault();
+    document.getElementById("arriba").focus({ preventScroll: true });
+    window.scrollTo(0, 0);
+});
 
-    /* boton de cerrar sesion */
-    const salir = document.createElement("a");
-    salir.href = "index.html";
-    salir.className = "menu-enlace";
-    salir.dataset.icono = "salir";
-    salir.textContent = "Cerrar sesión";
+if (conSesion && ["login.html", "registro.html"].includes(paginaActual)) {
+    window.location.replace("dashboard.html");
+}
 
-    salir.addEventListener("click", async (evento) => {
-        evento.preventDefault();
+if (conSesion && menu && paginaActual === "index.html") {
+    menu.querySelectorAll('a[href="login.html"], a[href="registro.html"]').forEach(enlace => enlace.remove());
+    const entrar = document.createElement("a");
+    entrar.href = "dashboard.html";
+    entrar.className = "menu-enlace destacado";
+    entrar.dataset.icono = "perfil";
+    entrar.textContent = "Mi espacio";
+    menu.appendChild(entrar);
+}
 
+if (conSesion && menu) {
+    const botonSalir = document.createElement("button");
+    botonSalir.type = "button";
+    botonSalir.className = "menu-enlace";
+    botonSalir.dataset.icono = "salir";
+    botonSalir.textContent = "Cerrar sesión";
+    botonSalir.addEventListener("click", async () => {
+        botonSalir.disabled = true;
+        botonSalir.textContent = "Cerrando sesión…";
         try {
             await cerrarSesion();
         } catch (error) {
@@ -134,30 +145,34 @@ if (menu && sesion.token() && usuario) {
         sessionStorage.removeItem("moodsitto_recordatorios_temporales");
         window.location.assign("index.html");
     });
-
-    menu.appendChild(salir);
+    menu.appendChild(botonSalir);
 }
 
 /* muestra los datos del usuario en perfil */
 function llenarPerfil(datos) {
-    if (!datos) return;
+    if (!datos || !document.getElementById("perfil-nombre")) return;
+
+    const nombres = [datos.Name, datos.PaternalSurname, datos.MaternalSurname].filter(Boolean);
+    const iniciales = document.getElementById("perfil-iniciales");
+    if (nombres.length) {
+        iniciales.removeAttribute("data-icono");
+        iniciales.textContent = nombres.slice(0, 2).map(parte => Array.from(parte.trim())[0]).join("").toUpperCase();
+    }
+    const nacimiento = new Date(String(datos.BirthDate).slice(0, 10) + "T12:00:00");
 
     const campos = {
-        "perfil-nombre": [
-            datos.Name,
-            datos.PaternalSurname,
-            datos.MaternalSurname
-        ].filter(Boolean).join(" "),
+        "perfil-nombre": nombres.join(" ") || "Mi cuenta",
+        "perfil-usuario": datos.Username || "",
         "perfil-correo": datos.Email || "",
         "perfil-telefono": datos.Phone || "",
-        "perfil-nacimiento": datos.BirthDate
-            ? String(datos.BirthDate).slice(0, 10)
+        "perfil-nacimiento": Number.isFinite(nacimiento.getTime())
+            ? nacimiento.toLocaleDateString("es-MX", { dateStyle: "long" })
             : ""
     };
 
     for (const id in campos) {
         const campo = document.getElementById(id);
-        if (campo) campo.value = campos[id];
+        if (campo) campo.textContent = campos[id] || "Sin datos";
     }
 }
 

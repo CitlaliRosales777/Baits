@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Crear cuenta | Moodsitto</title>
     <link rel="icon" type="image/svg+xml" href="img/moodsitto-logo.svg">
     <link rel="stylesheet" href="css/styles.css">
@@ -11,15 +11,15 @@
     <a class="saltar-contenido" href="#contenido">Saltar al contenido</a>
 
     <!-- encabezado -->
-    <header class="encabezado">
+    <header class="encabezado" id="arriba" tabindex="-1">
         <a href="index.html" class="marca" aria-label="Moodsitto, inicio">
             <img src="img/moodsitto-logo.svg" alt="" width="44" height="44" class="marca-simbolo">
             <span class="marca-nombre">
-                <img src="img/Moodsitto_snFondo.png" alt="" width="6666" height="3750" class="logo">
+                <img src="img/moodsitto-nombre.webp" alt="" width="320" height="74" class="logo">
             </span>
         </a>
 
-        <nav class="menu-principal" aria-label="Menu principal">
+        <nav class="menu-principal" aria-label="Menú principal">
             <a href="index.html" class="menu-enlace" data-icono="inicio">Inicio</a>
             <a href="login.html" class="menu-enlace" data-icono="entrar">Iniciar sesión</a>
             <a href="registro.html" class="menu-enlace destacado activo" data-icono="registro" aria-current="page">Crear cuenta</a>
@@ -30,127 +30,114 @@
     <main id="contenido" class="pagina-formulario" tabindex="-1">
         <section class="formulario">
 
-            <!-- bienvenida -->
             <div class="registro-encabezado">
-                <h1>Crea tu cuenta <span aria-hidden="true">♡</span></h1>
+                <h1>Crea tu cuenta</h1>
                 <p class="texto-suave">Comienza tu espacio personal en Moodsitto.</p>
             </div>
-
             <form id="registro-form">
-                <div class="registro-grid">
-
-                    <!-- nombre -->
-                    <div class="registro-campo">
-                        <label for="nombre">Nombre</label>
-                        <input
-                            type="text"
-                            id="nombre"
-                            name="name"
-                            placeholder="Tu nombre"
-                            maxlength="45"
-                            autocomplete="given-name"
-                            required
-                        >
+                <fieldset class="grupo-cuenta">
+                    <legend>Datos de acceso</legend>
+                    <div class="registro-grid">
+                        <div class="registro-campo">
+                            <label for="correo-registro">Correo electrónico</label>
+                            <input
+                                type="email"
+                                id="correo-registro"
+                                name="mail"
+                                placeholder="tu@correo.com"
+                                maxlength="100"
+                                autocomplete="email"
+                                required
+                            >
+                        </div>
+                        <div class="registro-campo">
+                            <label for="contrasena-registro">Contraseña</label>
+                            <input
+                                type="password"
+                                id="contrasena-registro"
+                                name="passw"
+                                placeholder="Crea una contraseña"
+                                autocomplete="new-password"
+                                required
+                            >
+                        </div>
                     </div>
-
-                    <!-- apellido paterno -->
-                    <div class="registro-campo">
-                        <label for="apellido-paterno">Apellido paterno</label>
-                        <input
-                            type="text"
-                            id="apellido-paterno"
-                            name="lastname1"
-                            placeholder="Apellido paterno"
-                            maxlength="25"
-                            autocomplete="family-name"
-                            required
-                        >
+                </fieldset>
+                <fieldset class="grupo-cuenta">
+                    <legend>Datos personales</legend>
+                    <div class="registro-grid">
+                        <div class="registro-campo">
+                            <label for="nombre">Nombre</label>
+                            <input
+                                type="text"
+                                id="nombre"
+                                name="name"
+                                placeholder="Tu nombre"
+                                maxlength="45"
+                                autocomplete="given-name"
+                                required
+                            >
+                        </div>
+                        <div class="registro-campo">
+                            <label for="apellido-paterno">Apellido paterno</label>
+                            <input
+                                type="text"
+                                id="apellido-paterno"
+                                name="lastname1"
+                                placeholder="Apellido paterno"
+                                maxlength="25"
+                                autocomplete="family-name"
+                                required
+                            >
+                        </div>
                     </div>
-
-                    <!-- apellido materno -->
-                    <div class="registro-campo">
-                        <label for="apellido-materno">Apellido materno</label>
-                        <input
-                            type="text"
-                            id="apellido-materno"
-                            name="lastname2"
-                            placeholder="Apellido materno (opcional)"
-                            maxlength="25"
-                        >
+                </fieldset>
+                <details class="datos-opcionales">
+                    <summary>Otros datos personales (opcional)</summary>
+                    <div class="registro-grid">
+                        <div class="registro-campo">
+                            <label for="apellido-materno">Apellido materno</label>
+                            <input
+                                type="text"
+                                id="apellido-materno"
+                                name="lastname2"
+                                placeholder="Apellido materno (opcional)"
+                                maxlength="25"
+                            >
+                        </div>
+                        <div class="registro-campo">
+                            <label for="fecha-nacimiento">Fecha de nacimiento</label>
+                            <input
+                                type="date"
+                                id="fecha-nacimiento"
+                                name="date_b"
+                                autocomplete="bday"
+                            >
+                        </div>
+                        <div class="registro-campo">
+                            <label for="telefono">Teléfono</label>
+                            <input
+                                type="tel"
+                                id="telefono"
+                                name="phone"
+                                placeholder="Tu número de teléfono"
+                                autocomplete="tel"
+                            >
+                        </div>
+                        <div class="registro-campo">
+                            <label for="telefono-emergencia">Teléfono de emergencia</label>
+                            <input
+                                type="tel"
+                                id="telefono-emergencia"
+                                name="emer_phone"
+                                placeholder="Opcional"
+                            >
+                        </div>
                     </div>
+                </details>
+                <button type="submit" class="boton ancho" data-icono="registro">Crear cuenta</button>
 
-                    <!-- fecha de nacimiento -->
-                    <div class="registro-campo">
-                        <label for="fecha-nacimiento">Fecha de nacimiento</label>
-                        <input
-                            type="date"
-                            id="fecha-nacimiento"
-                            name="date_b"
-                            autocomplete="bday"
-                            required
-                        >
-                    </div>
-
-                    <!-- telefono -->
-                    <div class="registro-campo">
-                        <label for="telefono">Teléfono</label>
-                        <input
-                            type="tel"
-                            id="telefono"
-                            name="phone"
-                            placeholder="Tu número de teléfono"
-                            autocomplete="tel"
-                            required
-                        >
-                    </div>
-
-                    <!-- telefono de emergencia -->
-                    <div class="registro-campo">
-                        <label for="telefono-emergencia">Teléfono de emergencia</label>
-                        <input
-                            type="tel"
-                            id="telefono-emergencia"
-                            name="emer_phone"
-                            placeholder="Opcional"
-                        >
-                    </div>
-
-                    <!-- correo -->
-                    <div class="registro-campo">
-                        <label for="correo-registro">Correo electrónico</label>
-                        <input
-                            type="email"
-                            id="correo-registro"
-                            name="mail"
-                            placeholder="tu@correo.com"
-                            maxlength="150"
-                            autocomplete="email"
-                            required
-                        >
-                    </div>
-
-                    <!-- contrasena -->
-                    <div class="registro-campo">
-                        <label for="contrasena-registro">Contraseña</label>
-                        <input
-                            type="password"
-                            id="contrasena-registro"
-                            name="passw"
-                            placeholder="Crea una contraseña"
-                            autocomplete="new-password"
-                            required
-                        >
-                    </div>
-                </div>
-
-                <!-- crear cuenta -->
-                <div class="registro-acciones">
-                    <button type="submit" class="boton ancho" data-icono="registro">
-                        Crear cuenta
-                    </button>
-
-                    <p id="registro-mensaje" class="mensaje" role="status" aria-live="polite"></p>
-                </div>
+                <p id="registro-mensaje" class="mensaje" role="status" aria-live="polite"></p>
             </form>
 
             <!-- acceso existente -->
@@ -162,7 +149,16 @@
     </main>
 
     <!-- pie de pagina -->
-    <footer>Moodsitto · 2026</footer>
+    <footer class="pie-sitio">
+        <div class="pie-contenido">
+            <a href="index.html" class="pie-marca">
+                <img src="img/moodsitto-logo.svg" alt="" width="26" height="26">
+                <span>Moodsitto</span>
+            </a>
+            <small>© 2026</small>
+            <a href="#arriba" class="pie-arriba">Volver arriba</a>
+        </div>
+    </footer>
 
     <!-- conexion con la api -->
     <script src="js/api.js"></script>

@@ -10,6 +10,8 @@ const estadoRecordatorios = document.getElementById("estado-recordatorios");
 const resumenSemana = document.getElementById("resumen-semana");
 const fechaRecordatorios = document.getElementById("fecha-recordatorios");
 const pendienteHoy = document.getElementById("pendiente-hoy");
+const tituloRecordatorios = document.getElementById("titulo-recordatorios");
+const botonHoy = document.getElementById("semana-hoy");
 const formatoDia = new Intl.DateTimeFormat("es-MX", { weekday: "long", day: "numeric", month: "long" });
 let recordatorios = [];
 let recordatoriosCargados = false;
@@ -140,13 +142,9 @@ function crearRecordatorio(r, fecha) {
         <span class="hora-nueva"></span>
         <div class="acciones-recordatorio">
             <button type="button" class="completar"
-                    aria-label="marcar como realizado" aria-pressed="false">
-                <img src="img/icono-completar.png" alt="">
-            </button>
+                    data-icono="confirmar" aria-label="marcar como realizado" aria-pressed="false"></button>
             <button type="button" class="descartar"
-                    aria-label="eliminar recordatorio">
-                <img src="img/icono-eliminar.png" alt="">
-            </button>
+                    data-icono="eliminar" aria-label="eliminar recordatorio"></button>
         </div>
     `;
 
@@ -170,6 +168,9 @@ function mostrarRecordatorios() {
     // borra los elementos mostrados para actualizar la lista
     listaRecordatorios.querySelectorAll(".recordatorio").forEach(r => r.remove());
     const fecha = seleccionado.dataset.fecha;
+    const esHoy = fecha === obtenerFecha(new Date());
+    tituloRecordatorios.textContent = esHoy ? "Mis recordatorios" : "Agenda del día";
+    botonHoy.hidden = esHoy;
     if (fechaRecordatorios) {
         fechaRecordatorios.dateTime = fecha;
         fechaRecordatorios.textContent = formatoDia.format(leerFecha(fecha));
@@ -300,6 +301,13 @@ if (dias.length > 0) {
 
     // los ejemplos se quitaron para mostrar solo los datos registrados
     actualizarSemana();
+    botonHoy.addEventListener("click", () => {
+        const hoy = new Date();
+        lunesActual = obtenerLunes(hoy);
+        fechaSeleccionada = obtenerFecha(hoy);
+        actualizarSemana();
+        document.querySelector(".dia.seleccionado")?.focus();
+    });
 
     document.getElementById("semana-anterior")?.addEventListener("click", () => {
         lunesActual.setDate(lunesActual.getDate() - 7);

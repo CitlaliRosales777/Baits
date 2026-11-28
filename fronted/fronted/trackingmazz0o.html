@@ -2,22 +2,22 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tracking Mazzo | Moodsitto</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Mis emociones | Moodsitto</title>
     <link rel="icon" type="image/svg+xml" href="img/moodsitto-logo.svg">
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body class="pagina-tracking">
     <a class="saltar-contenido" href="#contenido">Saltar al contenido</a>
     <!-- encabezado -->
-    <header class="encabezado">
-        <a href="dashboard.html" class="marca" aria-label="Moodsitto, dashboard">
+    <header class="encabezado" id="arriba" tabindex="-1">
+        <a href="dashboard.html" class="marca" aria-label="Moodsitto, mi inicio">
             <img src="img/moodsitto-logo.svg" alt="" width="44" height="44" class="marca-simbolo">
             <span class="marca-nombre">
-                <img src="img/Moodsitto_snFondo.png" alt="" width="6666" height="3750" class="logo">
+                <img src="img/moodsitto-nombre.webp" alt="" width="320" height="74" class="logo">
             </span>
         </a>
-        <nav class="menu-principal" aria-label="Menu principal">
+        <nav class="menu-principal" aria-label="Menú principal">
             <a href="dashboard.html" class="menu-enlace" data-icono="inicio">Mi inicio</a>
             <a href="trackingmazz0o.html" class="menu-enlace activo" data-icono="emociones" aria-current="page">Mis emociones</a>
             <a href="perfil.html" class="menu-enlace destacado" data-icono="perfil">Mi perfil</a>
@@ -34,56 +34,78 @@
     </section>
 
     <main id="contenido" class="contenido-tracking" tabindex="-1">
-        <!-- cartas principales -->
-        <section id="rueda">
-            <p class="intro-tracking" id="estado-cartas" role="status" tabindex="-1">Cargando las cartas…</p>
-            <div id="agregadas" aria-live="polite"></div>
-            <div id="mazo"></div>
-        </section>
+        <header class="cabecera-diario">
+            <nav class="vistas-diario" aria-label="Vistas de Mis emociones">
+                <a id="vista-registrar" href="#registrar" aria-current="location">Registrar</a>
+                <a id="vista-historial" href="#historial">Historial</a>
+            </nav>
+        </header>
 
-        <!-- detalle de la emocion -->
-        <section id="detalle">
-            <div class="detalle-carta">
-                <div id="carta-grande" class="carta grande"></div>
+        <section id="registrar" aria-label="Registrar emociones">
+            <div id="rueda">
+                <p class="intro-tracking" id="estado-cartas" role="status" tabindex="-1">Cargando las cartas…</p>
+                <section id="borrador-emociones" class="borrador-emociones" aria-labelledby="titulo-borrador" hidden>
+                    <h2 id="titulo-borrador">Emociones en este registro</h2>
+                    <ul id="agregadas"></ul>
+                    <button type="button" class="boton" id="guardar-borrador" data-icono="confirmar">Guardar registro</button>
+                </section>
+                <div id="mazo"></div>
             </div>
-            <div class="derecha">
-                <button type="button" class="volver" id="btn-volver" data-icono="anterior">Volver a las cartas</button>
-                <h2 id="pregunta">¿Cómo te sientes?</h2>
-                <p class="pista">Elige uno o varios matices que describan lo que sientes.</p>
-                <div id="secundarias"></div>
-                <div id="terciarias" hidden></div>
 
-                <div class="campo">
-                    <label for="nota">¿Qué lo provocó? (opcional)</label>
-                    <textarea id="nota" maxlength="1000" placeholder="Si quieres, cuéntalo aquí…"></textarea>
+            <section id="detalle" aria-labelledby="pregunta">
+                <div class="detalle-carta">
+                    <button type="button" class="volver" id="btn-volver" data-icono="anterior">Volver a las cartas</button>
+                    <div id="carta-grande" class="carta grande"></div>
                 </div>
-                <div class="campo">
-                    <label for="intensidad">Intensidad</label>
-                    <div class="escala">
-                        <input type="range" id="intensidad" min="1" max="10" value="5">
-                        <output id="valor" for="intensidad">5</output>
+                <div class="derecha">
+                    <h2 id="pregunta">Tu registro</h2>
+                    <div class="campo">
+                        <label for="intensidad">Intensidad</label>
+                        <div class="escala">
+                            <input type="range" id="intensidad" min="1" max="10" value="5">
+                            <output id="valor" for="intensidad">5</output>
+                        </div>
+                        <div class="extremos">
+                            <span>Leve</span>
+                            <span>Muy intensa</span>
+                        </div>
                     </div>
-                    <div class="extremos">
-                        <span>Muy poco</span>
-                        <span>Muy fuerte</span>
+
+                    <details id="detalles-emocion" class="detalles-emocion">
+                        <summary>Añadir matices o nota</summary>
+                        <p class="pista" id="pista-matices">Puedes elegir uno o varios matices.</p>
+                        <div id="secundarias"></div>
+                        <div id="terciarias" hidden></div>
+                        <div class="campo">
+                            <label for="nota">¿Qué lo provocó? (opcional)</label>
+                            <textarea id="nota" maxlength="1000" placeholder="Si quieres, cuéntalo aquí…"></textarea>
+                        </div>
+                    </details>
+                    <div class="acciones">
+                        <button type="button" class="boton" id="btn-guardar" data-icono="confirmar">Guardar registro</button>
+                        <button type="button" class="boton boton-secundario" id="btn-otra" data-icono="agregar">Agregar otra emoción</button>
                     </div>
                 </div>
-                <div class="acciones">
-                    <button type="button" class="mazo-btn principal" id="btn-guardar" data-icono="confirmar" disabled>Guardar registro</button>
-                    <button type="button" class="mazo-btn" id="btn-otra" data-icono="agregar" disabled>Agregar otra emoción</button>
-                </div>
-            </div>
+            </section>
         </section>
 
-        <!-- historial -->
-        <section id="historial">
-            <h2>Mis registros</h2>
-            <div id="entradas">
-                <p class="vacio">Aún no tienes registros.</p>
-            </div>
+        <section id="historial" aria-labelledby="titulo-historial" hidden>
+            <h2 id="titulo-historial">Mis registros</h2>
+            <p id="estado-historial" role="status">Cargando registros…</p>
+            <div id="entradas"></div>
         </section>
-        <a href="dashboard.html" class="volver-inicio">Volver al inicio</a>
     </main>
+
+    <footer class="pie-sitio">
+        <div class="pie-contenido">
+            <a href="index.html" class="pie-marca">
+                <img src="img/moodsitto-logo.svg" alt="" width="26" height="26">
+                <span>Moodsitto</span>
+            </a>
+            <small>© 2026</small>
+            <a href="#arriba" class="pie-arriba">Volver arriba</a>
+        </div>
+    </footer>
 
     <div class="aviso-mazo" id="quemao" role="status" aria-live="polite"></div>
 
@@ -105,10 +127,11 @@
         let secundariasElegidas = [];
         let terciariasElegidas = [];
         let grupoActual = [];
-        let historial = [];
+        let historial;
         const rutaEmociones = "/tablero/emociones";
         let guardandoEmocion = false;
         let intentoEmocion = null;
+        let temporizadorAviso;
 
         // Consulta el historial del usuario en MongoDB a través de APIcore.
         async function cargarHistorial() {
@@ -117,13 +140,26 @@
                 historial = (await api("GET", rutaEmociones)).data;
                 mostrarHistorial();
             } catch (error) {
-                $("entradas").textContent = error.message;
+                $("estado-historial").textContent = error.message;
             }
         }
 
         // busca un elemento por su id
         function $(id) {
             return document.getElementById(id);
+        }
+
+        function mostrarVista() {
+            const verHistorial = location.hash === "#historial";
+            $("historial").hidden = !verHistorial;
+            $("registrar").hidden = verHistorial;
+            $("vista-historial").setAttribute("aria-current", verHistorial ? "location" : "false");
+            $("vista-registrar").setAttribute("aria-current", verHistorial ? "false" : "location");
+        }
+
+        function abrirVista(hash) {
+            if (location.hash !== hash) history.pushState(null, "", hash);
+            mostrarVista();
         }
 
         async function cargarCatalogo() {
@@ -262,10 +298,9 @@
             grande.style.setProperty("--c", datos.color);
             completarCarta(grande, datos.nombre, datos);
 
-            $("pregunta").textContent = datos.secundarias.size
-                ? "Matices de " + datos.nombre.toLowerCase()
-                : "¿Cómo lo sentiste?";
-            $("pregunta").nextElementSibling.hidden = !datos.secundarias.size;
+            $("quemao").classList.remove("visible");
+            $("pista-matices").hidden = !datos.secundarias.size;
+            $("detalles-emocion").open = false;
             $("nota").value = "";
             $("intensidad").value = 5;
             $("valor").textContent = "5";
@@ -344,41 +379,55 @@
             }
         }
 
-        // activa los botones cuando hay una seleccion
+        // Las cartas pueden guardarse con intensidad y sin matices.
         function actualizarBotones() {
-            const puedeAgregar = !emocionActual.secundarias.size || secundariasElegidas.length > 0;
-            $("btn-guardar").disabled = !(puedeAgregar || grupoActual.length);
-            $("btn-otra").disabled = !puedeAgregar;
+            $("btn-guardar").disabled = guardandoEmocion;
+            $("btn-otra").disabled = guardandoEmocion || grupoActual.length >= 19;
+            $("btn-volver").disabled = guardandoEmocion;
+            $("guardar-borrador").disabled = guardandoEmocion;
         }
 
-        // agrega la emocion al registro actual
-        function guardarEnGrupo() {
-            if (emocionActual.secundarias.size && !secundariasElegidas.length) return;
-
-            grupoActual.push({
+        function leerEmocionActual() {
+            return {
                 core: emocionActual.nombre,
                 subs: secundariasElegidas.slice(),
                 fine: terciariasElegidas.slice(),
                 note: $("nota").value.trim(),
                 intensity: Number($("intensidad").value)
+            };
+        }
+
+        function mostrarBorrador() {
+            const lista = $("agregadas");
+            lista.replaceChildren();
+            $("borrador-emociones").hidden = grupoActual.length === 0;
+            grupoActual.forEach((g, indice) => {
+                const elemento = document.createElement("li");
+                const chip = document.createElement("span");
+                chip.className = "etiqueta-emocion";
+                chip.style.setProperty("--c", colorDeRegistro(g.core));
+                chip.textContent = `${nombreVisible(g.core)} · ${g.intensity}/10`;
+                const quitar = document.createElement("button");
+                quitar.type = "button";
+                quitar.dataset.icono = "eliminar";
+                quitar.setAttribute("aria-label", "Quitar " + nombreVisible(g.core) + " del registro");
+                quitar.addEventListener("click", () => {
+                    if (guardandoEmocion) return;
+                    grupoActual.splice(indice, 1);
+                    mostrarBorrador();
+                    if (grupoActual.length) $("guardar-borrador").focus();
+                    else enfocarCarta(ultimaCarta);
+                });
+                elemento.append(chip, quitar);
+                lista.append(elemento);
             });
         }
 
-        // regresa al mazo principal
         function volverAlMazo() {
             $("detalle").classList.remove("visible");
             $("rueda").hidden = false;
             enfocarCarta(ultimaCarta);
-            $("agregadas").innerHTML = "";
-
-            grupoActual.forEach(g => {
-                const chip = document.createElement("span");
-                chip.className = "etiqueta-emocion";
-                chip.style.setProperty("--c", colorDeRegistro(g.core));
-                chip.textContent =
-                    nombreVisible(g.core) + ": " + g.subs.join(", ") + " · " + g.intensity + "/10";
-                $("agregadas").appendChild(chip);
-            });
+            mostrarBorrador();
         }
 
         $("intensidad").addEventListener("input", evento => {
@@ -386,46 +435,49 @@
         });
 
         $("btn-otra").addEventListener("click", () => {
-            guardarEnGrupo();
+            if (guardandoEmocion) return;
+            grupoActual.push(leerEmocionActual());
             volverAlMazo();
         });
 
         $("btn-volver").addEventListener("click", volverAlMazo);
 
-        // Conserva el grupo si la base rechaza el envío.
-        $("btn-guardar").addEventListener("click", async () => {
-            if (guardandoEmocion || !sesion.token()) return;
-            const grupoAnterior = grupoActual.slice();
-            guardarEnGrupo();
-            if (!grupoActual.length) return;
-
-            const grupo = grupoActual.slice();
+        // Conserva el borrador y el identificador si el envío falla.
+        async function guardarRegistro(grupo, boton) {
+            if (guardandoEmocion || !sesion.token() || !grupo.length) return;
             const huella = JSON.stringify(grupo);
             if (intentoEmocion?.huella !== huella) {
                 intentoEmocion = {huella, id: crypto.randomUUID()};
             }
 
             guardandoEmocion = true;
-            $("btn-guardar").disabled = true;
+            actualizarBotones();
+            boton.textContent = "Guardando…";
             try {
-                await api("PUT", rutaEmociones + "/" + intentoEmocion.id, {group: grupo});
+                await api("PUT", rutaEmociones + "/" + intentoEmocion.id, {group: grupo}, AbortSignal.timeout(7000));
                 intentoEmocion = null;
                 grupoActual = [];
                 volverAlMazo();
+                abrirVista("#historial");
+                $("vista-historial").focus();
                 mostrarAviso("Registro guardado");
                 await cargarHistorial();
             } catch (error) {
-                // se conserva la seleccion si no se puede guardar
-                grupoActual = grupoAnterior;
                 mostrarAviso(error.message);
             } finally {
                 guardandoEmocion = false;
-                $("btn-guardar").disabled = false;
+                actualizarBotones();
+                boton.textContent = "Guardar registro";
             }
-        });
+        }
+
+        $("btn-guardar").addEventListener("click", evento =>
+            guardarRegistro([...grupoActual, leerEmocionActual()], evento.currentTarget));
+        $("guardar-borrador").addEventListener("click", evento => guardarRegistro(grupoActual.slice(), evento.currentTarget));
 
         // muestra el historial de emociones
         function mostrarHistorial() {
+            if (!Array.isArray(historial)) return;
             const contenedor = $("entradas");
             contenedor.innerHTML = "";
 
@@ -439,22 +491,28 @@
             );
 
             if (!validos.length) {
-                const vacio = document.createElement("p");
-                vacio.className = "vacio";
-                vacio.textContent = "Aún no tienes registros.";
-                contenedor.appendChild(vacio);
+                $("estado-historial").textContent = "Aquí aparecerán tus registros de emociones.";
                 return;
             }
 
+            $("estado-historial").textContent = "";
+            let ultimoDia;
             validos.forEach(entrada => {
+                const instante = new Date(entrada.t);
+                const dia = instante.toLocaleDateString("es-MX", { dateStyle: "full" });
+                if (dia !== ultimoDia) {
+                    const grupoDia = document.createElement("h3");
+                    grupoDia.className = "fecha-historial";
+                    grupoDia.textContent = dia;
+                    contenedor.append(grupoDia);
+                    ultimoDia = dia;
+                }
                 const articulo = document.createElement("article");
                 articulo.className = "entrada";
 
-                const fecha = document.createElement("small");
-                fecha.textContent = new Date(entrada.t).toLocaleString("es-MX", {
-                    dateStyle: "medium",
-                    timeStyle: "short"
-                });
+                const fecha = document.createElement("time");
+                fecha.textContent = instante.toLocaleTimeString("es-MX", { timeStyle: "short" });
+                if (Number.isFinite(instante.getTime())) fecha.dateTime = instante.toISOString();
                 articulo.appendChild(fecha);
 
                 entrada.group.forEach(g => {
@@ -484,11 +542,18 @@
         // mensaje de confirmacion
         function mostrarAviso(mensaje) {
             const aviso = $("quemao");
+            clearTimeout(temporizadorAviso);
             aviso.textContent = mensaje;
             aviso.classList.add("visible");
-            setTimeout(() => aviso.classList.remove("visible"), 2200);
+            temporizadorAviso = setTimeout(() => aviso.classList.remove("visible"), 2200);
         }
 
+        document.querySelectorAll(".vistas-diario a").forEach(enlace => enlace.addEventListener("click", evento => {
+            evento.preventDefault();
+            abrirVista(enlace.hash);
+        }));
+        window.addEventListener("hashchange", mostrarVista);
+        mostrarVista();
         cargarCatalogo();
         cargarHistorial();
         window.addEventListener("focus", cargarCatalogo);

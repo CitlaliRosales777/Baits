@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Mi perfil | Moodsitto</title>
     <link rel="icon" type="image/svg+xml" href="img/moodsitto-logo.svg">
     <link rel="stylesheet" href="css/styles.css">
@@ -11,14 +11,14 @@
     <a class="saltar-contenido" href="#contenido">Saltar al contenido</a>
 
     <!-- encabezado -->
-    <header class="encabezado">
-        <a href="dashboard.html" class="marca" aria-label="Moodsitto, dashboard">
+    <header class="encabezado" id="arriba" tabindex="-1">
+        <a href="dashboard.html" class="marca" aria-label="Moodsitto, mi inicio">
             <img src="img/moodsitto-logo.svg" alt="" width="44" height="44" class="marca-simbolo">
             <span class="marca-nombre">
-                <img src="img/Moodsitto_snFondo.png" alt="" width="6666" height="3750" class="logo">
+                <img src="img/moodsitto-nombre.webp" alt="" width="320" height="74" class="logo">
             </span>
         </a>
-        <nav class="menu-principal" aria-label="Menu principal">
+        <nav class="menu-principal" aria-label="Menú principal">
             <a href="dashboard.html" class="menu-enlace" data-icono="inicio">Mi inicio</a>
             <a href="trackingmazz0o.html" class="menu-enlace" data-icono="emociones">Mis emociones</a>
             <a href="perfil.html" class="menu-enlace destacado activo" data-icono="perfil" aria-current="page">Mi perfil</a>
@@ -27,68 +27,34 @@
 
     <!-- contenido del perfil -->
     <main id="contenido" tabindex="-1">
-        <section class="franja-perfil">
-            <h1>Mi perfil</h1>
-        </section>
-
-        <section class="contenido-perfil">
-            <div class="foto-perfil" aria-hidden="true"></div>
-
-            <h2>Información personal</h2>
-
-            <div class="datos-perfil">
-                <div class="campo-perfil">
-                    <label for="perfil-nombre">Nombre</label>
-                    <input
-                        type="text"
-                        id="perfil-nombre"
-                        placeholder="Sin datos por ahora"
-                        readonly
-                    >
-                </div>
-
-                <div class="campo-perfil">
-                    <label for="perfil-correo">Correo electrónico</label>
-                    <input
-                        type="email"
-                        id="perfil-correo"
-                        placeholder="Sin datos por ahora"
-                        readonly
-                    >
-                </div>
-
-                <div class="campo-perfil">
-                    <label for="perfil-telefono">Teléfono</label>
-                    <input
-                        type="tel"
-                        id="perfil-telefono"
-                        placeholder="Sin datos por ahora"
-                        readonly
-                    >
-                </div>
-
-                <div class="campo-perfil">
-                    <label for="perfil-nacimiento">Fecha de nacimiento</label>
-                    <input
-                        type="text"
-                        id="perfil-nacimiento"
-                        placeholder="Sin datos por ahora"
-                        readonly
-                    >
-                </div>
+        <section class="franja-perfil"><h1>Mi perfil</h1></section>
+        <section class="contenido-perfil" aria-labelledby="perfil-nombre">
+            <div class="identidad-perfil">
+                <span id="perfil-iniciales" class="foto-perfil perfil-iniciales" data-icono="perfil" aria-hidden="true"></span>
+                <h2 id="perfil-nombre">Mi cuenta</h2>
             </div>
-
-            <!-- mensaje de conexion -->
-            <p id="mensaje-conexion" class="mensaje" role="status" aria-live="polite"></p>
-
-            <a href="dashboard.html" class="boton boton-secundario">
-                Volver al inicio
-            </a>
+            <dl class="datos-perfil">
+                <div><dt>Nombre de usuario</dt><dd id="perfil-usuario">Sin datos</dd></div>
+                <div><dt>Correo electrónico</dt><dd id="perfil-correo">Sin datos</dd></div>
+                <div><dt>Teléfono</dt><dd id="perfil-telefono">Sin datos</dd></div>
+                <div><dt>Fecha de nacimiento</dt><dd id="perfil-nacimiento">Sin datos</dd></div>
+            </dl>
+            <p id="mensaje-conexion" class="mensaje" role="status"></p>
+            <a href="dashboard.html" class="boton boton-secundario">Volver al inicio</a>
         </section>
     </main>
 
     <!-- pie de pagina -->
-    <footer>Moodsitto · 2026</footer>
+    <footer class="pie-sitio">
+        <div class="pie-contenido">
+            <a href="index.html" class="pie-marca">
+                <img src="img/moodsitto-logo.svg" alt="" width="26" height="26">
+                <span>Moodsitto</span>
+            </a>
+            <small>© 2026</small>
+            <a href="#arriba" class="pie-arriba">Volver arriba</a>
+        </div>
+    </footer>
 
     <!-- conexion con la api -->
     <script src="js/api.js"></script>
