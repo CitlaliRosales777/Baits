@@ -379,6 +379,8 @@ function Get-LocalStartConfiguration {
         $root = Join-Path $RepoPath 'fronted\fronted'
         $entry = Join-Path $root 'login.html'
         $arguments = @('-S','localhost:5500','-t',$root)
+        $router = Join-Path $RepoPath 'fronted\router-local.php'
+        if (Test-Path -LiteralPath $router -PathType Leaf) { $arguments += $router }
         $file = $Php
         $port = 5500
     }
