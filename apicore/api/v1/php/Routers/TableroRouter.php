@@ -12,6 +12,8 @@ final class TableroRouter
     public static function register(Router $router): void
     {
         // Estas rutas pasan por la autenticación de APIcore antes de leer o guardar datos.
+        $router->addRoute('GET', '/tablero/catalogo-emociones', TableroController::class,
+            static fn (TableroController $c): Response => new Response(200, ['data' => $c->catalogoEmociones()]));
         $router->addRoute('GET', '/tablero/recordatorios', TableroController::class,
             static fn (TableroController $c): Response => new Response(200, ['data' => $c->recordatorios()]));
         $router->addRoute('PUT', '/tablero/recordatorios/{id}', TableroController::class,

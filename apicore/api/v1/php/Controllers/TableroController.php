@@ -48,6 +48,12 @@ final class TableroController extends BaseController
         return DatosTablero::emociones($this->usuario());
     }
 
+    public function catalogoEmociones(): array
+    {
+        $this->usuario();
+        return DatosTablero::catalogoEmociones();
+    }
+
     public function guardarEmocion(string $id, array $datos): void
     {
         DatosTablero::guardarEmocion($this->usuario(), $this->clave($id), $datos);

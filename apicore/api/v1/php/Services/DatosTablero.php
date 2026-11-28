@@ -17,6 +17,7 @@ use PDOException;
 final class DatosTablero
 {
     private const HISTORIAL = 'moodsitto.historial_emociones_apicore';
+    private const CATALOGO = 'moodsitto.catalogo_emociones';
 
     public static function recordatorios(int $usuario): array
     {
@@ -66,6 +67,24 @@ final class DatosTablero
         }
         // La URI privada solo se lee desde el entorno de PHP.
         return new Manager($uri, ['serverSelectionTimeoutMS' => 4000, 'connectTimeoutMS' => 3000]);
+    }
+
+    public static function catalogoEmociones(): array
+    {
+        try {
+            $cursor = self::mongo()->executeQuery(self::CATALOGO, new Query(
+                ['nivel' => 'central', 'activo' => true],
+                [
+                    'projection' => ['_id' => 0, 'codigo' => 1, 'nombre' => 1, 'descripcion' => 1,
+                        'color' => 1, 'icono' => 1, 'clave_registro' => 1, 'matices' => 1],
+                    'sort' => ['orden' => 1, 'nombre' => 1, 'codigo' => 1],
+                ]
+            ));
+            $cursor->setTypeMap(['root' => 'array', 'document' => 'array', 'array' => 'array']);
+            return $cursor->toArray();
+        } catch (MongoError) {
+            throw new ServiceUnavailableError('No se pudo leer el catálogo de emociones de MongoDB');
+        }
     }
 
     public static function emociones(int $usuario): array
