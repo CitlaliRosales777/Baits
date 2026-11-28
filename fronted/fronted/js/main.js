@@ -7,25 +7,47 @@ const mensajeVacio = document.querySelector(".sin-recordatorios");
 
 const rutaRecordatorios = "/tablero/recordatorios";
 const estadoRecordatorios = document.getElementById("estado-recordatorios");
+const resumenSemana = document.getElementById("resumen-semana");
+const fechaRecordatorios = document.getElementById("fecha-recordatorios");
+const pendienteHoy = document.getElementById("pendiente-hoy");
+const formatoDia = new Intl.DateTimeFormat("es-MX", { weekday: "long", day: "numeric", month: "long" });
 let recordatorios = [];
+let recordatoriosCargados = false;
+let cargaRecordatorios;
 let guardandoRecordatorio = false;
 
-// Carga la lista privada desde APIcore antes de aceptar cambios.
-const cargaRecordatorios = (async () => {
-    if (!listaRecordatorios || !sesion.token()) return false;
-    estadoRecordatorios.textContent = "Cargando recordatorios…";
-    try {
-        const respuesta = await api("GET", rutaRecordatorios);
-        recordatorios = respuesta.data;
-        mostrarRecordatorios();
-        actualizarCitas();
-        estadoRecordatorios.textContent = "";
-        return true;
-    } catch (error) {
-        estadoRecordatorios.textContent = error.message;
-        return false;
-    }
-})();
+function esInterrupcionDeRecordatorios(error) {
+    return error.status === 0 || (error.status >= 500 && error.status < 600);
+}
+
+// Una sola consulta a la vez. Los fallos transitorios se recuperan sin tocar el formulario.
+function cargarRecordatorios(reconectando = false) {
+    if (!listaRecordatorios || !sesion.token() || cargaRecordatorios) return;
+    estadoRecordatorios.textContent = reconectando ? "Reconectando con APIcore…" : "Cargando recordatorios…";
+    cargaRecordatorios = (async () => {
+        for (let espera = 1000; sesion.token(); espera = Math.min(espera * 2, 4000)) {
+            try {
+                const respuesta = await api("GET", rutaRecordatorios, undefined, AbortSignal.timeout(7000));
+                if (!Array.isArray(respuesta?.data)) throw new Error("No se pudo leer la lista de recordatorios.");
+                recordatorios = respuesta.data;
+                recordatoriosCargados = true;
+                mostrarRecordatorios();
+                actualizarCitas();
+                estadoRecordatorios.textContent = "";
+                return;
+            } catch (error) {
+                if (!esInterrupcionDeRecordatorios(error)) {
+                    estadoRecordatorios.textContent = error.message;
+                    return;
+                }
+                if (estadoRecordatorios.textContent !== "Reconectando con APIcore…") {
+                    estadoRecordatorios.textContent = "Reconectando con APIcore…";
+                }
+                await new Promise(resolve => setTimeout(resolve, espera));
+            }
+        }
+    })().finally(() => { cargaRecordatorios = undefined; });
+}
 
 // formato de fecha
 function obtenerFecha(fecha) {
@@ -56,15 +78,24 @@ function mostrarHora(hora) {
 // Pide confirmación a APIcore antes de mostrar el cambio como guardado.
 async function guardarCambio(metodo, registro, aplicar) {
     if (guardandoRecordatorio) return false;
+    if (!recordatoriosCargados) {
+        cargarRecordatorios();
+        return false;
+    }
     guardandoRecordatorio = true;
     try {
-        if (!(await cargaRecordatorios)) throw new Error("Recarga la lista antes de modificarla.");
-        await api(metodo, rutaRecordatorios + "/" + registro.id, metodo === "PUT" ? registro : undefined);
+        await api(metodo, rutaRecordatorios + "/" + registro.id, metodo === "PUT" ? registro : undefined, AbortSignal.timeout(7000));
         aplicar();
         estadoRecordatorios.textContent = "";
         return true;
     } catch (error) {
-        estadoRecordatorios.textContent = error.message;
+        if (esInterrupcionDeRecordatorios(error)) {
+            recordatoriosCargados = false;
+            mostrarRecordatorios();
+            cargarRecordatorios(true);
+        } else {
+            estadoRecordatorios.textContent = error.message;
+        }
         return false;
     } finally {
         guardandoRecordatorio = false;
@@ -139,16 +170,64 @@ function mostrarRecordatorios() {
     // borra los elementos mostrados para actualizar la lista
     listaRecordatorios.querySelectorAll(".recordatorio").forEach(r => r.remove());
     const fecha = seleccionado.dataset.fecha;
-    const delDia = recordatorios
-        .filter(r => correspondeAlDia(r, fecha))
-        .sort((a, b) => a.hora.localeCompare(b.hora));
+    if (fechaRecordatorios) {
+        fechaRecordatorios.dateTime = fecha;
+        fechaRecordatorios.textContent = formatoDia.format(leerFecha(fecha));
+    }
+    const delDia = recordatoriosCargados ? recordatoriosDelDia(fecha) : [];
 
     // mostrar en la lista
     delDia.forEach(r => listaRecordatorios.insertBefore(
         crearRecordatorio(r, fecha), mensajeVacio
     ));
 
-    if (mensajeVacio) mensajeVacio.hidden = delDia.length > 0;
+    if (mensajeVacio) mensajeVacio.hidden = !recordatoriosCargados || delDia.length > 0;
+    actualizarResumenSemana();
+    mostrarPendienteDeHoy();
+}
+
+function recordatoriosDelDia(fecha) {
+    return recordatorios.filter(r => correspondeAlDia(r, fecha))
+        .sort((a, b) => a.hora.localeCompare(b.hora));
+}
+
+function mostrarPendienteDeHoy() {
+    if (!pendienteHoy) return;
+    pendienteHoy.hidden = !recordatoriosCargados;
+    if (!recordatoriosCargados) return;
+
+    const fecha = obtenerFecha(new Date());
+    const pendientes = recordatoriosDelDia(fecha).filter(r => !r.completados?.includes(fecha));
+    const primero = pendientes[0];
+    document.getElementById("titulo-pendiente-hoy").textContent = primero
+        ? `Hoy · ${pendientes.length} ${pendientes.length === 1 ? "pendiente" : "pendientes"}`
+        : "Hoy · sin pendientes";
+    document.getElementById("detalle-pendiente-hoy").textContent = primero
+        ? `${mostrarHora(primero.hora)} · ${primero.nombre}`
+        : "";
+}
+
+function actualizarResumenSemana() {
+    if (!resumenSemana) return;
+    resumenSemana.hidden = !recordatoriosCargados;
+    if (!recordatoriosCargados) return;
+    let pendientes = 0;
+    let completados = 0;
+    dias.forEach(dia => {
+        const fecha = dia.dataset.fecha;
+        recordatorios.forEach(registro => {
+            if (!correspondeAlDia(registro, fecha)) return;
+            if (registro.completados?.includes(fecha)) completados++;
+            else pendientes++;
+        });
+    });
+    document.getElementById("semana-pendientes").textContent = pendientes;
+    document.getElementById("semana-completados").textContent = completados;
+    const avance = document.getElementById("avance-semana");
+    const total = pendientes + completados;
+    avance.hidden = total === 0;
+    avance.max = total || 1;
+    avance.value = completados;
 }
 
 // actualizar iconos de citas
@@ -182,6 +261,7 @@ function actualizarSemana() {
         fecha.setDate(lunesActual.getDate() + i);
         dia.querySelector("strong").textContent = fecha.getDate();
         dia.dataset.fecha = obtenerFecha(fecha);
+        dia.setAttribute("aria-label", formatoDia.format(fecha));
 
         // seleccionar el dia actual
         const activo = dia.dataset.fecha === fechaSeleccionada;
@@ -216,12 +296,6 @@ if (dias.length > 0) {
             actualizarSemana();
         }
         dia.addEventListener("click", seleccionarDia);
-        dia.addEventListener("keydown", (evento) => {
-            if (evento.key === "Enter" || evento.key === " ") {
-                evento.preventDefault();
-                seleccionarDia();
-            }
-        });
     });
 
     // los ejemplos se quitaron para mostrar solo los datos registrados
@@ -308,6 +382,11 @@ function actualizarOpciones() {
 
 // agregar recordatorios
 if (formRecordatorio && listaRecordatorios) {
+    const modal = document.getElementById("panel-recordatorio");
+    const botonNuevo = document.getElementById("nuevo-recordatorio");
+    const botonCancelar = document.getElementById("cancelar-recordatorio");
+    const botonGuardar = document.getElementById("guardar-recordatorio");
+    const mensaje = document.getElementById("mensaje-recordatorio");
     const tipoRecordatorio = document.getElementById("tipo-recordatorio");
     const repeticionRecordatorio = document.getElementById("repeticion-recordatorio");
     const fechaInicio = document.getElementById("fecha-inicio");
@@ -316,8 +395,21 @@ if (formRecordatorio && listaRecordatorios) {
     fechaInicio?.addEventListener("change", actualizarOpciones);
     actualizarOpciones();
 
+    botonNuevo.addEventListener("click", () => modal.showModal());
+    botonCancelar.addEventListener("click", () => modal.close());
+    modal.addEventListener("cancel", evento => {
+        if (botonGuardar.disabled) evento.preventDefault();
+    });
+    modal.addEventListener("close", () => {
+        formRecordatorio.reset();
+        fechaInicio.value = fechaSeleccionada;
+        mensaje.textContent = "";
+        actualizarOpciones();
+    });
+
     formRecordatorio.addEventListener("submit", async (evento) => {
         evento.preventDefault();
+        if (botonGuardar.disabled) return;
         const tipo = tipoRecordatorio.value;
         const nombre = document.getElementById("nombre-recordatorio").value.trim();
         const hora = document.getElementById("hora-recordatorio").value;
@@ -330,22 +422,16 @@ if (formRecordatorio && listaRecordatorios) {
         const diasSemana = Array.from(document.querySelectorAll(
             '#dias-repeticion input[type="checkbox"]:checked'
         )).map(c => Number(c.value));
-        const mensaje = document.getElementById("mensaje-recordatorio");
-        function avisar(texto) {
-            if (mensaje) mensaje.textContent = texto;
-            else alert(texto);
-        }
-
         if (!nombre || !hora || !seleccionado || !leerFecha(inicio) || !leerFecha(fin)) {
-            avisar("Completa el nombre, la hora y las fechas.");
+            mensaje.textContent = "Completa el nombre, la hora y las fechas.";
             return;
         }
         if (fin < inicio) {
-            avisar("La fecha final debe ser igual o posterior a la inicial.");
+            mensaje.textContent = "La fecha final debe ser igual o posterior a la inicial.";
             return;
         }
         if (repeticion === "semanal" && diasSemana.length === 0) {
-            avisar("Selecciona al menos un día de la semana.");
+            mensaje.textContent = "Selecciona al menos un día de la semana.";
             return;
         }
 
@@ -372,12 +458,26 @@ if (formRecordatorio && listaRecordatorios) {
                 fecha.setDate(fecha.getDate() + 1);
             }
             if (!primeraFecha) {
-                avisar("No hay ningún día seleccionado dentro de ese periodo.");
+                mensaje.textContent = "No hay ningún día seleccionado dentro de ese periodo.";
                 return;
             }
         }
 
-        if (!(await guardarCambio("PUT", nuevo, () => recordatorios.push(nuevo)))) return;
+        botonGuardar.disabled = botonCancelar.disabled = true;
+        botonGuardar.textContent = "Guardando…";
+        mensaje.textContent = "";
+        const guardado = await guardarCambio("PUT", nuevo, () => {
+            recordatorios = [...recordatorios.filter(r => r.id !== nuevo.id), nuevo];
+        });
+        botonGuardar.disabled = botonCancelar.disabled = false;
+        botonGuardar.textContent = "Guardar recordatorio";
+        if (!guardado) {
+            mensaje.textContent = recordatoriosCargados
+                ? estadoRecordatorios.textContent || "Espera a que termine el cambio en curso y vuelve a guardar."
+                : "La agenda se está conectando. Vuelve a intentar en unos segundos.";
+            botonGuardar.focus();
+            return;
+        }
         delete formRecordatorio.dataset.pendiente;
         delete formRecordatorio.dataset.idPendiente;
 
@@ -385,11 +485,57 @@ if (formRecordatorio && listaRecordatorios) {
         lunesActual = obtenerLunes(leerFecha(primeraFecha));
         fechaSeleccionada = primeraFecha;
         actualizarSemana();
-        if (mensaje) mensaje.textContent = "Recordatorio guardado.";
-
-        // limpiar formulario sin ocultarlo
-        formRecordatorio.reset();
-        if (fechaInicio) fechaInicio.value = fechaSeleccionada;
-        actualizarOpciones();
+        modal.close();
+        estadoRecordatorios.textContent = "Recordatorio guardado.";
     });
 }
+
+const fechaTablero = document.getElementById("fecha-tablero");
+if (fechaTablero) {
+    const hoy = new Date();
+    fechaTablero.dateTime = obtenerFecha(hoy);
+    fechaTablero.textContent = formatoDia.format(hoy);
+    const nombre = sesion.usuario()?.Name?.trim();
+    if (nombre) document.getElementById("saludo-tablero").textContent = `Hola, ${nombre}`;
+}
+cargarRecordatorios();
+
+// Cada entrada del historial puede contener varias emociones del mismo registro.
+async function cargarEmocionesRecientes() {
+    const lista = document.getElementById("lista-emociones-tablero");
+    if (!lista || !sesion.token()) return;
+    const estado = document.getElementById("estado-emociones-tablero");
+    estado.textContent = "Cargando emociones…";
+    try {
+        const { data } = await api("GET", "/tablero/emociones", undefined, AbortSignal.timeout(7000));
+        if (!Array.isArray(data)) throw new Error("Formato de historial inválido.");
+        const entradas = data.filter(entrada => entrada?.t &&
+            Number.isFinite(new Date(entrada.t).getTime()) &&
+            Array.isArray(entrada.group) && entrada.group.some(g => typeof g?.core === "string" && g.core.trim()));
+        const recientes = entradas.sort((a, b) => new Date(b.t) - new Date(a.t)).slice(0, 3);
+        const formatoFecha = new Intl.DateTimeFormat("es-MX", { dateStyle: "medium", timeStyle: "short" });
+        const nombres = new Map([["Enojao", "Enojo"], ["Troste", "Tristeza"]]);
+
+        for (const entrada of recientes) {
+            const elemento = document.createElement("li");
+            const tiempo = document.createElement("time");
+            const fecha = new Date(entrada.t);
+            tiempo.dateTime = fecha.toISOString();
+            tiempo.textContent = formatoFecha.format(fecha);
+            const emociones = document.createElement("strong");
+            emociones.textContent = entrada.group
+                .filter(g => typeof g?.core === "string" && g.core.trim())
+                .map(({core}) => nombres.get(core) || core).join(" · ");
+            elemento.append(tiempo, emociones);
+            lista.append(elemento);
+        }
+
+        lista.hidden = recientes.length === 0;
+        document.getElementById("enlace-historial-tablero").hidden = lista.hidden;
+        estado.textContent = lista.hidden ? "Aquí aparecerán tus primeros registros." : "";
+    } catch {
+        estado.textContent = "No se pudieron cargar tus emociones.";
+        document.getElementById("enlace-historial-tablero").hidden = false;
+    }
+}
+cargarEmocionesRecientes();

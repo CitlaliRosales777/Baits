@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg">
+  <symbol id="miedo" viewBox="0 0 48 48">
+    <path d="M5 24c5-7 11-11 19-11s14 4 19 11c-5 7-11 11-19 11S10 31 5 24Z"/>
+    <circle cx="24" cy="24" r="5"/>
+    <path d="m10 9 3 4m11-6v4m14-2-3 4"/>
+  </symbol>
+  <symbol id="enojo" viewBox="0 0 48 48">
+    <path d="M27 5 12 26h12l-3 17 16-22H25l2-16Z"/>
+    <path d="m6 12 4 3m29 18 4 3M7 37l5-4m25-22 4-4"/>
+  </symbol>
+  <symbol id="tristeza" viewBox="0 0 48 48">
+    <path d="M24 7c4 7 11 14 11 22a11 11 0 0 1-22 0c0-8 7-15 11-22Z"/>
+    <path d="M19 29a5 5 0 0 0 5 5M9 17v6m30-6v6"/>
+  </symbol>
+  <symbol id="alegria" viewBox="0 0 48 48">
+    <circle cx="24" cy="24" r="11"/>
+    <path d="M19 26c2 4 8 4 10 0m-5-7h.01M24 3v5m0 32v5M3 24h5m32 0h5M9 9l4 4m22 22 4 4M9 39l4-4m22-22 4-4"/>
+  </symbol>
+  <symbol id="poder" viewBox="0 0 48 48">
+    <path d="m5 38 14-23 9 13 6-8 9 18H5Z"/>
+    <path d="m15 22 4 4 4-4m12-16v11m-5-5h10"/>
+  </symbol>
+  <symbol id="paz" viewBox="0 0 48 48">
+    <path d="M29 7a12 12 0 1 0 12 14A11 11 0 0 1 29 7Z"/>
+    <path d="M6 32c6-4 12 4 18 0s12 4 18 0M6 40c6-4 12 4 18 0s12 4 18 0M11 9v6m-3-3h6"/>
+  </symbol>
+  <symbol id="general" viewBox="0 0 48 48">
+    <path d="M24 38 9 24a8 8 0 0 1 11-12l4 4 4-4a8 8 0 0 1 11 12Z"/>
+    <path d="M13 23h6l3-5 4 10 3-5h6"/>
+  </symbol>
+</svg>

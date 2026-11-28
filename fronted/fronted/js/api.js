@@ -53,10 +53,11 @@ const sesion = {
 };
 
 /* envia solicitudes al servidor */
-async function api(metodo, ruta, datos) {
+async function api(metodo, ruta, datos, signal) {
     const opciones = {
         method: metodo,
-        headers: {}
+        headers: {},
+        signal
     };
 
     const token = sesion.token();
@@ -74,8 +75,10 @@ async function api(metodo, ruta, datos) {
 
     try {
         respuesta = await fetch(API_URL + ruta, opciones);
-    } catch (error) {
-        throw new Error("No se pudo conectar con APIcore. Revisa que el servidor esté encendido.");
+    } catch {
+        const error = new Error("No se pudo conectar con APIcore. Revisa que el servidor esté encendido.");
+        error.status = 0;
+        throw error;
     }
 
     const cuerpo = respuesta.status === 204

@@ -4,132 +4,155 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mi espacio | Moodsitto</title>
+    <link rel="icon" type="image/svg+xml" href="img/moodsitto-logo.svg">
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body class="inicio-app">
+    <a class="saltar-contenido" href="#contenido">Saltar al contenido</a>
     <!-- encabezado -->
     <header class="encabezado">
         <a href="dashboard.html" class="marca" aria-label="Moodsitto, dashboard">
-            <img src="img/Moodsitto_snFondo.png" alt="Moodsitto" class="logo">
+            <img src="img/moodsitto-logo.svg" alt="" width="44" height="44" class="marca-simbolo">
+            <span class="marca-nombre">
+                <img src="img/Moodsitto_snFondo.png" alt="" width="6666" height="3750" class="logo">
+            </span>
         </a>
         <nav class="menu-principal" aria-label="Menu principal">
-            <a href="dashboard.html" class="menu-enlace activo" aria-current="page">Mi inicio</a>
-            <a href="trackingmazz0o.html" class="menu-enlace">Mis emociones</a>
-            <a href="perfil.html" class="menu-enlace destacado">Mi perfil</a>
+            <a href="dashboard.html" class="menu-enlace activo" data-icono="inicio" aria-current="page">Mi inicio</a>
+            <a href="trackingmazz0o.html" class="menu-enlace" data-icono="emociones">Mis emociones</a>
+            <a href="perfil.html" class="menu-enlace destacado" data-icono="perfil">Mi perfil</a>
         </nav>
     </header>
 
-    <main>
-        <!-- saludo con olita -->
-        <section class="saludo">
-            <h1>¿Qué tal?</h1>
-            <svg class="ola" viewBox="0 0 600 120" preserveAspectRatio="none" aria-hidden="true">
-                <path d="M0 0 C30 95, 90 75, 155 65 C235 35, 310 80, 395 105 C475 125, 535 80, 600 20 L600 120 L0 120 Z" fill="#F2E9E4"/>
-            </svg>
-        </section>
-
-        <!-- acceso a tarjetas -->
-        <section class="area-principal">
+    <main id="contenido" class="tablero" tabindex="-1">
+        <section class="cabecera-tablero" aria-labelledby="saludo-tablero">
+            <div>
+                <time id="fecha-tablero" class="fecha-tablero"></time>
+                <h1 id="saludo-tablero">Mi espacio</h1>
+                <div id="pendiente-hoy" class="pendiente-hoy" hidden>
+                    <span data-icono="calendario" aria-hidden="true"></span>
+                    <p><strong id="titulo-pendiente-hoy"></strong><span id="detalle-pendiente-hoy"></span></p>
+                </div>
+            </div>
             <a href="trackingmazz0o.html" class="tarjeta-acceso">
-                <span class="acceso-icono" aria-hidden="true">♡</span>
+                <span class="acceso-icono" data-icono="emociones" aria-hidden="true"></span>
                 <span class="acceso-info">
                     <strong>Registrar mis emociones</strong>
+                    <small>Elige una carta y añade una nota.</small>
                 </span>
-                <span class="acceso-flecha" aria-hidden="true">›</span>
+                <span class="acceso-flecha" data-icono="siguiente" aria-hidden="true"></span>
             </a>
         </section>
 
-        <!-- calendario semanal -->
-        <section class="calendario">
-            <div class="cabecera-semana">
-                <h2>Mi semana</h2>
-                <div class="controles-semana">
-                    <button type="button" id="semana-anterior" aria-label="Semana anterior">&#8249;</button>
-                    <span id="rango-semana" aria-live="polite"></span>
-                    <button type="button" id="semana-siguiente" aria-label="Semana siguiente">&#8250;</button>
+        <div class="contenido-tablero">
+            <div class="agenda-tablero">
+                <section class="calendario" aria-labelledby="titulo-semana">
+                    <div class="cabecera-semana">
+                        <h2 id="titulo-semana">Mi semana</h2>
+                        <div class="controles-semana">
+                            <button type="button" id="semana-anterior" data-icono="anterior" aria-label="Semana anterior"></button>
+                            <span id="rango-semana" aria-live="polite"></span>
+                            <button type="button" id="semana-siguiente" data-icono="siguiente" aria-label="Semana siguiente"></button>
+                        </div>
+                    </div>
+                    <div class="semana" aria-label="Días de la semana">
+                        <button class="dia" type="button"><span>Lun</span><strong>1</strong></button>
+                        <button class="dia" type="button"><span>Mar</span><strong>2</strong></button>
+                        <button class="dia" type="button"><span>Mié</span><strong>3</strong></button>
+                        <button class="dia" type="button"><span>Jue</span><strong>4</strong></button>
+                        <button class="dia" type="button"><span>Vie</span><strong>5</strong></button>
+                        <button class="dia" type="button"><span>Sáb</span><strong>6</strong></button>
+                        <button class="dia" type="button"><span>Dom</span><strong>7</strong></button>
+                    </div>
+                    <div class="resumen-semana" id="resumen-semana" role="status" aria-label="Resumen de los recordatorios de la semana" hidden>
+                        <p><strong id="semana-pendientes">0</strong> Pendientes</p>
+                        <p><strong id="semana-completados">0</strong> Completados</p>
+                        <progress id="avance-semana" aria-label="Recordatorios completados de la semana" hidden></progress>
+                    </div>
+                </section>
+
+                <section class="recordatorios" aria-labelledby="titulo-recordatorios">
+                    <div class="cabecera-recordatorios">
+                        <div>
+                            <h2 id="titulo-recordatorios">Mis recordatorios</h2>
+                            <time class="fecha-recordatorios" id="fecha-recordatorios"></time>
+                        </div>
+                        <button type="button" class="boton" id="nuevo-recordatorio" data-icono="agregar" aria-haspopup="dialog">Nuevo recordatorio</button>
+                    </div>
+                    <!-- Anuncia la carga y los errores sin mover el foco del formulario. -->
+                    <p id="estado-recordatorios" role="status" aria-live="polite"></p>
+                    <p class="sin-recordatorios" role="status" aria-live="polite" hidden>No tienes recordatorios para este día.</p>
+                </section>
+            </div>
+            <section class="emociones-tablero" aria-labelledby="titulo-emociones-tablero">
+                <img src="img/cuaderno-moodsitto.webp" alt="" width="960" height="1200" class="imagen-emociones-tablero">
+                <div class="contenido-emociones-tablero">
+                    <h2 id="titulo-emociones-tablero">Emociones recientes</h2>
+                    <p id="estado-emociones-tablero" role="status"></p>
+                    <ul id="lista-emociones-tablero" class="lista-emociones-tablero" hidden></ul>
+                    <a href="trackingmazz0o.html#historial" id="enlace-historial-tablero" class="enlace-historial-tablero" data-icono="siguiente" hidden>Ver historial</a>
                 </div>
-            </div>
-            <div class="semana" aria-label="Días de la semana">
-                <div class="dia" tabindex="0" role="button"><span>Lun</span><strong>1</strong></div>
-                <div class="dia" tabindex="0" role="button"><span>Mar</span><strong>2</strong></div>
-                <div class="dia" tabindex="0" role="button"><span>Mié</span><strong>3</strong></div>
-                <div class="dia" tabindex="0" role="button"><span>Jue</span><strong>4</strong></div>
-                <div class="dia" tabindex="0" role="button"><span>Vie</span><strong>5</strong></div>
-                <div class="dia" tabindex="0" role="button"><span>Sáb</span><strong>6</strong></div>
-                <div class="dia" tabindex="0" role="button"><span>Dom</span><strong>7</strong></div>
-            </div>
-        </section>
-
-        <!-- recordatorios -->
-        <section class="recordatorios">
-            <h2>Mis recordatorios</h2>
-            <!-- Anuncia la carga y los errores sin mover el foco del formulario. -->
-            <p id="estado-recordatorios" role="status" aria-live="polite"></p>
-            <p class="sin-recordatorios" role="status" aria-live="polite">No tienes recordatorios para este día.</p>
-        </section>
-
-        <!-- formulario desplegable -->
-        <details class="zona-agregar" id="panel-recordatorio">
-            <summary class="abrir-recordatorio">
-                <span class="icono-agregar" aria-hidden="true">+</span>
-                <span class="texto-abrir">Nuevo recordatorio</span>
-                <span class="texto-cerrar">Cerrar formulario</span>
-            </summary>
-            <div class="barra-recordatorio">
-                <form id="form-recordatorio">
-                    <div class="campo-recordatorio">
-                        <label for="tipo-recordatorio">Tipo</label>
-                        <select id="tipo-recordatorio">
-                            <option value="medicamento">Medicamento</option>
-                            <option value="cita">Cita médica</option>
-                            <option value="actividad">Actividad</option>
-                            <option value="otro">Otro</option>
-                        </select>
-                    </div>
-                    <div class="campo-recordatorio">
-                        <label for="nombre-recordatorio">Nombre</label>
-                        <input type="text" id="nombre-recordatorio" placeholder="Nombre del recordatorio" maxlength="100" required>
-                    </div>
-                    <div class="campo-recordatorio" id="campo-dosis">
-                        <label for="dosis-recordatorio">Dosis (opcional)</label>
-                        <input type="text" id="dosis-recordatorio" placeholder="Dosis indicada" maxlength="50">
-                    </div>
-                    <div class="campo-recordatorio">
-                        <label for="hora-recordatorio">Horario</label>
-                        <input type="time" id="hora-recordatorio" required>
-                    </div>
-                    <div class="campo-recordatorio">
-                        <label for="fecha-inicio">Fecha de inicio</label>
-                        <input type="date" id="fecha-inicio" required>
-                    </div>
-                    <div class="campo-recordatorio">
-                        <label for="repeticion-recordatorio">Repetición</label>
-                        <select id="repeticion-recordatorio">
-                            <option value="una">Solo ese día</option>
-                            <option value="diaria">Todos los días</option>
-                            <option value="semanal">Días de la semana</option>
-                        </select>
-                    </div>
-                    <div class="campo-recordatorio" id="campo-fecha-fin" hidden>
-                        <label for="fecha-fin">Fecha final</label>
-                        <input type="date" id="fecha-fin" disabled>
-                    </div>
-                    <fieldset id="dias-repeticion" hidden disabled>
-                        <legend>Días de repetición</legend>
-                        <label><input type="checkbox" value="1"> Lunes</label>
-                        <label><input type="checkbox" value="2"> Martes</label>
-                        <label><input type="checkbox" value="3"> Miércoles</label>
-                        <label><input type="checkbox" value="4"> Jueves</label>
-                        <label><input type="checkbox" value="5"> Viernes</label>
-                        <label><input type="checkbox" value="6"> Sábado</label>
-                        <label><input type="checkbox" value="7"> Domingo</label>
-                    </fieldset>
-                    <button type="submit" class="boton boton-guardar">Agregar</button>
-                    <p id="mensaje-recordatorio" role="status" aria-live="polite"></p>
-                </form>
-            </div>
-        </details>
+            </section>
+        </div>
     </main>
+
+    <dialog class="modal-recordatorio" id="panel-recordatorio" aria-labelledby="titulo-modal-recordatorio">
+        <h2 id="titulo-modal-recordatorio">Nuevo recordatorio</h2>
+        <form id="form-recordatorio">
+            <div class="campo-recordatorio">
+                <label for="tipo-recordatorio">Tipo</label>
+                <select id="tipo-recordatorio">
+                    <option value="medicamento">Medicamento</option>
+                    <option value="cita">Cita médica</option>
+                    <option value="actividad">Actividad</option>
+                    <option value="otro">Otro</option>
+                </select>
+            </div>
+            <div class="campo-recordatorio">
+                <label for="nombre-recordatorio">Nombre</label>
+                <input type="text" id="nombre-recordatorio" placeholder="Nombre del recordatorio" maxlength="100" required autofocus>
+            </div>
+            <div class="campo-recordatorio" id="campo-dosis">
+                <label for="dosis-recordatorio">Dosis (opcional)</label>
+                <input type="text" id="dosis-recordatorio" placeholder="Dosis indicada" maxlength="50">
+            </div>
+            <div class="campo-recordatorio">
+                <label for="hora-recordatorio">Horario</label>
+                <input type="time" id="hora-recordatorio" required>
+            </div>
+            <div class="campo-recordatorio">
+                <label for="fecha-inicio">Fecha de inicio</label>
+                <input type="date" id="fecha-inicio" required>
+            </div>
+            <div class="campo-recordatorio">
+                <label for="repeticion-recordatorio">Repetición</label>
+                <select id="repeticion-recordatorio">
+                    <option value="una">Solo ese día</option>
+                    <option value="diaria">Todos los días</option>
+                    <option value="semanal">Días de la semana</option>
+                </select>
+            </div>
+            <div class="campo-recordatorio" id="campo-fecha-fin" hidden>
+                <label for="fecha-fin">Fecha final</label>
+                <input type="date" id="fecha-fin" disabled>
+            </div>
+            <fieldset id="dias-repeticion" hidden disabled>
+                <legend>Días de repetición</legend>
+                <label><input type="checkbox" value="1"> Lunes</label>
+                <label><input type="checkbox" value="2"> Martes</label>
+                <label><input type="checkbox" value="3"> Miércoles</label>
+                <label><input type="checkbox" value="4"> Jueves</label>
+                <label><input type="checkbox" value="5"> Viernes</label>
+                <label><input type="checkbox" value="6"> Sábado</label>
+                <label><input type="checkbox" value="7"> Domingo</label>
+            </fieldset>
+            <p id="mensaje-recordatorio" role="status" aria-live="polite"></p>
+            <div class="acciones-modal-recordatorio">
+                <button type="button" class="boton boton-secundario" id="cancelar-recordatorio">Cancelar</button>
+                <button type="submit" class="boton" id="guardar-recordatorio">Guardar recordatorio</button>
+            </div>
+        </form>
+    </dialog>
 
     <footer>Moodsitto · 2026</footer>
     <script src="js/api.js"></script>

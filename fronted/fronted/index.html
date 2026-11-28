@@ -5,37 +5,51 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#f2e9e4">
     <title>Moodsitto | Inicio</title>
+    <link rel="icon" type="image/svg+xml" href="img/moodsitto-logo.svg">
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body class="pagina-inicio">
+    <a class="saltar-contenido" href="#contenido">Saltar al contenido</a>
 
     <!-- encabezado -->
     <header class="encabezado">
         <a href="index.html" class="marca" aria-label="Moodsitto, inicio">
-            <img src="img/Moodsitto_snFondo.png" alt="Moodsitto" class="logo">
+            <img src="img/moodsitto-logo.svg" alt="" width="44" height="44" class="marca-simbolo">
+            <span class="marca-nombre">
+                <img src="img/Moodsitto_snFondo.png" alt="" width="6666" height="3750" class="logo">
+            </span>
         </a>
 
         <!-- menu principal -->
         <nav class="menu-principal" aria-label="Menu principal">
-            <a href="index.html" class="menu-enlace activo" aria-current="page">Inicio</a>
-            <a href="login.html" class="menu-enlace">Iniciar sesión</a>
-            <a href="registro.html" class="menu-enlace destacado">Crear cuenta</a>
+            <a href="index.html" class="menu-enlace activo" data-icono="inicio" aria-current="page">Inicio</a>
+            <a href="login.html" class="menu-enlace" data-icono="entrar">Iniciar sesión</a>
+            <a href="registro.html" class="menu-enlace destacado" data-icono="registro">Crear cuenta</a>
         </nav>
     </header>
 
     <!-- bienvenida -->
-    <main class="bienvenida">
-        <!-- mensaje principal -->
-        <span class="etiqueta">TU ESPACIO MOODSITTO</span>
-        <h1>Un momento para ti <span aria-hidden="true">♡</span></h1>
-        <p class="descripcion">
-            Explora tu mood
-        </p>
-
-        <!-- botones de acceso -->
-        <div class="bienvenida-acciones">
-            <a href="registro.html" class="boton">Comenzar</a>
-            <a href="login.html" class="boton boton-secundario">Ya tengo cuenta</a>
+    <main id="contenido" class="bienvenida" tabindex="-1">
+        <div class="bienvenida-contenido">
+            <h1>Un momento para ti</h1>
+            <p class="descripcion">Registra cómo te sientes y organiza los recordatorios de tu semana.</p>
+            <div class="bienvenida-acciones">
+                <a href="registro.html" class="boton" data-icono="registro">Crear cuenta</a>
+                <a href="login.html" class="boton boton-secundario" data-icono="entrar">Iniciar sesión</a>
+            </div>
+            <dl class="bienvenida-funciones">
+                <div>
+                    <dt data-icono="emociones">Emociones</dt>
+                    <dd>Añade una intensidad y una nota a lo que sientes.</dd>
+                </div>
+                <div>
+                    <dt data-icono="calendario">Recordatorios</dt>
+                    <dd>Elige una fecha y consulta lo que tienes pendiente.</dd>
+                </div>
+            </dl>
+        </div>
+        <div class="bienvenida-imagen">
+            <img src="img/cuaderno-moodsitto.webp" width="960" height="1200" alt="" fetchpriority="high">
         </div>
     </main>
 

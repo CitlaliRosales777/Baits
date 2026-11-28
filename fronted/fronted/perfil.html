@@ -4,24 +4,29 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mi perfil | Moodsitto</title>
+    <link rel="icon" type="image/svg+xml" href="img/moodsitto-logo.svg">
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body class="pagina-perfil">
+    <a class="saltar-contenido" href="#contenido">Saltar al contenido</a>
 
     <!-- encabezado -->
     <header class="encabezado">
         <a href="dashboard.html" class="marca" aria-label="Moodsitto, dashboard">
-            <img src="img/Moodsitto_snFondo.png" alt="Moodsitto" class="logo">
+            <img src="img/moodsitto-logo.svg" alt="" width="44" height="44" class="marca-simbolo">
+            <span class="marca-nombre">
+                <img src="img/Moodsitto_snFondo.png" alt="" width="6666" height="3750" class="logo">
+            </span>
         </a>
         <nav class="menu-principal" aria-label="Menu principal">
-            <a href="dashboard.html" class="menu-enlace">Mi inicio</a>
-            <a href="trackingmazz0o.html" class="menu-enlace">Mis emociones</a>
-            <a href="perfil.html" class="menu-enlace destacado activo" aria-current="page">Mi perfil</a>
+            <a href="dashboard.html" class="menu-enlace" data-icono="inicio">Mi inicio</a>
+            <a href="trackingmazz0o.html" class="menu-enlace" data-icono="emociones">Mis emociones</a>
+            <a href="perfil.html" class="menu-enlace destacado activo" data-icono="perfil" aria-current="page">Mi perfil</a>
         </nav>
     </header>
 
     <!-- contenido del perfil -->
-    <main>
+    <main id="contenido" tabindex="-1">
         <section class="franja-perfil">
             <h1>Mi perfil</h1>
         </section>

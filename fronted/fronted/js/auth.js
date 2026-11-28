@@ -45,7 +45,7 @@ if (formularioLogin) {
         const identificador = formularioLogin.elements.namedItem("mail").value.trim();
         const contrasena = formularioLogin.elements.namedItem("passw").value;
 
-        await conBotonOcupado(formularioLogin, "Ingresando...", async () => {
+        await conBotonOcupado(formularioLogin, "Ingresando…", async () => {
             try {
                 await iniciarSesion(identificador, contrasena);
                 window.location.assign("dashboard.html");
@@ -86,7 +86,7 @@ if (formularioRegistro) {
             if (datos[campo] === "") delete datos[campo];
         });
 
-        await conBotonOcupado(formularioRegistro, "Creando cuenta...", async () => {
+        await conBotonOcupado(formularioRegistro, "Creando cuenta…", async () => {
             try {
                 await api("POST", "/users", datos);
                 await iniciarSesion(datos.Email, datos.Password);
@@ -110,6 +110,7 @@ if (menu && sesion.token() && usuario) {
         const entrar = document.createElement("a");
         entrar.href = "dashboard.html";
         entrar.className = "menu-enlace destacado";
+        entrar.dataset.icono = "inicio";
         entrar.textContent = "Mi espacio";
         menu.appendChild(entrar);
     }
@@ -118,6 +119,7 @@ if (menu && sesion.token() && usuario) {
     const salir = document.createElement("a");
     salir.href = "index.html";
     salir.className = "menu-enlace";
+    salir.dataset.icono = "salir";
     salir.textContent = "Cerrar sesión";
 
     salir.addEventListener("click", async (evento) => {

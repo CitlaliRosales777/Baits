@@ -4,25 +4,30 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Crear cuenta | Moodsitto</title>
+    <link rel="icon" type="image/svg+xml" href="img/moodsitto-logo.svg">
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body class="pagina-acceso pagina-registro">
+    <a class="saltar-contenido" href="#contenido">Saltar al contenido</a>
 
     <!-- encabezado -->
     <header class="encabezado">
         <a href="index.html" class="marca" aria-label="Moodsitto, inicio">
-            <img src="img/Moodsitto_snFondo.png" alt="Moodsitto" class="logo">
+            <img src="img/moodsitto-logo.svg" alt="" width="44" height="44" class="marca-simbolo">
+            <span class="marca-nombre">
+                <img src="img/Moodsitto_snFondo.png" alt="" width="6666" height="3750" class="logo">
+            </span>
         </a>
 
         <nav class="menu-principal" aria-label="Menu principal">
-            <a href="index.html" class="menu-enlace">Inicio</a>
-            <a href="login.html" class="menu-enlace">Iniciar sesión</a>
-            <a href="registro.html" class="menu-enlace destacado activo" aria-current="page">Crear cuenta</a>
+            <a href="index.html" class="menu-enlace" data-icono="inicio">Inicio</a>
+            <a href="login.html" class="menu-enlace" data-icono="entrar">Iniciar sesión</a>
+            <a href="registro.html" class="menu-enlace destacado activo" data-icono="registro" aria-current="page">Crear cuenta</a>
         </nav>
     </header>
 
     <!-- formulario de registro -->
-    <main class="pagina-formulario">
+    <main id="contenido" class="pagina-formulario" tabindex="-1">
         <section class="formulario">
 
             <!-- bienvenida -->
@@ -140,7 +145,7 @@
 
                 <!-- crear cuenta -->
                 <div class="registro-acciones">
-                    <button type="submit" class="boton ancho">
+                    <button type="submit" class="boton ancho" data-icono="registro">
                         Crear cuenta
                     </button>
 
